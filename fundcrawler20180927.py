@@ -66,7 +66,11 @@ def thread_get_past_performance(code, name, thread_file_lock):
     for i in tem:
         if i[0] == '-':
             if i[1] == '-':
-                continue
+                if tem[5] == i:
+                    sign = 0
+                    break
+                else:
+                    continue
             else:
                 sign = 0
                 break
@@ -99,6 +103,7 @@ def get_past_performance():
             t = threading.Thread(target=thread_get_past_performance, args=(code, name, thread_file_lock))
             thread.append(t)
             t.start()
+            time.sleep(0.1)
 
             sleep_time = 1
             while len(thread) > 50:
@@ -111,5 +116,6 @@ def get_past_performance():
             print(count)
 
 
-get_fund_list()
+#
+# get_fund_list()
 get_past_performance()
