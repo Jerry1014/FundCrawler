@@ -52,7 +52,7 @@ def get_achievement(code, sign):
             achievement.append(tem.group(7))
             achievement.append(tem.group(11))
         except:
-            time.sleep(5)
+            time.sleep(10)
             achievement = get_achievement(code, sign-1)
     else:
         for i in range(6):
@@ -60,7 +60,7 @@ def get_achievement(code, sign):
     return achievement
 
 
-def thread_get_past_performance(code, name, thread_lock):
+def thread_get_past_performance(code, name, thread_file_lock):
     tem = get_achievement(code, 3)
     sign = 1
     for i in tem:
@@ -72,33 +72,43 @@ def thread_get_past_performance(code, name, thread_lock):
                 break
     tem.append(str(sign))
     fund_all_msg = [code, name] + tem
-    thread_lock.acquire()
+    thread_file_lock.acquire()
     with open('fund_with_achievement.csv', 'a') as f:
         for i in fund_all_msg:
             f.write(i + ',')
         f.write('\n')
-    thread_lock.release()
+    thread_file_lock.release()
 
 
 def get_past_performance():
-    os.remove('fund_with_achievement.csv')
+    try:
+        os.remove('fund_with_achievement.csv')
+    except FileNotFoundError:
+        pass
     with open('fund_simple.csv', 'r') as f:
         thread = []
-        thread_lock = threading.Lock()
-        count = 0
+        thread_file_lock = threading.Lock()
 
+        count = 0
         for i in f.readlines():
             count += 1
             try:
                 code, name, _ = i.split(',')
             except ValueError:
                 break
-            t = threading.Thread(target=thread_get_past_performance, args=(code, name, thread_lock))
+            t = threading.Thread(target=thread_get_past_performance, args=(code, name, thread_file_lock))
             thread.append(t)
             t.start()
+
+            sleep_time = 1
+            while len(thread) > 50:
+                time.sleep(sleep_time)
+                for t in thread:
+                    if not t.is_alive():
+                        thread.remove(t)
+                sleep_time += 1
+                print("the len of thread " + str(len(thread)))
             print(count)
-            if count/10 == 0:
-                time.sleep(5)
 
 
 get_fund_list()
