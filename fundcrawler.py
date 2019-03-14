@@ -1,11 +1,12 @@
 # -*- coding:UTF-8 -*-
-import requests
-import time
-from fake_useragent import UserAgent
+import os
+import random
 import re
 import threading
-import random
-import os
+import time
+
+import requests
+from fake_useragent import UserAgent
 
 
 def get_fund_list():
@@ -17,14 +18,14 @@ def get_fund_list():
 
     # 基金目录
     fund_list = re.findall(r'"[0-9]{6}",".+?"', page.text)
-    
+
     # 保存到文件
     fund_save = dict()
     count = 0
     for i in fund_list:
         count += 1
         fund_save[i[1:7]] = i[10:-1]
-        print("No."+str(count)+"  "+i[1:7]+"  "+i[10:-1])
+        print("No." + str(count) + "  " + i[1:7] + "  " + i[10:-1])
 
     with open('fund_simple.csv', 'w') as f:
         for key, value in fund_save.items():
@@ -60,7 +61,7 @@ def get_achievement(code, sign):
             re_text = page.text
         except Exception as e:
             print(e)
-            print(' '+code)
+            print(' ' + code)
             time.sleep(2)
             re_text = ''
 
@@ -144,7 +145,7 @@ def get_achievement(code, sign):
         except:
             # 出错后的重试
             time.sleep(random.randint(1, 3))
-            achievement = get_achievement(code, sign-1)
+            achievement = get_achievement(code, sign - 1)
     else:
         # 重复出错3次后，放弃。相应信息为未知(??)
         for i in range(10):
@@ -158,7 +159,7 @@ def get_achievement(code, sign):
         return achievement
 
 
-def thread_get_past_performance(code, name, thread_index_fund_file_lock, thread_guaranteed_fund_file_lock,):
+def thread_get_past_performance(code, name, list_index_fund, list_guaranteed_fund):
     """爬取单个基金信息的线程"""
     # 爬取收益、基金经理信息
     tem, sign = get_achievement(code, 3)
@@ -167,26 +168,28 @@ def thread_get_past_performance(code, name, thread_index_fund_file_lock, thread_
     # 保存文件
     if sign == 1:
         # 指数型/股票型等基金
-        f = open('index_fund_with_achievement.csv', 'a')
-        thread_index_fund_file_lock.acquire()
-        for i in fund_all_msg:
-            f.write(i + ',')
-        f.write('\n')
-        thread_index_fund_file_lock.release()
+        list_index_fund.append(fund_all_msg)
+    # f = open('index_fund_with_achievement.csv', 'a')
+    # thread_index_fund_file_lock.acquire()
+    # for i in fund_all_msg:
+    #     f.write(i + ',')
+    # f.write('\n')
+    # thread_index_fund_file_lock.release()
 
     elif sign == 0:
         # 保本型基金
-        f = open('guaranteed_fund_with_achievement.csv', 'a')
-        thread_guaranteed_fund_file_lock.acquire()
-        for i in fund_all_msg:
-            f.write(i + ',')
-        f.write('\n')
-        thread_guaranteed_fund_file_lock.release()
+        list_guaranteed_fund.append(fund_all_msg)
+        # f = open('guaranteed_fund_with_achievement.csv', 'a')
+        # thread_guaranteed_fund_file_lock.acquire()
+        # for i in fund_all_msg:
+        #     f.write(i + ',')
+        # f.write('\n')
+        # thread_guaranteed_fund_file_lock.release()
     else:
         # 有封闭期的固定收益基金或已终止的基金
         return
 
-    f.close()
+    # f.close()
     return
 
 
@@ -208,8 +211,12 @@ def get_past_performance(source_file_name='fund_simple.csv'):
     with open(source_file_name, 'r') as f:
         # 线程集合和保存信息文件的线程安全锁
         thread = []
-        thread_index_fund_file_lock = threading.Lock()
-        thread_guaranteed_fund_file_lock = threading.Lock()
+        # 废弃
+        # thread_index_fund_file_lock = threading.Lock()
+        # thread_guaranteed_fund_file_lock = threading.Lock()
+        # 接受线程爬取的信息，到一定数量后一次写入
+        list_index_fund = list()
+        list_guaranteed_fund = list()
 
         # 逐个爬取所有基金的信息
         count = 0
@@ -222,11 +229,11 @@ def get_past_performance(source_file_name='fund_simple.csv'):
             except ValueError:
                 break
             # 多线程爬取
-            t = threading.Thread(target=thread_get_past_performance, args=(code, name, thread_index_fund_file_lock
-                                                                           , thread_guaranteed_fund_file_lock))
+            t = threading.Thread(target=thread_get_past_performance,
+                                 args=(code, name, list_index_fund, list_guaranteed_fund))
             thread.append(t)
             t.start()
-            time.sleep(0.2)
+            time.sleep(0.1)
             for t in thread:
                 if not t.is_alive():
                     thread.remove(t)
@@ -237,7 +244,25 @@ def get_past_performance(source_file_name='fund_simple.csv'):
                 for t in thread:
                     if not t.is_alive():
                         thread.remove(t)
-            print(str(count)+'/'+str(fund_list_length))
+
+            # 判断信息流大小，是否需要写入文件
+            if len(list_index_fund) > write_file_num:
+                f = open('index_fund_with_achievement.csv', 'a')
+                for i in list_index_fund:
+                    for j in i:
+                        f.write(j + ',')
+                    f.write('\n')
+                list_index_fund.clear()
+
+            if len(list_guaranteed_fund) > write_file_num:
+                f = open('guaranteed_fund_with_achievement.csv', 'a')
+                for i in list_index_fund:
+                    for j in i:
+                        f.write(j + ',')
+                    f.write('\n')
+                list_guaranteed_fund.clear()
+
+            print(str(count) + '/' + str(fund_list_length))
 
     # 等待所有线程执行完毕
     while len(thread) > 0:
@@ -246,6 +271,19 @@ def get_past_performance(source_file_name='fund_simple.csv'):
             if not t.is_alive():
                 thread.remove(t)
         print("the len of thread " + str(len(thread)))
+
+    # 写完所有的文件
+    for i in list_index_fund:
+        f = open('index_fund_with_achievement.csv', 'a')
+        for j in i:
+            f.write(j + ',')
+        f.write('\n')
+    for i in list_index_fund:
+        f = open('guaranteed_fund_with_achievement.csv', 'a')
+        for j in i:
+            f.write(j + ',')
+        f.write('\n')
+
     return
 
 
@@ -263,7 +301,7 @@ def no_data_handle(fund_with_achievement):
 
     sign = 1
     with open(fund_with_achievement, 'r') as f1:
-        print('Handling '+fund_with_achievement)
+        print('Handling ' + fund_with_achievement)
         for i in f1.readlines():
             # 逐条检查基金信息
             try:
@@ -277,7 +315,7 @@ def no_data_handle(fund_with_achievement):
             if one_month == '??':
                 sign = 0
                 with open('fund_need_handle.csv', 'a') as f2:
-                    f2.write(code+','+name+','+'\n')
+                    f2.write(code + ',' + name + ',' + '\n')
                 continue
             with open('tem.csv', 'a') as f3:
                 f3.write(i)
@@ -324,8 +362,8 @@ def data_analysis(fund_with_achievement, choice_cretertion_return, choice_creter
                 sign = 1
 
                 # 取基金信息，并按收益率和任职时间分类
-                _, _, one_month, three_month, six_month, one_year, three_year, from_st, _, this_tenure_time,\
-                this_return, all_tenure_time,_ = i.split(',')
+                _, _, one_month, three_month, six_month, one_year, three_year, from_st, _, this_tenure_time, \
+                this_return, all_tenure_time, _ = i.split(',')
                 return_all = [one_month, three_month, six_month, one_year, three_year, from_st, this_return]
                 time_all = [this_tenure_time, all_tenure_time]
 
@@ -364,7 +402,11 @@ def data_analysis(fund_with_achievement, choice_cretertion_return, choice_creter
 
 
 if __name__ == '__main__':
+    start_time = time.time()
     get_fund_list()
+
+    # 写入文件缓冲阈值
+    write_file_num = 1000
 
     # 打开保存在proxies_http.txt的http代理ip
     proxies_http_list = list()
@@ -375,13 +417,14 @@ if __name__ == '__main__':
 
     get_past_performance()
     no_data_handle('index_fund_with_achievement.csv')
-    no_data_handle('guaranteed_fund_with_achievement.csv')
+    # no_data_handle('guaranteed_fund_with_achievement.csv')
 
     # 对基金的筛选设置
-    choice_cretertion_return = {'近1月收益': 1.60, '近3月收益': -5.36, '近6月收益': 0, '近1年收益': 0,
-                                '近3年收益': -3.30
-        , '成立来收益/保本期收益': 0, '本基金任职收益': 0}
+    choice_cretertion_return = {'近1月收益': 4.63, '近3月收益': 11.67, '近6月收益': 12.07, '近1年收益': 6.97,
+                                '近3年收益': 22.39, '成立来收益/保本期收益': 0, '本基金任职收益': 0}
     choice_cretertion_time = {'本基金任职时间': [1, 0], '累计任职时间': [3, 0]}
 
     # 筛选后的文件为fund_choice.csv，不可修改，若还需要对保本型基金进来筛选，需要先备份
     data_analysis('index_fund_with_achievement.csv', choice_cretertion_return, choice_cretertion_time)
+
+    print("爬取总用时", time.time() - start_time)
