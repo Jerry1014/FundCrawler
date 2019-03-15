@@ -270,11 +270,9 @@ def get_past_performance(source_file_name):
     try:
         if source_file_name == all_fund_filename:
             with open(all_index_fund_with_msg_filename, 'w') as f:
-                f.write('基金代码,基金名称,近1月收益,近3月收益,近6月收益,近1年收益,近3年收益,成立来收益,基金经理,'
-                        '本基金任职时间,本基金任职收益,累计任职时间,\n')
+                f.write(header_index_fund)
             with open(all_guaranteed_fund_with_msg_filename, 'w') as f:
-                f.write('基金代码,基金名称,近1月收益,近3月收益,近6月收益,近1年收益,近3年收益,保本期收益,基金经理,'
-                        '本基金任职时间,本基金任职收益,累计任职时间,\n')
+                f.write(header_guaranteed_fund)
     except:
         print('文件' + all_fund_filename + '无法打开')
         return
@@ -296,7 +294,7 @@ def get_past_performance(source_file_name):
 
         # 逐个爬取所有基金的信息
         fund_list = f.readlines()
-        fund_list_length = len(fund_list) // 100
+        fund_list_length = len(fund_list)
         for i in fund_list:
             count += 1
             try:
@@ -322,42 +320,44 @@ def get_past_performance(source_file_name):
 
             # 判断信息流大小，是否需要写入文件
             if len(list_index_fund) > write_file_num:
-                f = open(all_index_fund_with_msg_filename, 'a')
-                for i in list_index_fund:
-                    for j in i:
-                        f.write(j + ',')
-                    f.write('\n')
-                list_index_fund.clear()
+                with open(all_index_fund_with_msg_filename, 'a') as f:
+                    for i in list_index_fund:
+                        for j in i:
+                            f.write(j + ',')
+                        f.write('\n')
+                    list_index_fund.clear()
 
             if len(list_guaranteed_fund) > write_file_num:
-                f = open(all_guaranteed_fund_with_msg_filename, 'a')
-                for i in list_guaranteed_fund:
-                    for j in i:
-                        f.write(j + ',')
-                    f.write('\n')
-                list_guaranteed_fund.clear()
+                with open(all_guaranteed_fund_with_msg_filename, 'a') as f:
+                    for i in list_guaranteed_fund:
+                        for j in i:
+                            f.write(j + ',')
+                        f.write('\n')
+                    list_guaranteed_fund.clear()
 
-            line_progress.update(count // fund_list_length)
+            line_progress.update(count * 100 // fund_list_length)
 
     # 等待所有线程执行完毕
     while len(thread) > 0:
-        time.sleep(2)
         for t in thread:
             if not t.is_alive():
                 thread.remove(t)
+        time.sleep(1)
     line_progress.update(100)
+    print()
 
     # 写完所有的文件
-    for i in list_index_fund:
-        f = open(all_index_fund_with_msg_filename, 'a')
-        for j in i:
-            f.write(j + ',')
-        f.write('\n')
-    for i in list_guaranteed_fund:
-        f = open(all_guaranteed_fund_with_msg_filename, 'a')
-        for j in i:
-            f.write(j + ',')
-        f.write('\n')
+    with open(all_index_fund_with_msg_filename, 'a') as f:
+        for i in list_index_fund:
+            for j in i:
+                f.write(j + ',')
+            f.write('\n')
+
+    with open(all_guaranteed_fund_with_msg_filename, 'a') as f:
+        for i in list_guaranteed_fund:
+            for j in i:
+                f.write(j + ',')
+            f.write('\n')
 
 
 def no_data_handle(fund_with_achievement):
@@ -436,12 +436,18 @@ def data_analysis(fund_with_achievement, choice_cretertion_return, choice_creter
 
     try:
         with open(fund_choice_filename, 'w') as f:
-            f.write('基金代码,基金名称,近1月收益,近3月收益,近6月收益,近1年收益,近3年收益,成立来收益/保本期收益,基金经理,'
-                    '本基金任职时间,本基金任职收益,累计任职时间,\n')
+            if fund_with_achievement == all_index_fund_with_msg_filename:
+                f.write(header_index_fund)
+            else:f.write(header_guaranteed_fund)
 
+        print('筛选基金。。。')
         with open(fund_with_achievement, 'r') as f:
             count = 0
-            for i in f.readlines()[1:]:
+            all_lines = f.readlines()[1:]
+            len_of_lines = len(all_lines)
+            line_progress = LineProgress(title='爬取进度')
+
+            for i in all_lines:
                 # 逐条检查
                 count += 1
                 sign = 1
@@ -480,7 +486,7 @@ def data_analysis(fund_with_achievement, choice_cretertion_return, choice_creter
                 if sign == 1:
                     with open(fund_choice_filename, 'a') as f2:
                         f2.write(i)
-                print(count)
+                line_progress.update(count * 100 // len_of_lines)
 
     except Exception as e:
         print(e)
@@ -500,25 +506,30 @@ if __name__ == '__main__':
     fund_need_handle_filename = 'fund_need_handle.csv'  # 保存需要重新爬取的基金
     fund_choice_filename = 'fund_choice.csv'  # 保存筛选出的基金
 
-    # 打开保存在proxies_http.txt的http代理ip
-    proxies_http_list = list()
-    # with open('proxies_http.txt', 'r') as f:
-    #     for i in f.readlines()[1:]:
-    #         tem = {'ip': i[:-1], 'err_count': 0}
-    #         proxies_http_list.append(tem)
+    header_index_fund = '基金代码,基金名称,近1月收益,近3月收益,近6月收益,近1年收益,近3年收益,成立来收益,基金经理,'
+    '本基金任职时间,本基金任职收益,累计任职时间,\n'
+    header_guaranteed_fund = '基金代码,基金名称,近1月收益,近3月收益,近6月收益,近1年收益,近3年收益,保本期收益,基金经理,'
+    '本基金任职时间,本基金任职收益,累计任职时间,\n'
 
-    # 获取基金列表 获取基金过往数据 重新获取第一次失败的数据
-    get_fund_list()
-    get_past_performance(all_fund_filename)
-    no_data_handle(all_index_fund_with_msg_filename)
-    # no_data_handle(all_guaranteed_fund_with_msg_filename)
+# 打开保存在proxies_http.txt的http代理ip
+proxies_http_list = list()
+# with open('proxies_http.txt', 'r') as f:
+#     for i in f.readlines()[1:]:
+#         tem = {'ip': i[:-1], 'err_count': 0}
+#         proxies_http_list.append(tem)
 
-    # 对基金的筛选设置
-    choice_cretertion_return = {'近1月收益': 4.63, '近3月收益': 11.67, '近6月收益': 12.07, '近1年收益': 6.97,
-                                '近3年收益': 22.39, '成立来收益/保本期收益': 0, '本基金任职收益': 0}
-    choice_cretertion_time = {'本基金任职时间': [1, 0], '累计任职时间': [3, 0]}
+# 获取基金列表 获取基金过往数据 重新获取第一次失败的数据
+#get_fund_list()
+get_past_performance(all_fund_filename)
+no_data_handle(all_index_fund_with_msg_filename)
+# no_data_handle(all_guaranteed_fund_with_msg_filename)
 
-    # 筛选后的文件为fund_choice_filename的值，若还需要对保本型基金进来筛选，需要先备份
-    data_analysis(all_index_fund_with_msg_filename, choice_cretertion_return, choice_cretertion_time)
+# 对基金的筛选设置
+choice_cretertion_return = {'近1月收益': 4.63, '近3月收益': 11.67, '近6月收益': 12.07, '近1年收益': 6.97,
+                            '近3年收益': 22.39, '成立来收益/保本期收益': 0, '本基金任职收益': 0}
+choice_cretertion_time = {'本基金任职时间': [1, 0], '累计任职时间': [3, 0]}
 
-    print("爬取总用时", time.time() - start_time)
+# 筛选后的文件为fund_choice_filename的值，若还需要对保本型基金进来筛选，需要先备份
+data_analysis(all_index_fund_with_msg_filename, choice_cretertion_return, choice_cretertion_time)
+
+print("爬取总用时", time.time() - start_time)
