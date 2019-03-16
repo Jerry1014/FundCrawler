@@ -4,6 +4,7 @@ import random
 import re
 import threading
 import time
+from queue import Queue
 
 import requests
 from eprogress import LineProgress
@@ -80,7 +81,7 @@ def get_fund_list():
 
     with open(all_fund_filename, 'w') as f:
         for key, value in fund_save.items():
-            f.write(key + ',' + value + ',\n')
+            f.write(key + ',' + value + '\n')
 
     print('共发现' + str(len(fund_list)) + '个基金')
 
@@ -101,6 +102,7 @@ def get_achievement(code, sign):
         proxy_all = None
 
     achievement = []
+    sign2 = 1
     if sign > 0:
         ua = MyUserAgent()
         header = {"User-Agent": ua.random}
@@ -125,7 +127,6 @@ def get_achievement(code, sign):
             thread_pool = thread_pool // 2 + 1
             re_text = ''
 
-        sign2 = 1
         # 基金的收益率
         tem = re.search('近1月：.*?((-?\d+\.\d{2}%)|--).*?近1年：.*?((-?\d+\.\d{2}%)|--).*?近3月：.*?((-?'
                         '\d+\.\d{2}%)|--).*?近3年：.*?((-?\d+\.\d{2}%)|--).*?近6月：.*?((-?\d+\.\d{2}%)|--).*?成立来：'
@@ -205,38 +206,32 @@ def get_achievement(code, sign):
             thread_pool += 1
         except:
             # 出错后的重试
-            time.sleep(random.random())
-            achievement = get_achievement(code, sign - 1)
+            achievement, sign2 = get_achievement(code, sign - 1)
     else:
         # 重复出错3次后，放弃。相应信息为未知(??)
         for i in range(10):
             achievement.append('??')
 
-    if sign == 3:
-        # 最后返回的两元组，收益集合以及是否为保本型基金的标志
-        return achievement, sign2
-    else:
-        # 递归只返回收益集合
-        return achievement
+    return achievement, sign2
 
 
-def thread_get_past_performance(code, name, list_index_fund, list_guaranteed_fund):
+def thread_get_past_performance(code, name, queue_index_fund, queue_guaranteed_fund, queue_give_up):
     """
     爬取单个基金信息的线程
     :param code: 基金代号
     :param name: 基金名称
-    :param list_index_fund: 保存爬取的指数/股票基金
-    :param list_guaranteed_fund: 保存爬取的保本基金
+    :param queue_index_fund: 保存爬取的指数/股票基金
+    :param queue_guaranteed_fund: 保存爬取的保本基金
+    :param queue_give_up: 保存放弃爬取的基金代码
     """
     # 爬取收益、基金经理信息
-    global thread_pool
     tem, sign = get_achievement(code, 3)
-    fund_all_msg = [code, name] + tem
+    fund_all_msg = [code, name] + list(tem)
 
     # 保存文件
     if sign == 1:
         # 指数型/股票型等基金
-        list_index_fund.append(fund_all_msg)
+        queue_index_fund.put(fund_all_msg)
     # f = open('index_fund_with_achievement.csv', 'a')
     # thread_index_fund_file_lock.acquire()
     # for i in fund_all_msg:
@@ -246,7 +241,7 @@ def thread_get_past_performance(code, name, list_index_fund, list_guaranteed_fun
 
     elif sign == 0:
         # 保本型基金
-        list_guaranteed_fund.append(fund_all_msg)
+        queue_guaranteed_fund.put(fund_all_msg)
         # f = open('guaranteed_fund_with_achievement.csv', 'a')
         # thread_guaranteed_fund_file_lock.acquire()
         # for i in fund_all_msg:
@@ -255,7 +250,7 @@ def thread_get_past_performance(code, name, list_index_fund, list_guaranteed_fun
         # thread_guaranteed_fund_file_lock.release()
     else:
         # 有封闭期的固定收益基金或已终止的基金
-        pass
+        queue_give_up.put((code, name))
 
     # f.close()
 
@@ -264,6 +259,7 @@ def get_past_performance(source_file_name):
     """
     在简单基金目录的基础上，爬取所有基金的信息
     :param source_file_name:基金目录
+    :return 爬取失败的(基金代码，基金名称)list
     """
     # 测试文件是否被占用，并写入列索引
     try:
@@ -283,25 +279,26 @@ def get_past_performance(source_file_name):
 
     # 进度条
     line_progress = LineProgress(title='爬取进度')
-    count = 0
 
     # 线程集合
     thread = list()
     # 接受线程爬取的信息，到一定数量后一次写入
-    list_index_fund = list()
-    list_guaranteed_fund = list()
+    queue_index_fund = Queue()
+    queue_guaranteed_fund = Queue()
+    queue_give_up = Queue()
 
     fund_list_length = len(fund_list)
     for i in fund_list:
-        count += 1
         try:
-            code, name, _ = i.split(',')
+            code, name = i.split(',')
+            name = name[:-1]
         except ValueError:
             continue
         # 多线程爬取
         t = threading.Thread(target=thread_get_past_performance,
-                             args=(code, name, list_index_fund, list_guaranteed_fund))
+                             args=(code, name, queue_index_fund, queue_guaranteed_fund, queue_give_up))
         thread.append(t)
+        t.setName(code + ',' + name)
         t.start()
         for t in thread:
             if not t.is_alive():
@@ -314,51 +311,50 @@ def get_past_performance(source_file_name):
                 if not t.is_alive():
                     thread.remove(t)
 
-        # 判断信息流大小，是否需要写入文件
-        if len(list_index_fund) > write_file_num:
-            with open(all_index_fund_with_msg_filename, 'a', encoding='utf-8') as f:
-                for i in list_index_fund:
-                    for j in i:
-                        f.write(j + ',')
-                    f.write('\n')
-                list_index_fund.clear()
-
-        if len(list_guaranteed_fund) > write_file_num:
-            with open(all_guaranteed_fund_with_msg_filename, 'a', encoding='utf-8') as f:
-                for i in list_guaranteed_fund:
-                    for j in i:
-                        f.write(j + ',')
-                    f.write('\n')
-                list_guaranteed_fund.clear()
-
-        line_progress.update(count * 100 // fund_list_length)
+        line_progress.update((queue_index_fund.qsize() + queue_guaranteed_fund.qsize() + queue_give_up.qsize())
+                             * 100 // fund_list_length)
 
     # 等待所有线程执行完毕
+    tem_start_time = time.time()
     while len(thread) > 0:
         for t in thread:
             if not t.is_alive():
                 thread.remove(t)
+        process = (queue_index_fund.qsize() + queue_guaranteed_fund.qsize() + queue_give_up.qsize()) \
+                  * 100 // fund_list_length
+        line_progress.update(process)
         time.sleep(random.random())
 
-    # 写完所有的文件
-    with open(all_index_fund_with_msg_filename, 'a', encoding='utf-8') as f:
-        for i in list_index_fund:
+        # 超时线程放弃重爬
+        if time.time() - tem_start_time > 30 and process > 95:
+            for i in thread:
+                fail_list.append(i.name.split(','))
+            break
+
+    # 写入文件
+    with open(all_index_fund_with_msg_filename, 'a') as f:
+        f.write('\n')
+        while not queue_index_fund.empty():
+            i = queue_index_fund.get()
             for j in i:
                 f.write(j + ',')
             f.write('\n')
 
-    with open(all_guaranteed_fund_with_msg_filename, 'a', encoding='utf-8') as f:
-        for i in list_guaranteed_fund:
+    with open(all_guaranteed_fund_with_msg_filename, 'a') as f:
+        f.write('\n')
+        while not queue_guaranteed_fund.empty():
+            i = queue_guaranteed_fund.get()
             for j in i:
                 f.write(j + ',')
             f.write('\n')
-    print('基金信息爬取完成')
+    print('\n基金信息爬取完成')
 
 
 def no_data_handle(fund_with_achievement):
     """
     对第一次爬取失败的基金信息的重新爬取
     :param fund_with_achievement:重新爬取的基金目录
+    :param fail_list: 爬取失败的（基金代码，基金名称）list，将和文件中无数据一起重新爬取
     """
     # 文件以a方式写入，先进行可能的文件清理
     try:
@@ -369,6 +365,11 @@ def no_data_handle(fund_with_achievement):
         os.remove('tem.csv')
     except FileNotFoundError:
         pass
+
+    for i in fail_list:
+        with open(fund_need_handle_filename, 'a') as f2:
+            f2.write(i[0] + ',' + i[1] + ',' + '\n')
+        fail_list.clear()
 
     sign = 1
     with open(fund_with_achievement, 'r') as f1:
@@ -397,6 +398,8 @@ def no_data_handle(fund_with_achievement):
     os.renames('tem.csv', fund_with_achievement)
     if sign == 0:
         get_past_performance(source_file_name=fund_need_handle_filename)
+        if len(fail_list) > 0:
+            print('下列基金仍然爬取失败', fail_list)
 
 
 def get_time_from_str(time_str):
@@ -490,8 +493,7 @@ def data_analysis(fund_with_achievement, choice_cretertion_return, choice_creter
 if __name__ == '__main__':
     start_time = time.time()
 
-    # 写入文件缓冲阈值 线程池大小
-    write_file_num = 1000
+    # 线程池大小
     thread_pool = 10
 
     # 文件名设置
@@ -501,10 +503,8 @@ if __name__ == '__main__':
     fund_need_handle_filename = 'fund_need_handle.csv'  # 保存需要重新爬取的基金
     fund_choice_filename = 'fund_choice.csv'  # 保存筛选出的基金
 
-    header_index_fund = '基金代码,基金名称,近1月收益,近3月收益,近6月收益,近1年收益,近3年收益,成立来收益,基金经理,'
-    '本基金任职时间,本基金任职收益,累计任职时间,\n'
-    header_guaranteed_fund = '基金代码,基金名称,近1月收益,近3月收益,近6月收益,近1年收益,近3年收益,保本期收益,基金经理,'
-    '本基金任职时间,本基金任职收益,累计任职时间,\n'
+    header_index_fund = '基金代码,基金名称,近1月收益,近3月收益,近6月收益,近1年收益,近3年收益,成立来收益,基金经理,本基金任职时间,本基金任职收益,累计任职时间,'
+    header_guaranteed_fund = '基金代码,基金名称,近1月收益,近3月收益,近6月收益,近1年收益,近3年收益,保本期收益,基金经理,本基金任职时间,本基金任职收益,累计任职时间,'
 
     # 打开保存在proxies_http.txt的http代理ip
     proxies_http_list = list()
@@ -513,11 +513,12 @@ if __name__ == '__main__':
     #         tem = {'ip': i[:-1], 'err_count': 0}
     #         proxies_http_list.append(tem)
 
+    fail_list = list()
     # 获取基金列表 获取基金过往数据 重新获取第一次失败的数据
     get_fund_list()
     get_past_performance(all_fund_filename)
     no_data_handle(all_index_fund_with_msg_filename)
-    # no_data_handle(all_guaranteed_fund_with_msg_filename)
+    # no_data_handle(all_guaranteed_fund_with_msg_filename, fail_list)
 
     # 对基金的筛选设置
     choice_cretertion_return = {'近1月收益': 4.63, '近3月收益': 11.67, '近6月收益': 12.07, '近1年收益': 6.97,
