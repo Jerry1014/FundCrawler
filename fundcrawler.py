@@ -519,7 +519,7 @@ proxies_http_list = list()
 #         proxies_http_list.append(tem)
 
 # 获取基金列表 获取基金过往数据 重新获取第一次失败的数据
-#get_fund_list()
+get_fund_list()
 get_past_performance(all_fund_filename)
 no_data_handle(all_index_fund_with_msg_filename)
 # no_data_handle(all_guaranteed_fund_with_msg_filename)
