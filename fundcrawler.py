@@ -86,136 +86,147 @@ def get_fund_list():
     print('共发现' + str(len(fund_list)) + '个基金')
 
 
-def get_achievement(code, sign):
-    """
-    用于爬取基金的收益率和基金经理的信息
-    :param code: 基金代码
-    :param sign: 爬取失败次数，初始3，为0时放弃这个基金的爬取
-    :return 二元组（基金信息，是否保本型标志），其中基金信息为list，近1月。3。6。近1年。3。（成立来收益率|保本期收益）（指数股票|保本），
-    基金经理/基金经理2.，任职时间，任职收益率，基金经理总任职时间/基金经理2总任职时间.
-    """
+def get_page(url, lock_thread_pool):
     global thread_pool
-    try:
-        proxy = random.choice(proxies_http_list)  # 代理ip
-        proxy_all = {'http': proxy['ip']}  # 代理ip
-    except IndexError:
-        proxy_all = None
-
-    achievement = []
-    sign2 = 1
-    if sign > 0:
+    # 若出现错误，最多尝试remain_wrong_time次
+    remain_wrong_time = 3
+    while remain_wrong_time > 0:
+        # 随机选取代理ip和ua
+        try:
+            proxy = random.choice(proxies_http_list)  # 代理ip
+            proxy_all = {'http': proxy['ip']}  # 代理ip
+        except IndexError:
+            proxy_all = None
         ua = MyUserAgent()
         header = {"User-Agent": ua.random}
+
         try:
-            try:
-                page = requests.get('http://fund.eastmoney.com/' + code + '.html', headers=header, proxies=proxy_all)
-            except:
-                try:
-                    if proxy_all:
-                        if proxy['err_count'] == 5:
-                            proxies_http_list.remove(proxy)
-                        else:
-                            proxy['err_count'] += 1
-                except ValueError:
-                    pass
-                page = requests.get('http://fund.eastmoney.com/' + code + '.html', headers=header)
+            page = requests.get(url, headers=header, proxies=proxy_all, timeout=(40, 80))
             page.encoding = 'utf-8'
-            re_text = page.text
-        except:
-            # 网络访问失败，缩减线程池，随机休息一段时间
-            time.sleep(random.randint(1, 5))
+            return page.text
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
+            remain_wrong_time -= 1
+            lock_thread_pool.acquire()
             thread_pool = thread_pool // 2 + 1
-            re_text = ''
+            lock_thread_pool.release()
 
-        # 基金的收益率
-        tem = re.search('近1月：.*?((-?\d+\.\d{2}%)|--).*?近1年：.*?((-?\d+\.\d{2}%)|--).*?近3月：.*?((-?'
-                        '\d+\.\d{2}%)|--).*?近3年：.*?((-?\d+\.\d{2}%)|--).*?近6月：.*?((-?\d+\.\d{2}%)|--).*?成立来：'
-                        '.*?((-?\d+\.\d{2}%)|--).*?基金类型', re_text)
-        if not tem:
-            # 基金为保本型基金
-            sign2 = 0
-            tem = re.search('保本期收益.*?((-?\d+\.\d{2}%)|--).*?近6月：.*?((-?\d+\.\d{2}%)|--).*?近1月：.*?((-?\d+\.\d'
-                            '{2}%)|--).*?近1年：.*?((-?\d+\.\d{2}%)|--).*?近3月：.*?((-?\d+\.\d{2}%)|--).*?近3年：.*?(('
-                            '-?\d+\.\d{2}%)|--).*?基金类型', re_text)
-            if re.search('封闭期', re_text) or re.search('本基金已终止', re_text):
-                # 基金为有封闭期的固定收益基金或已终止的基金
-                sign2 = 2
-                return list(), sign2
-        # 基金经理和个人信息链接
-        tem4 = re.search('<td class="td02">(?:<a href="(.*?)">(.+?)</a>&nbsp;&nbsp;)(?:(?:<a href="(.*?)">(.+?)'
-                         '</a>&nbsp;&nbsp;)|)', re_text)
-        # 基金经理在本基金的任职时间和收益率
-        tem2 = re.search('</td>  <td class="td03">(.+?)</td>  <td class="td04 bold (?:ui-color-(?:red|green)|)">'
-                         '(-?\d+\.\d{2}%)</td></tr>', re_text)
-        try:
-            # 保存基金收益率
-            if sign2 == 1:
-                achievement.append(tem.group(1))
-                achievement.append(tem.group(5))
-                achievement.append(tem.group(9))
-                achievement.append(tem.group(3))
-                achievement.append(tem.group(7))
-                achievement.append(tem.group(11))
-            else:
-                # 保本型基金
-                achievement.append(tem.group(5))
-                achievement.append(tem.group(9))
-                achievement.append(tem.group(3))
-                achievement.append(tem.group(7))
-                achievement.append(tem.group(11))
-                achievement.append(tem.group(1))
-
-            # 对可能的多个基金经理分别记录以便后续爬取
-            manager_link_list = list()
-            manager_list = list()
-            i = 1
-            for j in tem4.groups():
-                if j:
-                    if i % 2 == 0:
-                        manager_list.append(j)
+            # 这有个坑，代理引起的错误可以不休眠，免费代理挂的很多，这样会很慢
+            time.sleep(random.randint(1, 5))
+            # 记录代理ip错误
+            try:
+                if proxy_all:
+                    if proxy['err_count'] == 5:
+                        proxies_http_list.remove(proxy)
                     else:
-                        manager_link_list.append(j)
-                i += 1
-            # 保存基金经理名字
-            manager = None
-            for i in manager_list:
-                if i != manager_list[0]:
-                    manager += '/' + i
-                else:
-                    manager = i
-            achievement.append(manager)
-            achievement.append(tem2.group(1))
-            achievement.append(tem2.group(2))
+                        proxy['err_count'] += 1
+            except ValueError:
+                pass
 
-            # 分别打开基金经理的个人信息页，保存他们的总任职时间
-            manager_link = None
-            for i in manager_link_list:
-                try:
-                    page2 = requests.get(i)
-                    page2.encoding = 'utf-8'
-                    re_text = page2.text
-                except:
-                    time.sleep(random.random())
-                    re_text = ''
-                tem3 = re.search('<span>累计任职时间：</span>(.*?)<br />', re_text)
-                if i != manager_link_list[0]:
-                    manager_link += '/' + tem3.group(1)
-                else:
-                    manager_link = tem3.group(1)
-            achievement.append(manager_link)
-            thread_pool += 1
         except:
-            # 出错后的重试
-            achievement, sign2 = get_achievement(code, sign - 1)
+            remain_wrong_time -= 1
+
+    return None
+
+
+def get_achievement(re_text, lock_thread_pool):
+    """
+    用于爬取基金的收益率和基金经理的信息
+    :param re_text: 要清洗网页文本
+    :return 二元组（基金信息，基金种类），其中基金信息为list，近1月。3。6。近1年。3。（成立来收益率|保本期收益）（指数股票|保本），
+    基金经理/基金经理2.，任职时间，任职收益率，基金经理总任职时间/基金经理2总任职时间.
+    基金种类 1:指数/股票基金 2:保本型基金 3:封闭期又或者已终止的 4:未识别的
+    """
+    fund_kind = None
+    achievement = list()
+
+    # 基金的收益率
+    achievement_after_clean = re.search(
+        '近1月：.*?((-?\d+\.\d{2}%)|--).*?近1年：.*?((-?\d+\.\d{2}%)|--).*?近3月：.*?((-?\d+\.\d{2}%)|--).*?'
+        '近3年：.*?((-?\d+\.\d{2}%)|--).*?近6月：.*?((-?\d+\.\d{2}%)|--).*?成立来：.*?((-?\d+\.\d{2}%)|--).*?基金类型', re_text)
+    if not achievement_after_clean:
+        # 基金为保本型基金
+        achievement_after_clean = re.search('保本期收益.*?((-?\d+\.\d{2}%)|--).*?近6月：.*?((-?\d+\.\d{2}%)|--).*?'
+                                            '近1月：.*?((-?\d+\.\d{2}%)|--).*?近1年：.*?((-?\d+\.\d{2}%)|--).*?'
+                                            '近3月：.*?((-?\d+\.\d{2}%)|--).*?近3年：.*?((-?\d+\.\d{2}%)|--).*?基金类型', re_text)
+        if re.search('封闭期', re_text) or re.search('本基金已终止', re_text):
+            # 基金为有封闭期的固定收益基金或已终止的基金
+            fund_kind = 3
+            return list(), fund_kind
+        if achievement_after_clean:
+            fund_kind = 2
+        else:
+            fund_kind = 4
+            return list(), fund_kind
     else:
-        # 重复出错3次后，放弃。相应信息为未知(??)
-        for i in range(10):
-            achievement.append('??')
+        fund_kind = 1
 
-    return achievement, sign2
+    # 基金经理和个人信息链接
+    fund_manager_ifo = re.search('<td class="td02">(?:<a href="(.*?)">(.+?)</a>&nbsp;&nbsp;)(?:(?:<a href="(.*?)">(.+?)'
+                                 '</a>&nbsp;&nbsp;)|)', re_text)
+    # 基金经理在本基金的任职时间和收益率
+    fund_manager_detail = re.search(
+        '</td>  <td class="td03">(.+?)</td>  <td class="td04 bold (?:ui-color-(?:red|green)|)">'
+        '(-?\d+\.\d{2}%)</td></tr>', re_text)
+
+    if fund_kind == 1:
+        # 保存基金收益率
+        achievement.append(achievement_after_clean.group(1))
+        achievement.append(achievement_after_clean.group(5))
+        achievement.append(achievement_after_clean.group(9))
+        achievement.append(achievement_after_clean.group(3))
+        achievement.append(achievement_after_clean.group(7))
+        achievement.append(achievement_after_clean.group(11))
+    else:
+        # 保本型基金
+        achievement.append(achievement_after_clean.group(5))
+        achievement.append(achievement_after_clean.group(9))
+        achievement.append(achievement_after_clean.group(3))
+        achievement.append(achievement_after_clean.group(7))
+        achievement.append(achievement_after_clean.group(11))
+        achievement.append(achievement_after_clean.group(1))
+
+    # 对可能的多个基金经理分别记录以便后续爬取
+    manager_link_list = list()
+    manager_list = list()
+    i = 1
+    for j in fund_manager_ifo.groups():
+        if j:
+            if i % 2 == 0:
+                manager_list.append(j)
+            else:
+                manager_link_list.append(j)
+        i += 1
+    # 保存基金经理名字
+    manager = None
+    for i in manager_list:
+        if i != manager_list[0]:
+            manager += '/' + i
+        else:
+            manager = i
+    achievement.append(manager)
+    achievement.append(fund_manager_detail.group(1))
+    achievement.append(fund_manager_detail.group(2))
+
+    # 分别打开基金经理的个人信息页，保存他们的总任职时间
+    manager_link = None
+    for i in manager_link_list:
+        re_text = get_page(i, lock_thread_pool)
+        if re_text:
+            fund_manager_appointment_time = re.search('<span>累计任职时间：</span>(.*?)<br />', re_text)
+            if i != manager_link_list[0]:
+                manager_link += '/' + fund_manager_appointment_time.group(1)
+            else:
+                manager_link = fund_manager_appointment_time.group(1)
+        else:
+            fund_kind = 4
+            break
+    achievement.append(manager_link)
+
+    return achievement, fund_kind
 
 
-def thread_get_past_performance(code, name, queue_index_fund, queue_guaranteed_fund, queue_give_up):
+def thread_get_past_performance(code, name, queue_index_fund, queue_guaranteed_fund, queue_other_fund, queue_give_up,
+                                lock_thread_pool):
     """
     爬取单个基金信息的线程
     :param code: 基金代号
@@ -223,36 +234,36 @@ def thread_get_past_performance(code, name, queue_index_fund, queue_guaranteed_f
     :param queue_index_fund: 保存爬取的指数/股票基金
     :param queue_guaranteed_fund: 保存爬取的保本基金
     :param queue_give_up: 保存放弃爬取的基金代码
+    :param lock_thread_pool: 修改最大线程池大小的锁
     """
-    # 爬取收益、基金经理信息
-    tem, sign = get_achievement(code, 3)
-    fund_all_msg = [code, name] + list(tem)
+    global thread_pool
+    # 临时接受爬取函数返回的数据
+    tem = None
+    fund_kind = None
 
-    # 保存文件
-    if sign == 1:
+    re_text = get_page('http://fund.eastmoney.com/' + code + '.html', lock_thread_pool)
+
+    if re_text is None:
+        # 重复出错3次后，放弃。相应信息为未知(??)
+        fund_kind = 1
+        for i in range(10):
+            tem.append('??')
+    else:
+        tem, fund_kind = get_achievement(re_text, lock_thread_pool)
+
+    fund_all_msg = [code, name] + list(tem)
+    if fund_kind == 1:
         # 指数型/股票型等基金
         queue_index_fund.put(fund_all_msg)
-    # f = open('index_fund_with_achievement.csv', 'a')
-    # thread_index_fund_file_lock.acquire()
-    # for i in fund_all_msg:
-    #     f.write(i + ',')
-    # f.write('\n')
-    # thread_index_fund_file_lock.release()
-
-    elif sign == 0:
+    elif fund_kind == 2:
         # 保本型基金
         queue_guaranteed_fund.put(fund_all_msg)
-        # f = open('guaranteed_fund_with_achievement.csv', 'a')
-        # thread_guaranteed_fund_file_lock.acquire()
-        # for i in fund_all_msg:
-        #     f.write(i + ',')
-        # f.write('\n')
-        # thread_guaranteed_fund_file_lock.release()
-    else:
+    elif fund_kind == 3:
         # 有封闭期的固定收益基金或已终止的基金
+        queue_other_fund.put((code, name))
+    else:
+        # 爬取失败
         queue_give_up.put((code, name))
-
-    # f.close()
 
 
 def get_past_performance(source_file_name):
@@ -262,6 +273,7 @@ def get_past_performance(source_file_name):
     :return 爬取失败的(基金代码，基金名称)list
     """
     # 测试文件是否被占用，并写入列索引
+    global thread_pool
     try:
         if source_file_name == all_fund_filename:
             with open(all_index_fund_with_msg_filename, 'w') as f:
@@ -275,18 +287,21 @@ def get_past_performance(source_file_name):
     with open(source_file_name, 'r') as f:
         # 逐个爬取所有基金的信息
         fund_list = f.readlines()
-    os.remove(source_file_name)
+    # os.remove(source_file_name)
 
     # 进度条
     line_progress = LineProgress(title='爬取进度')
 
     # 线程集合
     thread = list()
-    # 接受线程爬取的信息，到一定数量后一次写入
+    # 接受线程爬取的信息
     queue_index_fund = Queue()
     queue_guaranteed_fund = Queue()
+    queue_other_fund = Queue()
     queue_give_up = Queue()
+    lock_thread_pool = threading.Lock()
 
+    last_queue_num = 0
     fund_list_length = len(fund_list)
     for i in fund_list:
         try:
@@ -294,9 +309,11 @@ def get_past_performance(source_file_name):
             name = name[:-1]
         except ValueError:
             continue
+
         # 多线程爬取
         t = threading.Thread(target=thread_get_past_performance,
-                             args=(code, name, queue_index_fund, queue_guaranteed_fund, queue_give_up))
+                             args=(code, name, queue_index_fund, queue_guaranteed_fund, queue_other_fund, queue_give_up,
+                                   lock_thread_pool))
         thread.append(t)
         t.setName(code + ',' + name)
         t.start()
@@ -305,31 +322,29 @@ def get_past_performance(source_file_name):
                 thread.remove(t)
 
         # 判断线程集合是否过大
-        while len(thread) > thread_pool:
-            time.sleep(random.random())
-            for t in thread:
-                if not t.is_alive():
-                    thread.remove(t)
+        if len(thread) > thread_pool:
+            thread_pool += (queue_index_fund.qsize() + queue_guaranteed_fund.qsize() + queue_other_fund.qsize() +
+                            queue_give_up.qsize()) - last_queue_num
+            last_queue_num = (queue_index_fund.qsize() + queue_guaranteed_fund.qsize() + queue_other_fund.qsize() +
+                              queue_give_up.qsize())
+            while len(thread) > thread_pool:
+                time.sleep(random.random())
+                for t in thread:
+                    if not t.is_alive():
+                        thread.remove(t)
 
-        line_progress.update((queue_index_fund.qsize() + queue_guaranteed_fund.qsize() + queue_give_up.qsize())
-                             * 100 // fund_list_length)
+        line_progress.update((queue_index_fund.qsize() + queue_guaranteed_fund.qsize() + queue_other_fund.qsize() +
+                              queue_give_up.qsize()) * 100 // fund_list_length)
 
     # 等待所有线程执行完毕
-    tem_start_time = time.time()
     while len(thread) > 0:
         for t in thread:
             if not t.is_alive():
                 thread.remove(t)
-        process = (queue_index_fund.qsize() + queue_guaranteed_fund.qsize() + queue_give_up.qsize()) \
-                  * 100 // fund_list_length
+        process = (queue_index_fund.qsize() + queue_guaranteed_fund.qsize() + queue_other_fund.qsize() +
+                   queue_give_up.qsize()) * 100 // fund_list_length
         line_progress.update(process)
         time.sleep(random.random())
-
-        # 超时线程放弃重爬
-        if time.time() - tem_start_time > 30 and process > 95:
-            for i in thread:
-                fail_list.append(i.name.split(','))
-            break
 
     # 写入文件
     with open(all_index_fund_with_msg_filename, 'a') as f:
@@ -354,7 +369,6 @@ def no_data_handle(fund_with_achievement):
     """
     对第一次爬取失败的基金信息的重新爬取
     :param fund_with_achievement:重新爬取的基金目录
-    :param fail_list: 爬取失败的（基金代码，基金名称）list，将和文件中无数据一起重新爬取
     """
     # 文件以a方式写入，先进行可能的文件清理
     try:
@@ -365,11 +379,6 @@ def no_data_handle(fund_with_achievement):
         os.remove('tem.csv')
     except FileNotFoundError:
         pass
-
-    for i in fail_list:
-        with open(fund_need_handle_filename, 'a') as f2:
-            f2.write(i[0] + ',' + i[1] + ',' + '\n')
-        fail_list.clear()
 
     sign = 1
     with open(fund_with_achievement, 'r') as f1:
@@ -398,8 +407,6 @@ def no_data_handle(fund_with_achievement):
     os.renames('tem.csv', fund_with_achievement)
     if sign == 0:
         get_past_performance(source_file_name=fund_need_handle_filename)
-        if len(fail_list) > 0:
-            print('下列基金仍然爬取失败', fail_list)
 
 
 def get_time_from_str(time_str):
@@ -513,16 +520,15 @@ if __name__ == '__main__':
     #         tem = {'ip': i[:-1], 'err_count': 0}
     #         proxies_http_list.append(tem)
 
-    fail_list = list()
     # 获取基金列表 获取基金过往数据 重新获取第一次失败的数据
     get_fund_list()
     get_past_performance(all_fund_filename)
     no_data_handle(all_index_fund_with_msg_filename)
-    # no_data_handle(all_guaranteed_fund_with_msg_filename, fail_list)
+    # no_data_handle(all_guaranteed_fund_with_msg_filename)
 
     # 对基金的筛选设置
-    choice_cretertion_return = {'近1月收益': 4.63, '近3月收益': 11.67, '近6月收益': 12.07, '近1年收益': 6.97,
-                                '近3年收益': 22.39, '成立来收益/保本期收益': 0, '本基金任职收益': 0}
+    choice_cretertion_return = {'近1月收益': 6.41, '近3月收益': 24.55, '近6月收益': 10.91, '近1年收益': -3.64,
+                                '近3年收益': 18.35, '成立来收益/保本期收益': 0, '本基金任职收益': 0}
     choice_cretertion_time = {'本基金任职时间': [1, 0], '累计任职时间': [3, 0]}
 
     # 筛选后的文件为fund_choice_filename的值，若还需要对保本型基金进来筛选，需要先备份
