@@ -87,7 +87,7 @@ def get_fund_list():
 
 
 def get_page(url, lock_thread_pool):
-    global thread_pool
+    global thread_pool, last_queue_num
     # 若出现错误，最多尝试remain_wrong_time次
     remain_wrong_time = 3
     while remain_wrong_time > 0:
@@ -228,7 +228,7 @@ def get_achievement(re_text, lock_thread_pool):
             break
     achievement.append(manager_link)
 
-    return fund_kind, achievement
+    return achievement, fund_kind
 
 
 def thread_get_past_performance(code, name, queue_index_fund, queue_guaranteed_fund, queue_other_fund, queue_give_up,
@@ -253,7 +253,7 @@ def thread_get_past_performance(code, name, queue_index_fund, queue_guaranteed_f
         # 重复出错3次后，放弃。
         fund_kind = 4
     else:
-        fund_kind, tem = get_achievement(re_text, lock_thread_pool)
+        tem, fund_kind = get_achievement(re_text, lock_thread_pool)
     fund_all_msg = [code, name] + list(tem)
 
     if fund_kind == 1:
@@ -382,7 +382,6 @@ def get_past_performance(source_file):
 
     save_file()
     print('\n基金信息爬取完成，其中处于封闭期或已终止的基金有' + str(queue_other_fund.qsize()) + '个，爬取失败的有' + str(queue_give_up.qsize()) + '个')
-    queue_give_up.get()
     return list(queue_give_up.get() for i in range(queue_give_up.qsize()))
 
 
@@ -501,6 +500,7 @@ if __name__ == '__main__':
     # 获取基金列表 获取基金过往数据 重新获取第一次失败的数据
     get_fund_list()
     fail_fund_list = get_past_performance(all_fund_filename)
+    print('\n对第一次爬取失败的基金进行重新爬取\n')
     fail_fund_list = get_past_performance(fail_fund_list)
     if fail_fund_list:
         print('仍然还有爬取失败的基金如下')
