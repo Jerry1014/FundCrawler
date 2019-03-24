@@ -228,7 +228,7 @@ def get_achievement(re_text, lock_thread_pool):
             break
     achievement.append(manager_link)
 
-    return achievement, fund_kind
+    return fund_kind, achievement
 
 
 def thread_get_past_performance(code, name, queue_index_fund, queue_guaranteed_fund, queue_other_fund, queue_give_up,
@@ -245,19 +245,17 @@ def thread_get_past_performance(code, name, queue_index_fund, queue_guaranteed_f
     """
     global thread_pool
     # 临时接受爬取函数返回的数据
-    tem = None
+    tem = list()
 
     re_text = get_page('http://fund.eastmoney.com/' + code + '.html', lock_thread_pool)
 
     if re_text is None:
-        # 重复出错3次后，放弃。相应信息为未知(??)
-        fund_kind = 1
-        for i in range(10):
-            tem.append('??')
+        # 重复出错3次后，放弃。
+        fund_kind = 4
     else:
-        tem, fund_kind = get_achievement(re_text, lock_thread_pool)
-
+        fund_kind, tem = get_achievement(re_text, lock_thread_pool)
     fund_all_msg = [code, name] + list(tem)
+
     if fund_kind == 1:
         # 指数型/股票型等基金
         queue_index_fund.put(fund_all_msg)
@@ -266,22 +264,22 @@ def thread_get_past_performance(code, name, queue_index_fund, queue_guaranteed_f
         queue_guaranteed_fund.put(fund_all_msg)
     elif fund_kind == 3:
         # 有封闭期的固定收益基金或已终止的基金
-        queue_other_fund.put((code, name))
+        queue_other_fund.put(code + ',' + name + '\n')
     else:
         # 爬取失败
-        queue_give_up.put((code, name))
+        queue_give_up.put(code + ',' + name + '\n')
 
 
-def get_past_performance(source_file_name):
+def get_past_performance(source_file):
     """
     在简单基金目录的基础上，爬取所有基金的信息
-    :param source_file_name:基金目录
+    :param source_file:要爬取的基金目录
     :return 爬取失败的(基金代码，基金名称)list
     """
     # 测试文件是否被占用，并写入列索引
     global thread_pool
     try:
-        if source_file_name == all_fund_filename:
+        if source_file == all_fund_filename:
             with open(all_index_fund_with_msg_filename, 'w') as f:
                 f.write(header_index_fund)
                 f.write('\n')
@@ -292,10 +290,13 @@ def get_past_performance(source_file_name):
         print('文件' + all_fund_filename + '无法打开')
         return
 
-    with open(source_file_name, 'r') as f:
-        # 逐个爬取所有基金的信息
-        fund_list = f.readlines()
-    os.remove(source_file_name)
+    if type(source_file) == str:
+        with open(source_file, 'r') as f:
+            # 逐个爬取所有基金的信息
+            fund_list = f.readlines()
+        os.remove(source_file)
+    else:
+        fund_list = source_file
 
     # 进度条
     line_progress = LineProgress(title='爬取进度')
@@ -331,8 +332,8 @@ def get_past_performance(source_file_name):
 
     for i in fund_list:
         # 已完成的基金数目
-        done_num = (
-                queue_index_fund.qsize() + queue_guaranteed_fund.qsize() + queue_other_fund.qsize() + queue_give_up.qsize())
+        done_num = (queue_index_fund.qsize() + queue_guaranteed_fund.qsize() + queue_other_fund.qsize() +
+                    queue_give_up.qsize())
         try:
             code, name = i.split(',')
             name = name[:-1]
@@ -381,50 +382,8 @@ def get_past_performance(source_file_name):
 
     save_file()
     print('\n基金信息爬取完成，其中处于封闭期或已终止的基金有' + str(queue_other_fund.qsize()) + '个，爬取失败的有' + str(queue_give_up.qsize()) + '个')
-
-
-def no_data_handle(fund_with_achievement):
-    """
-    对第一次爬取失败的基金信息的重新爬取
-    :param fund_with_achievement:重新爬取的基金目录
-    """
-    # 文件以a方式写入，先进行可能的文件清理
-    try:
-        os.remove(fund_need_handle_filename)
-    except FileNotFoundError:
-        pass
-    try:
-        os.remove('tem.csv')
-    except FileNotFoundError:
-        pass
-
-    sign = 1
-    with open(fund_with_achievement, 'r') as f1:
-        print('重新爬取第一次失败的基金')
-        for i in f1.readlines():
-            # 逐条检查基金信息
-            try:
-                code, name, one_month, three_month, six_month, one_year, three_year, from_st, _, this_tenure_time, \
-                this_return, all_tenure_time, _ = i.split(',')
-            except ValueError:
-                code, name, *_ = i.split(',')
-                one_month = '??'
-
-            # 当基金信息为未知时(??)
-            if one_month == '??':
-                sign = 0
-                with open(fund_need_handle_filename, 'a') as f2:
-                    f2.write(code + ',' + name + ',' + '\n')
-                continue
-            else:
-                with open('tem.csv', 'a') as f3:
-                    f3.write(i)
-
-    # 用筛选过的文件替换原来的基金信息文件，并调用函数对信息未知的基金进行重爬
-    os.remove(fund_with_achievement)
-    os.renames('tem.csv', fund_with_achievement)
-    if sign == 0:
-        get_past_performance(source_file_name=fund_need_handle_filename)
+    queue_give_up.get()
+    return list(queue_give_up.get() for i in range(queue_give_up.qsize()))
 
 
 def get_time_from_str(time_str):
@@ -541,9 +500,11 @@ if __name__ == '__main__':
 
     # 获取基金列表 获取基金过往数据 重新获取第一次失败的数据
     get_fund_list()
-    get_past_performance(all_fund_filename)
-    no_data_handle(all_index_fund_with_msg_filename)
-    no_data_handle(all_guaranteed_fund_with_msg_filename)
+    fail_fund_list = get_past_performance(all_fund_filename)
+    fail_fund_list = get_past_performance(fail_fund_list)
+    if fail_fund_list:
+        print('仍然还有爬取失败的基金如下')
+        print(fail_fund_list)
 
     # 对基金的筛选设置
     choice_return = {'近1月收益': 6.41, '近3月收益': 24.55, '近6月收益': 10.91, '近1年收益': -3.64,
