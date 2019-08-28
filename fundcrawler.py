@@ -13,19 +13,24 @@ from eprogress import LineProgress
 print('正在载入随机UA模块')
 try:
     from FakeUA import FakeUA
+
     ua = FakeUA()
 except ModuleNotFoundError:
     print('脚本工作目录未发现随机UA模块FakeUA，使用默认的唯一的chrome UA（可能会影响爬取效果）')
+
 
     class TemporaryUA:
         def __init__(self):
             self.random = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " \
                           "Chrome/76.0.3809.100 Safari/537.36"
+
+
     ua = TemporaryUA()
 
 
 def get_fund_list():
     """爬取简单的基金代码名称目录"""
+    global sum_of_fund
     print('开始爬取。。。')
 
     header = {"User-Agent": ua.random}
@@ -34,23 +39,15 @@ def get_fund_list():
 
     # 基金目录
     fund_list = re.findall(r'"[0-9]{6}",".+?"', page.text)
+    sum_of_fund = len(fund_list)
+    print('共发现' + str(sum_of_fund) + '个基金')
 
-    # 保存到文件
-    fund_save = dict()
-    count = 0
     for i in fund_list:
-        count += 1
-        fund_save[i[1:7]] = i[10:-1]
-
-    with open(all_fund_filename, 'w') as f:
-        for key, value in fund_save.items():
-            f.write(key + ',' + value + '\n')
-
-    print('共发现' + str(len(fund_list)) + '个基金')
+        yield f'%s,%s' % (i[1:7], i[10:-1])
 
 
 def get_page(url, lock_thread_pool):
-    global thread_pool, last_queue_num
+    global thread_pool
     # 若出现错误，最多尝试remain_wrong_time次
     remain_wrong_time = 3
     while remain_wrong_time > 0:
@@ -232,16 +229,17 @@ def thread_get_past_performance(code, name, queue_index_fund, queue_guaranteed_f
         queue_give_up.put(code + ',' + name + '\n')
 
 
-def get_past_performance(source_file):
+def get_past_performance(all_fund_generator_or_list, first_crawling=True):
     """
     在简单基金目录的基础上，爬取所有基金的信息
-    :param source_file:要爬取的基金目录
-    :return 爬取失败的(基金代码，基金名称)list
+    :param all_fund_generator_or_list: 要爬取的基金目录(generator) 也可以直接是列表('基金代码,基金名称')(list)
+    :param first_crawling: 是否是第一次爬取，这决定了是否会重新写保存文件（清空并写入列索引）
+    :return 爬取失败的('基金代码,基金名称')(list)
     """
-    # 测试文件是否被占用，并写入列索引
     global thread_pool
+    # 测试文件是否被占用，并写入列索引
     try:
-        if source_file == all_fund_filename:
+        if first_crawling:
             with open(all_index_fund_with_msg_filename, 'w') as f:
                 f.write(header_index_fund)
                 f.write('\n')
@@ -252,13 +250,11 @@ def get_past_performance(source_file):
         print('文件' + all_fund_filename + '无法打开')
         return
 
-    if type(source_file) == str:
-        with open(source_file, 'r') as f:
-            # 逐个爬取所有基金的信息
-            fund_list = f.readlines()
-        os.remove(source_file)
-    else:
-        fund_list = source_file
+    # 对于输入为list的情况，构造成迭代器
+    if type(all_fund_generator_or_list) == list:
+        all_fund_generator_or_list = (i for i in all_fund_generator_or_list)
+    elif str(type(all_fund_generator_or_list)) != "<class 'generator'>":
+        raise AttributeError
 
     # 进度条
     line_progress = LineProgress(title='爬取进度')
@@ -273,7 +269,6 @@ def get_past_performance(source_file):
     lock_thread_pool = threading.Lock()
 
     last_queue_num = 0
-    fund_list_length = len(fund_list)
     ture_done_num = 0
 
     def save_file():
@@ -292,55 +287,61 @@ def get_past_performance(source_file):
                     f.write(j + ',')
                 f.write('\n')
 
-    for i in fund_list:
-        # 已完成的基金数目
-        done_num = (queue_index_fund.qsize() + queue_guaranteed_fund.qsize() + queue_other_fund.qsize() +
-                    queue_give_up.qsize())
-        try:
-            code, name = i.split(',')
-            name = name[:-1]
-        except ValueError:
-            continue
+    try:
+        while True:
+            i = next(all_fund_generator_or_list)
+            try:
+                code, name = i.split(',')
+                name = name[:-1]
+            except ValueError:
+                continue
 
-        # 多线程爬取
-        t = threading.Thread(target=thread_get_past_performance,
-                             args=(code, name, queue_index_fund, queue_guaranteed_fund, queue_other_fund, queue_give_up,
-                                   lock_thread_pool))
-        thread.append(t)
-        t.setName(code + ',' + name)
-        t.start()
-        for t in thread:
-            if not t.is_alive():
-                thread.remove(t)
+            # 多线程爬取
+            t = threading.Thread(target=thread_get_past_performance,
+                                 args=(
+                                     code, name, queue_index_fund, queue_guaranteed_fund, queue_other_fund,
+                                     queue_give_up,
+                                     lock_thread_pool))
+            thread.append(t)
+            t.setName(code + ',' + name)
+            t.start()
+            for t in thread:
+                if not t.is_alive():
+                    thread.remove(t)
 
-        # 判断线程集合是否过大
-        if len(thread) > thread_pool:
+            done_num = (queue_index_fund.qsize() + queue_guaranteed_fund.qsize() + queue_other_fund.qsize() +
+                        queue_give_up.qsize())
+            # 因为这加的特别频繁，故，忽略锁的问题
             thread_pool += done_num - last_queue_num
             last_queue_num = done_num
-            while len(thread) > thread_pool:
+
+            while len(thread) > (thread_pool // 2):
                 time.sleep(random.random())
                 for t in thread:
                     if not t.is_alive():
                         thread.remove(t)
 
-        line_progress.update((ture_done_num + done_num) * 100 // fund_list_length)
-        # 爬取一定数目之后保存一次文件，发现爬取过程中速度会变慢，可通过实验调节num_save_file和休眠的值，达到间歇爬取，提高速度的目的
-        if done_num >= num_save_file:
-            time.sleep(5)
-            thread_pool += done_num - last_queue_num
-            last_queue_num = 0
-            ture_done_num += queue_index_fund.qsize() + queue_guaranteed_fund.qsize()
-            save_file()
+            line_progress.update((ture_done_num + done_num) * 100 // sum_of_fund)
+
+            # 保存文件，减少内存占用
+            if done_num >= num_save_file:
+                thread_pool += done_num - last_queue_num
+                last_queue_num = 0
+                ture_done_num += queue_index_fund.qsize() + queue_guaranteed_fund.qsize()
+                save_file()
+
+    except StopIteration:
+        pass
 
     # 等待所有线程执行完毕
     while len(thread) > 0:
+        time.sleep(random.random())
         for t in thread:
             if not t.is_alive():
                 thread.remove(t)
         process = (queue_index_fund.qsize() + queue_guaranteed_fund.qsize() + queue_other_fund.qsize() +
-                   queue_give_up.qsize() + ture_done_num) * 100 // fund_list_length
+                   queue_give_up.qsize() + ture_done_num) * 100 // sum_of_fund
         line_progress.update(process)
-        time.sleep(random.random())
 
     save_file()
     print('\n基金信息爬取完成，其中处于封闭期或已终止的基金有' + str(queue_other_fund.qsize()) + '个，爬取失败的有' + str(queue_give_up.qsize()) + '个')
@@ -439,7 +440,6 @@ if __name__ == '__main__':
     start_time = time.time()
 
     # 线程池大小 爬取多少基金后保存到文件一次
-    thread_pool = 10
     num_save_file = 1000
 
     # 文件名设置
@@ -459,18 +459,21 @@ if __name__ == '__main__':
     #         tem = {'ip': i[:-1], 'err_count': 0}
     #         proxies_http_list.append(tem)
 
-    # 获取基金列表 获取基金过往数据 重新获取第一次失败的数据
-    get_fund_list()
-    fail_fund_list = get_past_performance(all_fund_filename)
+    # 基金总数 初始线程数
+    sum_of_fund = 0
+    thread_pool = 1
+
+    # 获取基金过往数据 重新获取第一次失败的数据
+    fail_fund_list = get_past_performance(get_fund_list())
     print('\n对第一次爬取失败的基金进行重新爬取\n')
-    fail_fund_list = get_past_performance(fail_fund_list)
+    fail_fund_list = get_past_performance(fail_fund_list, False)
     if fail_fund_list:
         print('仍然还有爬取失败的基金如下')
         print(fail_fund_list)
 
     # 对基金的筛选设置
-    choice_return = {'近1月收益': 6.41, '近3月收益': 24.55, '近6月收益': 10.91, '近1年收益': -3.64,
-                     '近3年收益': 18.35, '成立来收益/保本期收益': 0, '本基金任职收益': 0}
+    choice_return = {'近1月收益': -3.45, '近3月收益': 2.55, '近6月收益': 3.13, '近1年收益': 11.84,
+                     '近3年收益': 15.48, '成立来收益/保本期收益': 0, '本基金任职收益': 0}
     choice_time = {'本基金任职时间': [1, 0], '累计任职时间': [3, 0]}
 
     # 筛选后的文件为fund_choice_filename的值，若还需要对保本型基金进来筛选，需要先备份
