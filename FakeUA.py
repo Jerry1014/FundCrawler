@@ -9,10 +9,13 @@ from FackUA import FackUA
 my_fackua = FackUA() # 注意，这是单例模式
 my_fackua.random # random ua
 """
+
+
 class FakeUA:
     """
     用于提供ua，单例模式，fake_ua能用则用，否则用自带的ua集，通过FakeUA.random获取随机ua
     """
+
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, 'instance'):
             cls.instance = super(FakeUA, cls).__new__(cls)
