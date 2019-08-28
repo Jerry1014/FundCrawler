@@ -237,6 +237,7 @@ def get_past_performance(all_fund_generator_or_list, first_crawling=True):
     :return 爬取失败的('基金代码,基金名称')(list)
     """
     global thread_pool
+    thread_pool = 1
     # 测试文件是否被占用，并写入列索引
     try:
         if first_crawling:
@@ -270,6 +271,7 @@ def get_past_performance(all_fund_generator_or_list, first_crawling=True):
 
     last_queue_num = 0
     ture_done_num = 0
+    done_num = 0
 
     def save_file():
         # 写入文件
@@ -309,13 +311,14 @@ def get_past_performance(all_fund_generator_or_list, first_crawling=True):
                 if not t.is_alive():
                     thread.remove(t)
 
-            done_num = (queue_index_fund.qsize() + queue_guaranteed_fund.qsize() + queue_other_fund.qsize() +
-                        queue_give_up.qsize())
-            # 因为这加的特别频繁，故，忽略锁的问题
-            thread_pool += done_num - last_queue_num
-            last_queue_num = done_num
-
             while len(thread) > (thread_pool // 2):
+                done_num = (queue_index_fund.qsize() + queue_guaranteed_fund.qsize() + queue_other_fund.qsize() +
+                            queue_give_up.qsize())
+                lock_thread_pool.acquire()
+                thread_pool += done_num - last_queue_num
+                lock_thread_pool.release()
+                last_queue_num = done_num
+
                 time.sleep(random.random())
                 for t in thread:
                     if not t.is_alive():
@@ -339,11 +342,10 @@ def get_past_performance(all_fund_generator_or_list, first_crawling=True):
         for t in thread:
             if not t.is_alive():
                 thread.remove(t)
-        process = (queue_index_fund.qsize() + queue_guaranteed_fund.qsize() + queue_other_fund.qsize() +
-                   queue_give_up.qsize() + ture_done_num) * 100 // sum_of_fund
-        line_progress.update(process)
 
+    line_progress.update(99)
     save_file()
+    line_progress.update(100)
     print('\n基金信息爬取完成，其中处于封闭期或已终止的基金有' + str(queue_other_fund.qsize()) + '个，爬取失败的有' + str(queue_give_up.qsize()) + '个')
     return list(queue_give_up.get() for i in range(queue_give_up.qsize()))
 
@@ -459,9 +461,9 @@ if __name__ == '__main__':
     #         tem = {'ip': i[:-1], 'err_count': 0}
     #         proxies_http_list.append(tem)
 
-    # 基金总数 初始线程数
+    # 基金总数 线程数
     sum_of_fund = 0
-    thread_pool = 1
+    thread_pool = 0
 
     # 获取基金过往数据 重新获取第一次失败的数据
     fail_fund_list = get_past_performance(get_fund_list())
