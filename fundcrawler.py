@@ -349,6 +349,7 @@ def get_past_performance(all_fund_generator_or_list, first_crawling=True):
 
     # 等待所有线程执行完毕
     while len(thread) > 0:
+        line_progress.update((sum_of_fund - len(thread)) * 100 // sum_of_fund)
         time.sleep(random.random())
         for t in thread:
             if not t.is_alive():
@@ -480,8 +481,8 @@ if __name__ == '__main__':
         print(fail_fund_list)
 
     # 对基金的筛选设置
-    choice_return = {'近1月收益': -3.45, '近3月收益': 2.55, '近6月收益': 3.13, '近1年收益': 11.84,
-                     '近3年收益': 15.48, '成立来收益/保本期收益': 0, '本基金任职收益': 0}
+    choice_return = {'近1月收益': -2.45, '近3月收益': 3.55, '近6月收益': 5.63, '近1年收益': 14.84,
+                     '近3年收益': 16.98, '成立来收益/保本期收益': 0, '本基金任职收益': 0}
     choice_time = {'本基金任职时间': [1, 0], '累计任职时间': [3, 0]}
 
     # 筛选后的文件为fund_choice_filename的值，若还需要对保本型基金进来筛选，需要先备份
