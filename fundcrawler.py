@@ -267,17 +267,24 @@ def get_past_performance(all_fund_generator_or_list, first_crawling=True):
     queue_other_fund = Queue()
     queue_give_up = Queue()
 
-    num_of_previous_completed_this_time = 0
-    num_of_last_addition = 0
+    num_of_previous_completed = 0
+    num_of_last_addition_of_completed_fund_this_time = 0
+    num_of_last_addition_give_up_fund = 0
+    num_of_last_addition_other_fund = 0
     need_to_save_file_event = threading.Event()
 
     def save_file():
-        nonlocal maximum_of_thread, num_of_last_addition
+        nonlocal maximum_of_thread, num_of_last_addition_of_completed_fund_this_time, num_of_previous_completed, \
+            num_of_last_addition_give_up_fund, num_of_last_addition_other_fund
         # 写入文件和最大线程数减半
         while True:
             need_to_save_file_event.wait()
             maximum_of_thread = (maximum_of_thread // 2) + 1
-            num_of_last_addition = 0
+            num_of_last_addition_of_completed_fund_this_time = 0
+            num_of_previous_completed += (queue_index_fund.qsize() + queue_guaranteed_fund.qsize() +
+                                          queue_other_fund.qsize() + queue_give_up.qsize() -
+                                          num_of_last_addition_give_up_fund - num_of_last_addition_other_fund)
+            num_of_last_addition_give_up_fund = queue_give_up.qsize()
             with open(all_index_fund_with_msg_filename, 'a') as f:
                 while not queue_index_fund.empty():
                     i = queue_index_fund.get()
@@ -293,7 +300,9 @@ def get_past_performance(all_fund_generator_or_list, first_crawling=True):
                     f.write('\n')
             need_to_save_file_event.clear()
 
-    threading.Thread(target=save_file).start()
+    t = threading.Thread(target=save_file)
+    t.setDaemon(True)
+    t.start()
 
     try:
         while True:
@@ -305,7 +314,8 @@ def get_past_performance(all_fund_generator_or_list, first_crawling=True):
                 continue
 
             num_of_completed_this_time = (queue_index_fund.qsize() + queue_guaranteed_fund.qsize() +
-                                          queue_other_fund.qsize() + queue_give_up.qsize())
+                                          queue_other_fund.qsize() + queue_give_up.qsize() -
+                                          num_of_last_addition_give_up_fund - num_of_last_addition_other_fund)
 
             # 多线程爬取
             t = threading.Thread(target=thread_get_past_performance, args=(
@@ -324,16 +334,15 @@ def get_past_performance(all_fund_generator_or_list, first_crawling=True):
                     while need_to_save_file_event.is_set():
                         pass
                 else:
-                    maximum_of_thread += num_of_completed_this_time - num_of_last_addition
-                    num_of_last_addition = num_of_completed_this_time
+                    maximum_of_thread += num_of_completed_this_time - num_of_last_addition_of_completed_fund_this_time
+                    num_of_last_addition_of_completed_fund_this_time = num_of_completed_this_time
 
                 while len(thread) > maximum_of_thread // 2:
                     for t in thread:
                         if not t.is_alive():
                             thread.remove(t)
 
-            line_progress.update(
-                (num_of_previous_completed_this_time + num_of_completed_this_time) * 100 // sum_of_fund)
+            line_progress.update((num_of_previous_completed + num_of_completed_this_time) * 100 // sum_of_fund)
 
     except StopIteration:
         pass
@@ -388,12 +397,12 @@ def data_analysis(fund_with_achievement, choice_return_this, choice_time_this):
             else:
                 f.write(header_guaranteed_fund)
 
-        print('筛选基金。。。')
+        print('开始筛选基金。。。')
         with open(fund_with_achievement, 'r') as f:
             count = 0
             all_lines = f.readlines()[1:]
             len_of_lines = len(all_lines)
-            line_progress = LineProgress(title='爬取进度')
+            line_progress = LineProgress(title='基金筛选进度')
 
             for i in all_lines:
                 # 逐条检查
@@ -478,4 +487,4 @@ if __name__ == '__main__':
     # 筛选后的文件为fund_choice_filename的值，若还需要对保本型基金进来筛选，需要先备份
     data_analysis(all_index_fund_with_msg_filename, choice_return, choice_time)
 
-    print("爬取总用时", time.time() - start_time)
+    print("\n爬取总用时", time.time() - start_time)
