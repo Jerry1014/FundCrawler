@@ -268,30 +268,30 @@ def get_past_performance(all_fund_generator_or_list, first_crawling=True):
     queue_give_up = Queue()
 
     num_of_previous_completed_this_time = 0
-    num_of_completed_this_time = 0
     num_of_last_addition = 0
     need_to_save_file_event = threading.Event()
 
     def save_file():
         nonlocal maximum_of_thread, num_of_last_addition
         # 写入文件和最大线程数减半
-        need_to_save_file_event.wait()
-        maximum_of_thread = (maximum_of_thread // 2) + 1
-        num_of_last_addition = 0
-        with open(all_index_fund_with_msg_filename, 'a') as f:
-            while not queue_index_fund.empty():
-                i = queue_index_fund.get()
-                for j in i:
-                    f.write(j + ',')
-                f.write('\n')
+        while True:
+            need_to_save_file_event.wait()
+            maximum_of_thread = (maximum_of_thread // 2) + 1
+            num_of_last_addition = 0
+            with open(all_index_fund_with_msg_filename, 'a') as f:
+                while not queue_index_fund.empty():
+                    i = queue_index_fund.get()
+                    for j in i:
+                        f.write(j + ',')
+                    f.write('\n')
 
-        with open(all_guaranteed_fund_with_msg_filename, 'a') as f:
-            while not queue_guaranteed_fund.empty():
-                i = queue_guaranteed_fund.get()
-                for j in i:
-                    f.write(j + ',')
-                f.write('\n')
-        need_to_save_file_event.clear()
+            with open(all_guaranteed_fund_with_msg_filename, 'a') as f:
+                while not queue_guaranteed_fund.empty():
+                    i = queue_guaranteed_fund.get()
+                    for j in i:
+                        f.write(j + ',')
+                    f.write('\n')
+            need_to_save_file_event.clear()
 
     threading.Thread(target=save_file).start()
 
