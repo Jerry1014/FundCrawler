@@ -47,6 +47,12 @@ def get_fund_list():
 
 
 def get_page(url, lock_thread_pool):
+    """
+    用于爬取页面
+    :param url: 爬取页面的url
+    :param lock_thread_pool: 访问最大线程限制的锁
+    :return: 页面内容(str)
+    """
     global thread_pool
     # 若出现错误，最多尝试remain_wrong_time次
     remain_wrong_time = 3
@@ -69,8 +75,6 @@ def get_page(url, lock_thread_pool):
             thread_pool = thread_pool // 2 + 1
             lock_thread_pool.release()
 
-            # 这有个坑，代理引起的错误可以不休眠，免费代理挂的很多，这样会很慢
-            time.sleep(random.randint(0, 3))
             # 记录代理ip错误
             try:
                 if proxy_all:
