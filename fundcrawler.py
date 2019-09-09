@@ -16,7 +16,7 @@ try:
 
     ua = FakeUA()
 except ModuleNotFoundError:
-    print('脚本工作目录未发现随机UA模块FakeUA，使用默认的唯一的chrome UA（可能会影响爬取效果）')
+    print('未能导入随机UA模块FakeUA，使用默认的唯一的chrome UA（可能会影响爬取效果）')
 
 
     class TemporaryUA:
@@ -242,10 +242,8 @@ def get_past_performance(all_fund_generator_or_list, first_crawling=True):
         if first_crawling:
             with open(all_index_fund_with_msg_filename, 'w') as f:
                 f.write(header_index_fund)
-                f.write('\n')
             with open(all_guaranteed_fund_with_msg_filename, 'w') as f:
                 f.write(header_guaranteed_fund)
-                f.write('\n')
     except IOError:
         print('文件' + all_fund_filename + '无法打开')
         return
@@ -380,7 +378,7 @@ def get_time_from_str(time_str):
 
 def data_analysis(fund_with_achievement, choice_return_this, choice_time_this):
     """
-    按传入的训责策略，筛选出符合要求的基金
+    按传入的筛选策略，筛选出符合要求的基金
     :param fund_with_achievement: 全部的基金信息文件名
     :param choice_return_this: 要求的基金收益率
     :param choice_time_this: 要求的任职时间
@@ -459,8 +457,8 @@ if __name__ == '__main__':
     fund_need_handle_filename = 'fund_need_handle.csv'  # 保存需要重新爬取的基金
     fund_choice_filename = 'fund_choice.csv'  # 保存筛选出的基金
 
-    header_index_fund = '基金代码,基金名称,近1月收益,近3月收益,近6月收益,近1年收益,近3年收益,成立来收益,基金经理,本基金任职时间,本基金任职收益,累计任职时间,'
-    header_guaranteed_fund = '基金代码,基金名称,近1月收益,近3月收益,近6月收益,近1年收益,近3年收益,保本期收益,基金经理,本基金任职时间,本基金任职收益,累计任职时间,'
+    header_index_fund = '基金代码,基金名称,近1月收益,近3月收益,近6月收益,近1年收益,近3年收益,成立来收益,基金经理,本基金任职时间,本基金任职收益,累计任职时间,\n'
+    header_guaranteed_fund = '基金代码,基金名称,近1月收益,近3月收益,近6月收益,近1年收益,近3年收益,保本期收益,基金经理,本基金任职时间,本基金任职收益,累计任职时间,\n'
 
     # 打开保存在proxies_http.txt的http代理ip
     proxies_http_list = list()
@@ -481,9 +479,9 @@ if __name__ == '__main__':
         print(fail_fund_list)
 
     # 对基金的筛选设置
-    choice_return = {'近1月收益': -2.45, '近3月收益': 3.55, '近6月收益': 5.63, '近1年收益': 14.84,
-                     '近3年收益': 16.98, '成立来收益/保本期收益': 0, '本基金任职收益': 0}
-    choice_time = {'本基金任职时间': [1, 0], '累计任职时间': [3, 0]}
+    choice_return = {'近1月收益': 9.34, '近3月收益': 25.31, '近6月收益': 9.46, '近1年收益': 21.21,
+                     '近3年收益': 25.00, '成立来收益/保本期收益': 0, '本基金任职收益': 20}
+    choice_time = {'本基金任职时间': [3, 0], '累计任职时间': [5, 0]}
 
     # 筛选后的文件为fund_choice_filename的值，若还需要对保本型基金进来筛选，需要先备份
     data_analysis(all_index_fund_with_msg_filename, choice_return, choice_time)
