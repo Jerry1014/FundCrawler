@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 import random
 
-from fake_useragent import UserAgent, FakeUserAgentError
+from fake_useragent import UserAgent, FakeUserAgentError, VERSION
 
 """
 使用方法
@@ -24,7 +24,8 @@ class FakeUA:
     def __init__(self):
         self.fake_ua = None
         try:
-            self.fake_ua = UserAgent()
+            self.fake_ua = UserAgent(path='fake_useragent%s.json' % VERSION)
+            self.fake_ua.update()
         except FakeUserAgentError:
             self.some = [
                 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36 OPR/26.0.1656.60',
