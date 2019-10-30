@@ -1,5 +1,4 @@
 # -*- coding:UTF-8 -*-
-import os
 import random
 import re
 import threading
@@ -33,6 +32,9 @@ class FundCrawlerException(Exception):
 
 
 class FundInfo:
+    """
+    基金信息，缺少基金经理部分
+    """
     def __init__(self):
         self.info = dict()
 
@@ -50,6 +52,9 @@ class FundInfo:
 
 
 class FundManagerInfo:
+    """
+    基金经理信息
+    """
     def __init__(self):
         self.info = dict()
 
@@ -61,19 +66,33 @@ class FundManagerInfo:
 
 
 class FundWithAllInfo:
+    """
+    完整的基金信息
+    """
     def __init__(self, fund_info: FundInfo, fund_manager: FundManagerInfo):
         self.fund_info = fund_info
         self.fund_manager_info = fund_manager
 
     def get_header(self):
+        """
+        获取基金信息第一行（索引）
+        :return: str 基金信息索引 逗号分割
+        """
         return self.fund_info.get_header() + ',' + self.fund_manager_info.get_header()
 
     def get_info(self):
+        """
+        获取该基金信息
+        :return: str 基金信息 逗号分割
+        """
         return self.fund_info.get_info() + ',' + self.fund_manager_info.get_info()
 
 
 def get_fund_list():
-    """爬取简单的基金代码名称目录"""
+    """
+    爬取简单的基金代码名称目录
+    :return: iterator str 基金编号，基金名称
+    """
     global sum_of_fund
     print('开始爬取。。。')
 
