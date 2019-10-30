@@ -28,6 +28,50 @@ except ModuleNotFoundError:
     ua = TemporaryUA()
 
 
+class FundCrawlerException(Exception):
+    pass
+
+
+class FundInfo:
+    def __init__(self):
+        self.info = dict()
+
+    def get_header(self):
+        return ','.join(self.info.keys())
+
+    def get_info(self):
+        return ','.join(self.info.values())
+
+    def get_fund_kind(self):
+        try:
+            return self.info['fund_kind']
+        except KeyError:
+            return 'Unknown'
+
+
+class FundManagerInfo:
+    def __init__(self):
+        self.info = dict()
+
+    def get_header(self):
+        return ','.join(self.info.keys())
+
+    def get_info(self):
+        return ','.join(self.info.values())
+
+
+class FundWithAllInfo:
+    def __init__(self, fund_info: FundInfo, fund_manager: FundManagerInfo):
+        self.fund_info = fund_info
+        self.fund_manager_info = fund_manager
+
+    def get_header(self):
+        return self.fund_info.get_header() + ',' + self.fund_manager_info.get_header()
+
+    def get_info(self):
+        return self.fund_info.get_info() + ',' + self.fund_manager_info.get_info()
+
+
 def get_fund_list():
     """爬取简单的基金代码名称目录"""
     global sum_of_fund
