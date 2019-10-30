@@ -14,6 +14,7 @@ try:
     from FakeUA import FakeUA
 
     ua = FakeUA()
+    print('载入完成')
 except ModuleNotFoundError:
     print('未能导入随机UA模块FakeUA，使用默认的唯一的chrome UA（可能会影响爬取效果）')
 
@@ -35,6 +36,7 @@ class FundInfo:
     """
     基金信息，缺少基金经理部分
     """
+
     def __init__(self):
         self.info = dict()
 
@@ -55,6 +57,7 @@ class FundManagerInfo:
     """
     基金经理信息
     """
+
     def __init__(self):
         self.info = dict()
 
@@ -69,6 +72,7 @@ class FundWithAllInfo:
     """
     完整的基金信息
     """
+
     def __init__(self, fund_info: FundInfo, fund_manager: FundManagerInfo):
         self.fund_info = fund_info
         self.fund_manager_info = fund_manager
@@ -109,26 +113,23 @@ def get_fund_list():
         yield f'%s,%s' % (i[1:7], i[10:-1])
 
 
-def get_page(url, need_to_save_file_event):
+def get_page_context():
     """
-    用于爬取页面
-    :param url: 爬取页面的url
-    :param need_to_save_file_event: 网络出错事件
-    :return: 页面内容(str)
+    用于爬取页面 通过send url(str)爬取特定的网页，发送'kill'时结束
+    :return: 迭代器 页面内容(str)
     """
-    # 若出现错误，最多尝试remain_wrong_time次
-    remain_wrong_time = 3
-    while remain_wrong_time > 0:
+    result = ('init', None)
+    url = yield result
+    while url != 'kill':
         header = {"User-Agent": ua.random}
 
         try:
             page = requests.get(url, headers=header, timeout=(30, 70))
             page.encoding = 'utf-8'
-            return page.text
+            result = ('success', page.text)
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
-            remain_wrong_time -= 1
-            need_to_save_file_event.set()
-    return None
+            result = ('error', None)
+        url = yield result
 
 
 def get_achievement(re_text, need_to_save_file_event):
@@ -219,7 +220,7 @@ def get_achievement(re_text, need_to_save_file_event):
     # 分别打开基金经理的个人信息页，保存他们的总任职时间
     manager_link = None
     for i in manager_link_list:
-        re_text = get_page(i, need_to_save_file_event)
+        re_text = get_page_context(i, need_to_save_file_event)
         if re_text:
             fund_manager_appointment_time = re.search('<span>累计任职时间：</span>(.*?)<br />', re_text)
             if i != manager_link_list[0]:
@@ -249,7 +250,7 @@ def thread_get_past_performance(code, name, queue_index_fund, queue_guaranteed_f
     # 临时接受爬取函数返回的数据
     tem = list()
 
-    re_text = get_page('http://fund.eastmoney.com/' + code + '.html', need_to_save_file_event)
+    re_text = get_page_context('http://fund.eastmoney.com/' + code + '.html', need_to_save_file_event)
 
     if re_text is None:
         # 重复出错3次后，放弃。
