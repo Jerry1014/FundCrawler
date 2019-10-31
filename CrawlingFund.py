@@ -70,6 +70,7 @@ class FundInfo:
     """
     基金信息
     """
+
     def __init__(self):
         self._fund_info = dict()
         self._manager_info = FundManager()
@@ -117,12 +118,10 @@ def parse_fund_info():
     """
     index_header = ['近1月', '近1年', '近3月', '近3年', '近6月', '成立来']
     guaranteed_header = ['保本期收益', '近6月', '近1月', '近1年', '近3月', '近3年']
-    result = None
-    page_context = yield result
+    page_context = yield
 
-    while page_context != 'end':
+    while True:
         result = FundInfo()
-
         # 清洗基金收益率 此为指数/股票型的基金
         achievement_re = re.search(r'：.*?((?:-?\d+\.\d{2}%)|--).*?'.join(index_header + ['基金类型']), page_context)
         if not achievement_re:
@@ -144,6 +143,29 @@ def parse_fund_info():
 
         # todo 爬取基金经理的个人页面，获得总任职时间
         page_context = yield result
+
+
+def write_to_file():
+    """
+    将爬取到的信息逐行保存到文件 保存内容通过send()发送 (一行内容，文件名)
+    当文件名为None时，保存文件过程结束，释放所有句柄，并抛出StopIteration
+    """
+    # todo 将文件的初始化移到此函数中处理
+    filename_handle = dict()
+    line_context_and_filename = yield
+    while line_context_and_filename[1] is not None:
+        if line_context_and_filename[1] not in filename_handle.keys():
+            f = open(line_context_and_filename[1], 'a')
+            filename_handle[line_context_and_filename[1]] = f
+        else:
+            f = filename_handle[line_context_and_filename[1]]
+
+        f.write(line_context_and_filename[0])
+        f.write('\n')
+        line_context_and_filename = yield
+
+    for i in filename_handle.values():
+        i.close()
 
 
 def get_past_performance(all_fund_generator_or_list, first_crawling=True):
@@ -190,34 +212,7 @@ def get_past_performance(all_fund_generator_or_list, first_crawling=True):
     num_of_last_addition_other_fund = 0
     need_to_save_file_event = threading.Event()
 
-    def save_file():
-        nonlocal maximum_of_thread, num_of_last_addition_of_completed_fund_this_time, num_of_previous_completed, \
-            num_of_last_addition_give_up_fund, num_of_last_addition_other_fund
-        # 写入文件和最大线程数减半
-        while True:
-            need_to_save_file_event.wait()
-            maximum_of_thread = (maximum_of_thread // 2) + 1
-            num_of_last_addition_of_completed_fund_this_time = 0
-            num_of_previous_completed += (queue_index_fund.qsize() + queue_guaranteed_fund.qsize() +
-                                          queue_other_fund.qsize() + queue_give_up.qsize() -
-                                          num_of_last_addition_give_up_fund - num_of_last_addition_other_fund)
-            num_of_last_addition_give_up_fund = queue_give_up.qsize()
-            with open(all_index_fund_with_msg_filename, 'a') as f:
-                while not queue_index_fund.empty():
-                    i = queue_index_fund.get()
-                    for j in i:
-                        f.write(j + ',')
-                    f.write('\n')
-
-            with open(all_guaranteed_fund_with_msg_filename, 'a') as f:
-                while not queue_guaranteed_fund.empty():
-                    i = queue_guaranteed_fund.get()
-                    for j in i:
-                        f.write(j + ',')
-                    f.write('\n')
-            need_to_save_file_event.clear()
-
-    t = threading.Thread(target=save_file)
+    t = threading.Thread(target=write_to_file)
     t.setDaemon(True)
     t.start()
 
@@ -286,7 +281,6 @@ if __name__ == '__main__':
     all_index_fund_with_msg_filename = 'index_fund_with_achievement.csv'  # 指数/股票型基金完整信息
     all_guaranteed_fund_with_msg_filename = 'guaranteed_fund_with_achievement.csv'  # 保本型基金完整信息
     fund_need_handle_filename = 'fund_need_handle.csv'  # 保存需要重新爬取的基金
-
 
     # 基金总数 线程数
     sum_of_fund = 0

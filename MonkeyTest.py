@@ -18,5 +18,13 @@ class MyTestCase(unittest.TestCase):
         for i in url:
             print(my_iter.send(CrawlingFund.get_page_context(i)[1]))
 
+    def test_write_to_file(self):
+        context_filename = [('11', '11.txt'), ('22', '22.txt')]
+        my_iter = CrawlingFund.write_to_file()
+        my_iter.send(None)
+        for i in context_filename:
+            my_iter.send(i)
+
+
 if __name__ == '__main__':
     unittest.main()
