@@ -16,7 +16,7 @@ class GetFundList:
     """
 
     def get_fund_list(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class GetFundListByWeb(GetFundList):
