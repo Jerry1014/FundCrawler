@@ -5,9 +5,8 @@ from fake_useragent import UserAgent, FakeUserAgentError, VERSION
 
 """
 使用方法
-from FackUA import FackUA
-my_fackua = FackUA() # 注意，这是单例模式
-my_fackua.random # random ua
+from FackUA import fake_ua
+fake_ua.random # return a random ua
 """
 
 
@@ -60,3 +59,26 @@ class FakeUA:
                     return random.choice(self.some)
         except KeyError:
             raise AttributeError(r"Object does'n has attribute '%s'" % item)
+
+
+# 载入随机UA模块，若无，则使用默认的chrome ua
+print('正在载入随机UA模块')
+try:
+    # 下行为测试临时使用
+    raise ModuleNotFoundError
+
+    from FakeUA import FakeUA
+
+    fake_ua = FakeUA()
+    print('载入完成')
+except ModuleNotFoundError:
+    print('未能导入随机UA模块FakeUA，使用默认的唯一的chrome UA（可能会影响爬取效果）')
+
+
+    class TemporaryUA:
+        def __init__(self):
+            self.random = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " \
+                          "Chrome/76.0.3809.100 Safari/537.36"
+
+
+    fake_ua = TemporaryUA()

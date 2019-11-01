@@ -8,31 +8,6 @@ from queue import Queue
 import requests
 from eprogress import LineProgress
 
-# 载入随机UA模块，若无，则使用默认的chrome ua
-print('正在载入随机UA模块')
-try:
-    # 下行为测试临时使用
-    raise ModuleNotFoundError
-
-    from FakeUA import FakeUA
-
-    ua = FakeUA()
-    print('载入完成')
-except ModuleNotFoundError:
-    print('未能导入随机UA模块FakeUA，使用默认的唯一的chrome UA（可能会影响爬取效果）')
-
-
-    class TemporaryUA:
-        def __init__(self):
-            self.random = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " \
-                          "Chrome/76.0.3809.100 Safari/537.36"
-
-
-    ua = TemporaryUA()
-
-
-class FundCrawlerException(Exception):
-    pass
 
 
 def get_fund_list():
@@ -94,21 +69,21 @@ class FundInfo:
         return ' | '.join(str(key) + ',' + str(value) for key, value in self._fund_info.items())
 
 
-def get_page_context(url):
+def get_page_context(url, queue: Queue):
     """
     用于爬取页面 爬取特定的网页
+    :param queue: 用于保存结果的队列 ('success', page.text)
     :param url:要爬取的url
-    :return: 迭代器 页面内容(str)
     """
+    # todo 线程数量自动调节
     header = {"User-Agent": ua.random}
-
     try:
         page = requests.get(url, headers=header, timeout=(30, 70))
         page.encoding = 'utf-8'
         result = ('success', page.text)
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
         result = ('error', None)
-    return result
+    queue.put(result)
 
 
 def parse_fund_info():
@@ -189,7 +164,7 @@ def get_past_performance(all_fund_generator_or_list, first_crawling=True):
         print('文件' + all_fund_filename + '无法打开')
         return
 
-    # 对于输入为list的情况，构造成迭代器
+    # 对于输入为list的情况，将其构造成迭代器
     if type(all_fund_generator_or_list) == list:
         all_fund_generator_or_list = (i for i in all_fund_generator_or_list)
     elif str(type(all_fund_generator_or_list)) != "<class 'generator'>":
@@ -198,66 +173,38 @@ def get_past_performance(all_fund_generator_or_list, first_crawling=True):
     # 进度条
     line_progress = LineProgress(title='爬取进度')
 
-    # 线程集合
+    # 线程集合 爬取结果队列
     thread = list()
-    # 接受线程爬取的信息
-    queue_index_fund = Queue()
-    queue_guaranteed_fund = Queue()
-    queue_other_fund = Queue()
-    queue_give_up = Queue()
+    result_queue = Queue()
 
-    num_of_previous_completed = 0
-    num_of_last_addition_of_completed_fund_this_time = 0
-    num_of_last_addition_give_up_fund = 0
-    num_of_last_addition_other_fund = 0
     need_to_save_file_event = threading.Event()
 
-    t = threading.Thread(target=write_to_file)
-    t.setDaemon(True)
-    t.start()
+    while True:
+        i = next(all_fund_generator_or_list)
+        try:
+            code, name = i.split(',')
+            name = name[:-1]
+        except ValueError:
+            continue
 
-    try:
-        while True:
-            i = next(all_fund_generator_or_list)
-            try:
-                code, name = i.split(',')
-                name = name[:-1]
-            except ValueError:
-                continue
+        # 多线程爬取
+        t = threading.Thread(target=get_page_context,
+                             args=('http://fund.eastmoney.com/' + code + '.html', result_queue))
+        thread.append(t)
+        t.setName(code + ',' + name)
+        t.start()
+        for t in thread:
+            if not t.is_alive():
+                thread.remove(t)
 
-            num_of_completed_this_time = (queue_index_fund.qsize() + queue_guaranteed_fund.qsize() +
-                                          queue_other_fund.qsize() + queue_give_up.qsize() -
-                                          num_of_last_addition_give_up_fund - num_of_last_addition_other_fund)
+        if len(thread) > maximum_of_thread:
+            time.sleep(random.random())
+            while len(thread) > maximum_of_thread // 2:
+                for t in thread:
+                    if not t.is_alive():
+                        thread.remove(t)
 
-            # 多线程爬取
-            t = threading.Thread(target=thread_get_past_performance, args=(
-                code, name, queue_index_fund, queue_guaranteed_fund, queue_other_fund,
-                queue_give_up, need_to_save_file_event))
-            thread.append(t)
-            t.setName(code + ',' + name)
-            t.start()
-            for t in thread:
-                if not t.is_alive():
-                    thread.remove(t)
-
-            if len(thread) > maximum_of_thread:
-                time.sleep(random.random())
-                if need_to_save_file_event.is_set():
-                    while need_to_save_file_event.is_set():
-                        pass
-                else:
-                    maximum_of_thread += num_of_completed_this_time - num_of_last_addition_of_completed_fund_this_time
-                    num_of_last_addition_of_completed_fund_this_time = num_of_completed_this_time
-
-                while len(thread) > maximum_of_thread // 2:
-                    for t in thread:
-                        if not t.is_alive():
-                            thread.remove(t)
-
-            line_progress.update((num_of_previous_completed + num_of_completed_this_time) * 100 // sum_of_fund)
-
-    except StopIteration:
-        pass
+        line_progress.update(result_queue.qsize() * 100 // sum_of_fund)
 
     # 等待所有线程执行完毕
     while len(thread) > 0:
