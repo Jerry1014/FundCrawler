@@ -3,7 +3,18 @@ import CrawlingFund
 import time
 
 
-class MyTestCase(unittest.TestCase):
+class MyTestCaseForFakeUA(unittest.TestCase):
+    def test(self):
+        from FakeUA import fake_ua
+        for i in range(10):
+            print(fake_ua.random)
+
+
+class MyTestCaseForGetFundList(unittest.TestCase):
+    pass
+
+
+class MyTestCaseForCrawling(unittest.TestCase):
     def test_get_page_context(self):
         url = ['http://baidu.com']
 

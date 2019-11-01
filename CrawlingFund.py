@@ -11,25 +11,6 @@ from eprogress import LineProgress
 from FakeUA import fake_ua
 
 
-def get_fund_list():
-    """
-    爬取简单的基金代码名称目录
-    :return: iterator str 基金编号，基金名称
-    """
-    global sum_of_fund
-    print('开始爬取。。。')
-
-    header = {"User-Agent": fake_ua.random}
-    page = requests.get('http://fund.eastmoney.com/Data/Fund_JJJZ_Data.aspx?t=1&lx=1&letter=&gsid=&text=&sort=zdf,'
-                        'desc&page=1,9999&feature=|&dt=1536654761529&atfc=&onlySale=0', headers=header)
-
-    # 基金目录
-    fund_list = re.findall(r'"[0-9]{6}",".+?"', page.text)
-    sum_of_fund = len(fund_list)
-    print('共发现' + str(sum_of_fund) + '个基金')
-
-    for i in fund_list:
-        yield f'%s,%s' % (i[1:7], i[10:-1])
 
 
 class FundManager:
