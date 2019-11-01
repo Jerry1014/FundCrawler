@@ -67,8 +67,6 @@ try:
     # 下行为测试临时使用
     raise ModuleNotFoundError
 
-    from FakeUA import FakeUA
-
     fake_ua = FakeUA()
     print('载入完成')
 except ModuleNotFoundError:

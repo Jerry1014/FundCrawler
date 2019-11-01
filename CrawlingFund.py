@@ -8,6 +8,7 @@ from queue import Queue
 import requests
 from eprogress import LineProgress
 
+from FakeUA import fake_ua
 
 
 def get_fund_list():
@@ -18,7 +19,7 @@ def get_fund_list():
     global sum_of_fund
     print('开始爬取。。。')
 
-    header = {"User-Agent": ua.random}
+    header = {"User-Agent": fake_ua.random}
     page = requests.get('http://fund.eastmoney.com/Data/Fund_JJJZ_Data.aspx?t=1&lx=1&letter=&gsid=&text=&sort=zdf,'
                         'desc&page=1,9999&feature=|&dt=1536654761529&atfc=&onlySale=0', headers=header)
 
@@ -76,7 +77,7 @@ def get_page_context(url, queue: Queue):
     :param url:要爬取的url
     """
     # todo 线程数量自动调节
-    header = {"User-Agent": ua.random}
+    header = {"User-Agent": fake_ua.random}
     try:
         page = requests.get(url, headers=header, timeout=(30, 70))
         page.encoding = 'utf-8'
