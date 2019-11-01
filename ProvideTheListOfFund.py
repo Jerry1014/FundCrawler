@@ -1,3 +1,4 @@
+# -*- coding:UTF-8 -*-
 """
 向爬虫提供要爬取的基金列表
 通过调用实现类的get_fund_list方法获得基金列表的迭代器
@@ -13,6 +14,7 @@ class GetFundList:
     """
     调用get_fund_list来获得基金列表
     """
+
     def get_fund_list(self):
         raise NotImplementedError
 
@@ -22,6 +24,7 @@ class GetFundListByWeb(GetFundList):
     调用get_fund_list()来获得基金列表迭代器
     sum_of_fund 为基金总数
     """
+
     def __init__(self):
         self.sum_of_fund = None
 
@@ -49,6 +52,7 @@ class GetFundListByWebForTest(GetFundListByWeb):
     """
     测试用
     """
+
     def __init__(self):
         super().__init__()
 

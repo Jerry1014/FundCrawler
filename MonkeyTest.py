@@ -1,3 +1,7 @@
+# -*- coding:UTF-8 -*-
+"""
+猴子测试嘛，就是瞎测两下的意思
+"""
 import unittest
 import CrawlingFund
 import time
