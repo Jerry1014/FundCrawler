@@ -5,10 +5,7 @@ import threading
 import time
 from queue import Queue
 
-import requests
 from eprogress import LineProgress
-
-from FakeUA import fake_ua
 
 
 class FundManager:
@@ -47,23 +44,6 @@ class FundInfo:
 
     def __repr__(self):
         return ' | '.join(str(key) + ',' + str(value) for key, value in self._fund_info.items())
-
-
-def get_page_context(url, queue: Queue):
-    """
-    用于爬取页面 爬取特定的网页
-    :param queue: 用于保存结果的队列 ('success', page.text)
-    :param url:要爬取的url
-    """
-    # todo 线程数量自动调节
-    header = {"User-Agent": fake_ua.random}
-    try:
-        page = requests.get(url, headers=header, timeout=(30, 70))
-        page.encoding = 'utf-8'
-        result = ('success', page.text)
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
-        result = ('error', None)
-    queue.put(result)
 
 
 def parse_fund_info():
