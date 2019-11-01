@@ -22,7 +22,6 @@ class MyTestCaseForGetFundList(unittest.TestCase):
             print(f'end of iter {tem.sum_of_fund}')
 
 
-
 class MyTestCaseForCrawling(unittest.TestCase):
     def test_get_page_context(self):
         url = ['http://baidu.com']

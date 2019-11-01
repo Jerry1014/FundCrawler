@@ -11,8 +11,6 @@ from eprogress import LineProgress
 from FakeUA import fake_ua
 
 
-
-
 class FundManager:
     def __init__(self, position_time=0, term_return=0, this_fund_return=0):
         self.position_time = position_time
