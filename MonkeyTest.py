@@ -11,7 +11,16 @@ class MyTestCaseForFakeUA(unittest.TestCase):
 
 
 class MyTestCaseForGetFundList(unittest.TestCase):
-    pass
+    def test(self):
+        from ProvideTheListOfFund import GetFundListByWebForTest
+        tem = GetFundListByWebForTest()
+        my_iter = tem.get_fund_list()
+        try:
+            while True:
+                print(next(my_iter))
+        except StopIteration:
+            print(f'end of iter {tem.sum_of_fund}')
+
 
 
 class MyTestCaseForCrawling(unittest.TestCase):
