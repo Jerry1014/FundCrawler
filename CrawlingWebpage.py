@@ -4,7 +4,7 @@
 """
 import threading
 from abc import ABC
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Event
 
 import requests
 
@@ -12,6 +12,9 @@ from FakeUA import fake_ua
 
 
 class GetPage:
+    """
+    获取页面基类
+    """
     def __init__(self):
         self._task_queue = None
         self._result_queue = None
@@ -24,6 +27,9 @@ class GetPage:
 
 
 class GetPageByWeb(GetPage, ABC):
+    """
+    从网页中获取页面基类
+    """
     @classmethod
     def get_page_context(cls, url, *args) -> tuple:
         """
@@ -35,19 +41,24 @@ class GetPageByWeb(GetPage, ABC):
         try:
             page = requests.get(url, headers=header, timeout=(30, 70))
             page.encoding = 'utf-8'
-            result = ('success', page.text, args)
+            result = ('success', page.text, *args)
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
-            result = ('error', None, args)
+            result = ('error', None, *args)
         return result
 
 
-class GetPageByWebWithAnotherProcessAndMultiThreading(GetPageByWeb, Process):
-    def __init__(self, task_queue: Queue, result_queue: Queue):
+class GetPageByWebWithAnotherProcessAndMultiThreading(Process, GetPageByWeb):
+    """
+    启动另一个进程，并在这个进程中使用多线程来爬取网页
+    将爬取任务发送到 task_queue，并在完成后将 exit_sign 设置为True
+    进程会在所有的任务都完成后，将 exit_sign 设置为False，并在result_queue中的item取完后退出
+    """
+    def __init__(self, task_queue: Queue, result_queue: Queue, exit_sign: Event):
         super().__init__()
         self._task_queue = task_queue
         self._result_queue = result_queue
         self._threading_pool = list()
-        self._exit_when_task_queue_empty = False
+        self._exit_when_task_queue_empty = exit_sign
         self._max_threading_number = 1
 
     def add_task(self, task):
@@ -56,18 +67,19 @@ class GetPageByWebWithAnotherProcessAndMultiThreading(GetPageByWeb, Process):
     def get_result(self) -> Queue:
         return self._result_queue
 
-    def get_page_context(self, url, *args) -> tuple:
+    def get_page_context_and_return_in_queue(self, url, *args):
         result = super().get_page_context(url, *args)
         if result[0] == 'success':
             self._max_threading_number += 1
         else:
             self._max_threading_number = self._max_threading_number << 1 if self._max_threading_number > 1 else 1
-        return result
+        self._result_queue.put(result)
 
     def run(self) -> None:
         while True:
-            if self._task_queue.empty():
-                if self._exit_when_task_queue_empty:
+            if self._task_queue.empty() and len(self._threading_pool) == 0:
+                if self._exit_when_task_queue_empty.is_set():
+                    self._exit_when_task_queue_empty.clear()
                     break
                 else:
                     continue
@@ -78,9 +90,9 @@ class GetPageByWebWithAnotherProcessAndMultiThreading(GetPageByWeb, Process):
                     if not t.is_alive():
                         self._threading_pool.remove(t)
 
-                while len(self._threading_pool) < self._max_threading_number:
+                while self._task_queue.qsize() > 0 and len(self._threading_pool) < self._max_threading_number:
                     task = self._task_queue.get()
-                    t = threading.Thread(target=self.get_page_context,
-                                         args=('http://fund.eastmoney.com/' + task[0] + '.html', *task[1:]))
+                    t = threading.Thread(target=self.get_page_context_and_return_in_queue,
+                                         args=(task[0], *task[1:]))
                     self._threading_pool.append(t)
                     t.start()

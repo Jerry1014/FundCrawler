@@ -2,9 +2,8 @@
 """
 猴子测试嘛，就是瞎测两下的意思
 """
-import unittest
-import CrawlingFund
 import time
+import unittest
 
 
 class MyTestCaseForFakeUA(unittest.TestCase):
@@ -26,22 +25,29 @@ class MyTestCaseForGetFundList(unittest.TestCase):
             print(f'end of iter {tem.sum_of_fund}')
 
 
+class MyTestCaseForCrawlingWebpage(unittest.TestCase):
+    def test_for_get_page_context(self):
+        from multiprocessing import Queue, Event
+        from CrawlingWebpage import GetPageByWebWithAnotherProcessAndMultiThreading
+
+        input_queue = Queue()
+        output_queue = Queue()
+        exit_after_finish = Event()
+        test = GetPageByWebWithAnotherProcessAndMultiThreading(input_queue, output_queue, exit_after_finish)
+        test.start()
+
+        input_queue.put(('http://baidu.com', ('just', 'for', 'test')))
+        input_queue.put(('http://www.10jqka.com.cn/', ('just', 'for', 'test')))
+        exit_after_finish.set()
+        while not exit_after_finish.is_set():time.sleep(1)
+
+        while not output_queue.empty():
+            print(output_queue.get())
+
+
 class MyTestCaseForCrawling(unittest.TestCase):
-    def test_get_page_context(self):
-        url = ['http://baidu.com']
-
-        for i in url:
-            print(CrawlingFund.get_page_context(i))
-
-    def test_parse_fund_info(self):
-        url = ['http://fund.eastmoney.com/002939.html']
-
-        my_iter = CrawlingFund.parse_fund_info()
-        my_iter.send(None)
-        for i in url:
-            print(my_iter.send(CrawlingFund.get_page_context(i)[1]))
-
     def test_write_to_file(self):
+        import CrawlingFund
         context_filename = [('11', '11.txt'), ('22', '22.txt')]
         my_iter = CrawlingFund.write_to_file()
         my_iter.send(None)
