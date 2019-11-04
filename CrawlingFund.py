@@ -48,10 +48,9 @@ def parse_fund_info():
     对基金信息界面进行解析 通过send(page_context)来获得解析
     :return: 迭代器 FundInfo
     """
-    page_context = yield
+    page_context, fund_info = yield
 
     while True:
-        result = FundInfo()
         # 清洗基金收益率 此为指数/股票型的基金
         achievement_re = re.search(r'：.*?((?:-?\d+\.\d{2}%)|--).*?'.join(index_header + ['基金类型']), page_context)
         if not achievement_re:
@@ -59,19 +58,19 @@ def parse_fund_info():
             achievement_re = re.search(r'：.*?((-?\d+\.\d{2}%)|--).*?'.join(guaranteed_header + ['基金类型']), page_context)
             if re.search('封闭期', page_context) or re.search('本基金已终止', page_context):
                 # 基金为有封闭期的固定收益基金或已终止的基金
-                result.set_fund_info('fund_kind', 'close')
+                fund_info.set_fund_info('fund_kind', 'close')
             if achievement_re:
-                result.set_fund_info('fund_kind', 'guaranteed')
+                fund_info.set_fund_info('fund_kind', 'guaranteed')
                 for header, value in zip(guaranteed_header, achievement_re.groups()):
-                    result.set_fund_info(header, value)
+                    fund_info.set_fund_info(header, value)
             else:
-                result.set_fund_info('fund_kind', 'Unknown')
+                fund_info.set_fund_info('fund_kind', 'Unknown')
         else:
-            result.set_fund_info('fund_kind', 'index')
+            fund_info.set_fund_info('fund_kind', 'index')
             for header, value in zip(index_header, achievement_re.groups()):
-                result.set_fund_info(header, value)
+                fund_info.set_fund_info(header, value)
 
-        page_context = yield result
+        page_context, fund_info = yield fund_info
 
 
 def write_to_file():
@@ -134,17 +133,16 @@ def get_past_performance(all_fund_generator_or_list, first_crawling=True):
     # todo 爬取出错时，结束爬虫进程
     while True:
         # todo 进度条
-        i = next(all_fund_generator_or_list)
         try:
-            code, name = i.split(',')
-            name = name[:-1]
-        except ValueError:
-            continue
-        except:
-            # bug 未填 'StopIteration' object has no attribute 'split'
+            tem = next(all_fund_generator_or_list).split(',')
+            code, name = tem
+        except StopIteration:
             break
 
-        input_queue.put(('http://fund.eastmoney.com/' + code + '.html',))
+        tem_fund_info = FundInfo()
+        tem_fund_info.set_fund_info('name', name)
+        tem_fund_info.set_fund_info('code', code)
+        input_queue.put(('http://fund.eastmoney.com/' + code + '.html', tem_fund_info))
 
     # todo 暂时不做基金经理这部分
     finish_sign.set()
@@ -152,8 +150,8 @@ def get_past_performance(all_fund_generator_or_list, first_crawling=True):
 
     web_page_parse = parse_fund_info()
     next(web_page_parse)
-    while not result_queue.empty():
-        print(web_page_parse.send(result_queue.get()[1]))
+    while result_queue.qsize() > 0:
+        print(web_page_parse.send(result_queue.get()[1:]))
 
     line_progress.update(99)
     # todo 保存文件
@@ -168,6 +166,8 @@ if __name__ == '__main__':
     all_index_fund_with_msg_filename = 'index_fund_with_achievement.csv'  # 指数/股票型基金完整信息
     all_guaranteed_fund_with_msg_filename = 'guaranteed_fund_with_achievement.csv'  # 保本型基金完整信息
     fund_need_handle_filename = 'fund_need_handle.csv'  # 保存需要重新爬取的基金
+
+    # todo 对网络环境的判断与测试
 
     # just for test
     get_past_performance(GetFundListByWebForTest().get_fund_list())
