@@ -64,4 +64,3 @@ class GetFundListByWebForTest(GetFundListByWeb):
         my_test_iter = super().get_fund_list()
         for i in range(5):
             yield next(my_test_iter)
-        yield StopIteration()
