@@ -39,7 +39,7 @@ class MyTestCaseForCrawlingWebpage(unittest.TestCase):
         input_queue.put(('http://baidu.com', ('just', 'for', 'test')))
         input_queue.put(('http://www.10jqka.com.cn/', ('just', 'for', 'test')))
         exit_after_finish.set()
-        while not exit_after_finish.is_set():time.sleep(1)
+        while exit_after_finish.is_set():time.sleep(1)
 
         while not output_queue.empty():
             print(output_queue.get())
