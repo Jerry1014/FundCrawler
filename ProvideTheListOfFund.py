@@ -15,6 +15,9 @@ class GetFundList:
     调用get_fund_list来获得基金列表
     """
 
+    def __init__(self):
+        self.sum_of_fund = None
+
     def get_fund_list(self):
         raise NotImplementedError()
 
@@ -24,9 +27,6 @@ class GetFundListByWeb(GetFundList):
     调用get_fund_list()来获得基金列表迭代器
     sum_of_fund 为基金总数
     """
-
-    def __init__(self):
-        self.sum_of_fund = None
 
     def get_fund_list(self):
         """
@@ -53,9 +53,6 @@ class GetFundListByWebForTest(GetFundListByWeb):
     测试用
     """
 
-    def __init__(self):
-        super().__init__()
-
     def get_fund_list(self):
         """
         爬取简单的基金代码名称目录
@@ -72,7 +69,7 @@ class GetFundListFromList(GetFundList):
     """
 
     def __init__(self, provide_list):
-        self.sum_of_fund = None
+        super().__init__()
         self._generator = (i for i in provide_list)
 
     def get_fund_list(self):

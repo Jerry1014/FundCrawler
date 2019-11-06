@@ -96,10 +96,10 @@ def write_to_file():
         i.close()
 
 
-def get_past_performance(all_fund_generator_or_list: GetFundList, first_crawling=True):
+def get_past_performance(fund_list: GetFundList, first_crawling=True):
     """
     在简单基金目录的基础上，爬取所有基金的信息
-    :param all_fund_generator_or_list: 要爬取的基金目录
+    :param fund_list: 要爬取的基金目录
     :param first_crawling: 是否是第一次爬取，这决定了是否会重新写保存文件（清空并写入列索引）
     :return 爬取失败的('基金代码,基金名称')(list)
     """
@@ -108,18 +108,19 @@ def get_past_performance(all_fund_generator_or_list: GetFundList, first_crawling
     # 测试文件是否被占用，并写入列索引
     try:
         if first_crawling:
-            with open(all_index_fund_with_msg_filename, 'w') as f:
+            with open(index_fund_filename, 'w') as f:
                 f.write(header_index_fund)
-            with open(all_guaranteed_fund_with_msg_filename, 'w') as f:
+            with open(guaranteed_fund_filename, 'w') as f:
                 f.write(header_guaranteed_fund)
     except IOError:
-        print('文件' + all_fund_filename + '无法打开')
+        print('爬取结果保存文件无法打开')
         return
 
-
-    # 进度条
+    # 进度条 基金总数 爬取进度
     line_progress = LineProgress(title='爬取进度')
-    # 爬取结果队列
+    num_of_fund = fund_list.sum_of_fund
+    cur_process = 0
+    # 爬取输入、输出队列，输入结束事件，爬取核心
     input_queue = Queue()
     result_queue = Queue()
     finish_sign = Event()
@@ -129,7 +130,7 @@ def get_past_performance(all_fund_generator_or_list: GetFundList, first_crawling
     while True:
         # todo 进度条
         try:
-            tem = next(all_fund_generator_or_list).split(',')
+            tem = next(fund_list).split(',')
             code, name = tem
         except StopIteration:
             break
@@ -157,10 +158,8 @@ def get_past_performance(all_fund_generator_or_list: GetFundList, first_crawling
 if __name__ == '__main__':
     start_time = time.time()
     # 文件名设置
-    all_fund_filename = 'fund_simple.csv'  # 基金目录
-    all_index_fund_with_msg_filename = 'index_fund_with_achievement.csv'  # 指数/股票型基金完整信息
-    all_guaranteed_fund_with_msg_filename = 'guaranteed_fund_with_achievement.csv'  # 保本型基金完整信息
-    fund_need_handle_filename = 'fund_need_handle.csv'  # 保存需要重新爬取的基金
+    index_fund_filename = 'index_fund_with_achievement.csv'  # 指数/股票型基金完整信息
+    guaranteed_fund_filename = 'guaranteed_fund_with_achievement.csv'  # 保本型基金完整信息
 
     # todo 对网络环境的判断与测试
 
