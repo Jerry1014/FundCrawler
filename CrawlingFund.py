@@ -7,7 +7,7 @@ from multiprocessing import Queue, Event
 from eprogress import LineProgress
 
 from CrawlingWebpage import GetPageByWebWithAnotherProcessAndMultiThreading
-from ProvideTheListOfFund import GetFundListByWebForTest
+from ProvideTheListOfFund import GetFundListByWebForTest, GetFundList
 
 
 class FundInfo:
@@ -96,10 +96,10 @@ def write_to_file():
         i.close()
 
 
-def get_past_performance(all_fund_generator_or_list, first_crawling=True):
+def get_past_performance(all_fund_generator_or_list: GetFundList, first_crawling=True):
     """
     在简单基金目录的基础上，爬取所有基金的信息
-    :param all_fund_generator_or_list: 要爬取的基金目录(generator) 也可以直接是列表('基金代码,基金名称')(list)
+    :param all_fund_generator_or_list: 要爬取的基金目录
     :param first_crawling: 是否是第一次爬取，这决定了是否会重新写保存文件（清空并写入列索引）
     :return 爬取失败的('基金代码,基金名称')(list)
     """
@@ -116,11 +116,6 @@ def get_past_performance(all_fund_generator_or_list, first_crawling=True):
         print('文件' + all_fund_filename + '无法打开')
         return
 
-    # 对于输入为list的情况，将其构造成迭代器
-    if type(all_fund_generator_or_list) == list:
-        all_fund_generator_or_list = (i for i in all_fund_generator_or_list)
-    elif str(type(all_fund_generator_or_list)) != "<class 'generator'>":
-        raise AttributeError
 
     # 进度条
     line_progress = LineProgress(title='爬取进度')

@@ -64,3 +64,16 @@ class GetFundListByWebForTest(GetFundListByWeb):
         my_test_iter = super().get_fund_list()
         for i in range(5):
             yield next(my_test_iter)
+
+
+class GetFundListFromList(GetFundList):
+    """
+    传入一个List，并构造为迭代器
+    """
+
+    def __init__(self, provide_list):
+        self.sum_of_fund = None
+        self._generator = (i for i in provide_list)
+
+    def get_fund_list(self):
+        return self._generator
