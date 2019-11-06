@@ -17,6 +17,7 @@ class FundInfo:
 
     def __init__(self):
         self._fund_info = OrderedDict()
+        self.next_step = 'parsing_fund'
 
     def get_header(self):
         return ','.join(self._fund_info.keys())
@@ -126,32 +127,49 @@ def get_past_performance(fund_list: GetFundList, first_crawling=True):
     finish_sign = Event()
     GetPageByWebWithAnotherProcessAndMultiThreading(input_queue, result_queue, finish_sign).start()
 
-    # todo 爬取出错时，结束爬虫进程
-    while True:
-        # todo 进度条
-        try:
-            tem = next(fund_list).split(',')
-            code, name = tem
-        except StopIteration:
-            break
-
-        tem_fund_info = FundInfo()
-        tem_fund_info.set_fund_info('name', name)
-        tem_fund_info.set_fund_info('code', code)
-        input_queue.put(('http://fund.eastmoney.com/' + code + '.html', tem_fund_info))
-
-    # todo 暂时不做基金经理这部分
-    finish_sign.set()
-    while finish_sign.is_set(): pass
-
+    # 爬取出错时，不会自动结束爬虫进程
+    fund_list = fund_list.get_fund_list()
+    having_fund_need_to_crawl = True
     web_page_parse = parse_fund_info()
     next(web_page_parse)
-    while result_queue.qsize() > 0:
-        print(web_page_parse.send(result_queue.get()[1:]))
+    while True:
+        # 下列while的两个数字需要微调以达到比较好的效果
+        while having_fund_need_to_crawl and input_queue.qsize() < 10 and result_queue.qsize() < 100:
+            try:
+                code, name = next(fund_list).split(',')
+            except StopIteration:
+                having_fund_need_to_crawl = False
+                break
+            tem_fund_info = FundInfo()
+            tem_fund_info.set_fund_info('name', name)
+            tem_fund_info.set_fund_info('code', code)
+            input_queue.put(('http://fund.eastmoney.com/' + code + '.html', tem_fund_info))
 
-    line_progress.update(99)
-    # todo 保存文件
-    line_progress.update(100)
+        while result_queue.qsize() and input_queue.qsize() > 3:
+            a_result = result_queue.get()
+            # 若上次的爬取失败了，则重试，未对一直失败的进行排除
+            if a_result[0] == 'error':
+                input_queue.put(a_result[1:])
+            else:
+                if a_result[2].next_step == 'parsing_fund':
+                    web_page_parse.send(result_queue.get()[1:])
+                elif a_result[2].next_step == 'parsing_manager':
+                    # todo 暂时不做基金经理这部分
+                    pass
+                elif a_result[2].next_step == 'writing_file':
+                    # todo 暂时不做保存文件，更新进度条
+                    cur_process += 1
+                    line_progress.update(100 * cur_process / num_of_fund)
+                else:
+                    print(f'请检查FundInfo的next_step(此处为{a_result[2].next_step})设置，出现了未知的参数')
+
+        # 完成所有任务判断
+        if not having_fund_need_to_crawl and input_queue.qsize() == 0 and result_queue.qsize() == 0:
+            time.sleep(1)
+            if not having_fund_need_to_crawl and input_queue.qsize() == 0 and result_queue.qsize() == 0:
+                break
+
+    finish_sign.set()
     # todo 对第一次爬取失败的基金的处理
 
 

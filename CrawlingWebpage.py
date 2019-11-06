@@ -43,7 +43,7 @@ class GetPageByWeb(GetPage, ABC):
             page.encoding = 'utf-8'
             result = ('success', page.text, *args)
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
-            result = ('error', None, *args)
+            result = ('error', url, *args)
         return result
 
 
