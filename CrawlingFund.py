@@ -17,6 +17,7 @@ class FundInfo:
 
     def __init__(self):
         self._fund_info = OrderedDict()
+        self._manager_info = dict()
         self.next_step = 'parsing_fund'
         self.manager_need_process_list = list()
 
@@ -25,7 +26,8 @@ class FundInfo:
 
     def get_info(self):
         # 未来升级为可定制顺序的
-        return ','.join(self._fund_info.values())
+        return ','.join(list(self._fund_info.values()) + ['/'.join(self._manager_info.keys()),
+                                                          '/'.join(self._manager_info.values())])
 
     def get_fund_kind(self):
         try:
@@ -36,8 +38,11 @@ class FundInfo:
     def set_fund_info(self, key, value):
         self._fund_info[key] = value
 
+    def set_manager_info(self, key, value):
+        self._manager_info[key] = value
+
     def __repr__(self):
-        return ' | '.join(str(key) + ',' + str(value) for key, value in self._fund_info.items())
+        return self.get_info()
 
 
 class MyPriorityQueue:
@@ -49,7 +54,7 @@ class MyPriorityQueue:
         super().__init__()
         self._queues = [Queue(default_size) for _ in range(num_of_queue if num_of_queue > 1 else 1)]
 
-    def put(self,obj,priority=None):
+    def put(self, obj, priority=None):
         """
         按照指定的优先级，将对象放入对应队列中
         :param obj: 放入队列的对象
@@ -129,6 +134,7 @@ def parse_manager_info():
     """
     page_context, fund_info, _ = yield
     while True:
+        re.search('<span>累计任职时间：</span>(.*?)<br />', page_context)
         page_context, fund_info, _ = yield fund_info
 
 
