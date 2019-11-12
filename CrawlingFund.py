@@ -40,6 +40,35 @@ class FundInfo:
         return ' | '.join(str(key) + ',' + str(value) for key, value in self._fund_info.items())
 
 
+class MyPriorityQueue:
+    """
+    自定义的多级优先队列结构
+    """
+
+    def __init__(self, num_of_queue, default_size=None):
+        super().__init__()
+        self._queues = [Queue(default_size) for _ in range(num_of_queue if num_of_queue > 1 else 1)]
+
+    def put(self,obj,priority=None):
+        """
+        按照指定的优先级，将对象放入对应队列中
+        :param obj: 放入队列的对象
+        :param priority: 优先级 0为最高 为None或超出范围时，选择最低优先级
+        """
+        priority = -1 if not priority or priority > len(self._queues) else priority
+        self._queues[priority].put(obj)
+
+    def get(self):
+        """
+        获取当前优先级别最高，且最先进入该级别队列的对象
+        """
+        # 当队列为空时的阻塞
+        for i in self._queues:
+            if i.qsize() > 0:
+                return i.get()
+        raise Exception('队列中')
+
+
 # 这个是根据网页的html解析的顺序，若需要指定在爬取结果中的顺序，请修改index_of_header
 index_header = ['近1月', '近1年', '近3月', '近3年', '近6月', '成立来']
 guaranteed_header = ['保本期收益', '近6月', '近1月', '近1年', '近3月', '近3年']
@@ -99,7 +128,6 @@ def parse_manager_info():
     :return:
     """
     page_context, fund_info, _ = yield
-
     while True:
         page_context, fund_info, _ = yield fund_info
 
@@ -161,8 +189,10 @@ def crawling_fund(fund_list: GetFundList, first_crawling=True):
     # 爬取出错时，不会自动结束爬虫进程
     fund_list = fund_list.get_fund_list()
     having_fund_need_to_crawl = True
-    web_page_parse = parse_fund_info()
-    next(web_page_parse)
+    fund_web_page_parse = parse_fund_info()
+    manager_web_page_parse = parse_manager_info()
+    next(fund_web_page_parse)
+    next(manager_web_page_parse)
     while True:
         # 下列while的两个数字需要微调以达到比较好的效果
         while having_fund_need_to_crawl and input_queue.qsize() < 10 and result_queue.qsize() < 100:
@@ -176,17 +206,17 @@ def crawling_fund(fund_list: GetFundList, first_crawling=True):
             tem_fund_info.set_fund_info('code', code)
             input_queue.put(('http://fund.eastmoney.com/' + code + '.html', tem_fund_info))
 
-        while result_queue.qsize() and input_queue.qsize() > 3:
+        while result_queue.qsize() and (input_queue.qsize() > 3 and having_fund_need_to_crawl):
             a_result = result_queue.get()
             # 若上次的爬取失败了，则重试，未对一直失败的进行排除
             if a_result[0] == 'error':
                 input_queue.put(a_result[1:])
             else:
                 if a_result[2].next_step == 'parsing_fund':
-                    web_page_parse.send(result_queue.get()[1:])
+                    new_fund_info = fund_web_page_parse.send(result_queue.get()[1:])
+                    # todo 添加回爬取队列
                 elif a_result[2].next_step == 'parsing_manager':
-                    # todo 暂时不做基金经理这部分
-                    pass
+                    manager_web_page_parse.send(result_queue.get()[1:])
                 elif a_result[2].next_step == 'writing_file':
                     # todo 暂时不做保存文件，更新进度条
                     cur_process += 1
