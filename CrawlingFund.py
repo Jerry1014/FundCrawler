@@ -86,7 +86,7 @@ def parse_fund_info():
     未来将整合进fund_info类中
     :return: 迭代器 FundInfo
     """
-    page_context, fund_info, _ = yield
+    page_context, fund_info = yield
 
     while True:
         # 基金分类
@@ -120,22 +120,26 @@ def parse_fund_info():
             fund_info.set_fund_info('working time', fund_manager_detail.group(1))
             fund_info.set_fund_info('rate of return', fund_manager_detail.group(2))
             fund_managers = re.findall(r'<td class="td02">(?:<a href="(.*?)">(.+?)</a>&nbsp;&nbsp;)+', page_context)[0]
-            fund_info.manager_need_process_list = zip(fund_managers[1::2], fund_managers[0::2])
+            fund_info.manager_need_process_list = [i for i in zip(fund_managers[1::2], fund_managers[0::2])]
         else:
             fund_info.next_step = 'writing_file'
 
-        page_context, fund_info, _ = yield fund_info
+        page_context, fund_info = yield fund_info
 
 
 def parse_manager_info():
     """
     对基金经理的信息进行解析 通过send(page_context,fund_info)来获得解析
-    :return:
     """
-    page_context, fund_info, _ = yield
+    # 下次重构获取基金经理名称，与爬取部分做解耦
+    page_context, fund_info = yield
+    fund_info: FundInfo
     while True:
-        re.search('<span>累计任职时间：</span>(.*?)<br />', page_context)
-        page_context, fund_info, _ = yield fund_info
+        manager_info = re.search('<span>累计任职时间：</span>(.*?)<br />', page_context)
+        fund_info.set_manager_info(fund_info.manager_need_process_list.pop()[0], manager_info.group(1))
+        if len(fund_info.manager_need_process_list) == 0:
+            fund_info.next_step = 'writing_file'
+        page_context, fund_info = yield fund_info
 
 
 def write_to_file():
@@ -184,7 +188,8 @@ def crawling_fund(fund_list: GetFundList, first_crawling=True):
 
     # 进度条 基金总数 爬取进度
     line_progress = LineProgress(title='爬取进度')
-    num_of_fund = fund_list.sum_of_fund
+    # todo 基金总数返回错误
+    num_of_fund = 5
     cur_process = 0
     # 爬取输入、输出队列，输入结束事件，爬取核心
     input_queue = Queue()
@@ -212,19 +217,35 @@ def crawling_fund(fund_list: GetFundList, first_crawling=True):
             tem_fund_info.set_fund_info('code', code)
             input_queue.put(('http://fund.eastmoney.com/' + code + '.html', tem_fund_info))
 
-        while result_queue.qsize() and (input_queue.qsize() > 3 and having_fund_need_to_crawl):
+        while result_queue.qsize():
             a_result = result_queue.get()
             # 若上次的爬取失败了，则重试，未对一直失败的进行排除
             if a_result[0] == 'error':
                 input_queue.put(a_result[1:])
             else:
                 if a_result[2].next_step == 'parsing_fund':
-                    new_fund_info = fund_web_page_parse.send(result_queue.get()[1:])
-                    # todo 添加回爬取队列
+                    new_fund_info: FundInfo = fund_web_page_parse.send(a_result[1:])
+                    if new_fund_info.next_step == 'parsing_manager':
+                        input_queue.put((new_fund_info.manager_need_process_list[-1][1], new_fund_info))
+                    else:
+                        result_queue.put((None, None, new_fund_info))
+
+                    # 测试用
+                    print(f'fund  {new_fund_info}')
                 elif a_result[2].next_step == 'parsing_manager':
-                    manager_web_page_parse.send(result_queue.get()[1:])
+                    new_fund_info: FundInfo = manager_web_page_parse.send(a_result[1:])
+                    if new_fund_info.next_step == 'parsing_manager':
+                        input_queue.put((new_fund_info.manager_need_process_list[-1][1], new_fund_info))
+                    else:
+                        result_queue.put((None, None, new_fund_info))
+
+                    # 测试用
+                    print(f'manager  {new_fund_info}')
                 elif a_result[2].next_step == 'writing_file':
-                    # todo 暂时不做保存文件，更新进度条
+                    # todo 保存文件，更新进度条
+
+                    # 测试用
+                    print(f'write  {a_result[2]}')
                     cur_process += 1
                     line_progress.update(100 * cur_process / num_of_fund)
                 else:
@@ -249,6 +270,6 @@ if __name__ == '__main__':
     # todo 对网络环境的判断与测试
 
     # just for test
-    crawling_fund(GetFundListByWebForTest().get_fund_list())
+    crawling_fund(GetFundListByWebForTest())
 
     print("\n爬取总用时", time.time() - start_time)

@@ -59,7 +59,8 @@ class GetFundListByWebForTest(GetFundListByWeb):
         :return: iterator str 基金编号，基金名称
         """
         my_test_iter = super().get_fund_list()
-        for i in range(5):
+        self.sum_of_fund = 5
+        for i in range(self.sum_of_fund):
             yield next(my_test_iter)
 
 
