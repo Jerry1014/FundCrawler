@@ -165,10 +165,10 @@ def write_to_file():
         i.close()
 
 
-def crawling_fund(fund_list: GetFundList, first_crawling=True):
+def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
     """
     在简单基金目录的基础上，爬取所有基金的信息
-    :param fund_list: 要爬取的基金目录
+    :param fund_list_class: 提供要爬取的基金目录的类
     :param first_crawling: 是否是第一次爬取，这决定了是否会重新写保存文件（清空并写入列索引）
     :return 爬取失败的('基金代码,基金名称')(list)
     """
@@ -188,8 +188,6 @@ def crawling_fund(fund_list: GetFundList, first_crawling=True):
 
     # 进度条 基金总数 爬取进度
     line_progress = LineProgress(title='爬取进度')
-    # todo 基金总数返回错误
-    num_of_fund = 5
     cur_process = 0
     # 爬取输入、输出队列，输入结束事件，爬取核心
     input_queue = Queue()
@@ -198,7 +196,8 @@ def crawling_fund(fund_list: GetFundList, first_crawling=True):
     GetPageByWebWithAnotherProcessAndMultiThreading(input_queue, result_queue, finish_sign).start()
 
     # 爬取出错时，不会自动结束爬虫进程
-    fund_list = fund_list.get_fund_list()
+    fund_list = fund_list_class.get_fund_list()
+    num_of_fund = fund_list_class.sum_of_fund
     having_fund_need_to_crawl = True
     fund_web_page_parse = parse_fund_info()
     manager_web_page_parse = parse_manager_info()
@@ -247,7 +246,7 @@ def crawling_fund(fund_list: GetFundList, first_crawling=True):
                     # 测试用
                     print(f'write  {a_result[2]}')
                     cur_process += 1
-                    line_progress.update(100 * cur_process / num_of_fund)
+                    # line_progress.update(100 * cur_process / num_of_fund)
                 else:
                     print(f'请检查FundInfo的next_step(此处为{a_result[2].next_step})设置，出现了未知的参数')
 

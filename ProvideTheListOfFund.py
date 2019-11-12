@@ -17,8 +17,13 @@ class GetFundList:
 
     def __init__(self):
         self.sum_of_fund = None
+        self._fund_list_generator = None
+        self._set_fund_list_generator()
 
     def get_fund_list(self):
+        return self._fund_list_generator
+
+    def _set_fund_list_generator(self):
         raise NotImplementedError()
 
 
@@ -28,7 +33,7 @@ class GetFundListByWeb(GetFundList):
     sum_of_fund 为基金总数
     """
 
-    def get_fund_list(self):
+    def _set_fund_list_generator(self):
         """
         爬取简单的基金代码名称目录
         :return: iterator str 基金编号，基金名称
@@ -44,8 +49,7 @@ class GetFundListByWeb(GetFundList):
         self.sum_of_fund = len(fund_list)
         print('共发现' + str(self.sum_of_fund) + '个基金')
 
-        for i in fund_list:
-            yield f'%s,%s' % (i[1:7], i[10:-1])
+        self._fund_list_generator = (f'{i[1:7]},{i[10:-1]})' for i in fund_list)
 
 
 class GetFundListByWebForTest(GetFundListByWeb):
@@ -53,15 +57,14 @@ class GetFundListByWebForTest(GetFundListByWeb):
     测试用
     """
 
-    def get_fund_list(self):
+    def _set_fund_list_generator(self):
         """
         爬取简单的基金代码名称目录
         :return: iterator str 基金编号，基金名称
         """
-        my_test_iter = super().get_fund_list()
+        super()._set_fund_list_generator()
         self.sum_of_fund = 5
-        for i in range(self.sum_of_fund):
-            yield next(my_test_iter)
+        self._fund_list_generator = (i for i in list(self._fund_list_generator)[:self.sum_of_fund])
 
 
 class GetFundListFromList(GetFundList):
@@ -71,7 +74,8 @@ class GetFundListFromList(GetFundList):
 
     def __init__(self, provide_list):
         super().__init__()
-        self._generator = (i for i in provide_list)
+        self.sum_of_fund = len(provide_list)
+        self._fund_list_generator = (i for i in provide_list)
 
-    def get_fund_list(self):
-        return self._generator
+    def _set_fund_list_generator(self):
+        pass
