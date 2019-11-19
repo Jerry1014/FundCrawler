@@ -28,7 +28,7 @@ class FundInfo:
         return ','.join(self._fund_info.keys())
 
     def get_info(self):
-        # 未来升级为可定制顺序的
+        # 挖坑 未来升级为可定制顺序的
         return ','.join(list(self._fund_info.values()) + ['/'.join(self._manager_info.keys()),
                                                           '/'.join(self._manager_info.values())])
 
@@ -147,7 +147,7 @@ def parse_manager_info():
     """
     对基金经理的信息进行解析 通过send(page_context,fund_info)来获得解析
     """
-    # 下次重构获取基金经理名称，与爬取部分做解耦
+    # 挖坑 下次重构获取基金经理名称，与爬取部分做解耦
     page_context, fund_info = yield
     fund_info: FundInfo
     while True:
@@ -164,7 +164,7 @@ def write_to_file(first_crawling):
     当基金类型为None时，保存文件过程结束，释放所有句柄，并抛出StopIteration
     :param first_crawling: 是否是第一次爬取，这决定了是否会重新写保存文件（清空并写入列索引）
     """
-    # 可以加入最终结果计数的功能
+    # 挖坑 可以加入最终结果计数的功能
     open_mode = 'w' if first_crawling else 'a'
     filename_handle = dict()
     index_of_header = [0, 2, 4, 1, 3, 5]
@@ -222,7 +222,6 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
     next(manager_web_page_parse)
     next(write_file)
     while True:
-        # 下列while的两个数字需要微调以达到比较好的效果
         # todo 任务分配
         while having_fund_need_to_crawl and input_queue.qsize() < 10 and result_queue.qsize() < 100:
             try:
@@ -268,13 +267,11 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
                 break
 
     finish_sign.set()
-    # todo 对第一次爬取失败的基金的处理
+    # 挖坑 对第一次爬取失败的基金的处理
 
 
 if __name__ == '__main__':
     start_time = time.time()
-
-    # todo 对网络环境的判断与测试
-
+    # 挖坑 对网络环境的判断与测试
     crawling_fund(GetFundListByWeb())
     print(f'\n爬取总用时{time.time() - start_time} s', )
