@@ -16,6 +16,7 @@ class FundInfo:
     """
 
     def __init__(self):
+        self.fund_info = 'Unknown'
         self._fund_info = OrderedDict()
         self._manager_info = dict()
         self.next_step = 'parsing_fund'
@@ -106,7 +107,7 @@ def parse_fund_info():
         else:
             # 指数型、股票型
             fund_kind = 'index'
-        fund_info.set_fund_info('fund_kind', fund_kind)
+        fund_info.fund_info = fund_kind
 
         if fund_kind == 'index' or fund_kind == 'guaranteed':
             # 清洗基金收益率 此为指数/股票型的基金
@@ -178,10 +179,8 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
     # 测试文件是否被占用，并写入列索引
     try:
         if first_crawling:
-            with open(index_fund_filename, 'w') as f:
+            with open('test.csv', 'w') as f:
                 f.write(header_index_fund)
-            with open(guaranteed_fund_filename, 'w') as f:
-                f.write(header_guaranteed_fund)
     except IOError:
         print('爬取结果保存文件无法打开')
         return
@@ -199,10 +198,14 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
     fund_list = fund_list_class.get_fund_list()
     num_of_fund = fund_list_class.sum_of_fund
     having_fund_need_to_crawl = True
+
+    # 未来有计划将解析部分分离
     fund_web_page_parse = parse_fund_info()
     manager_web_page_parse = parse_manager_info()
+    write_file = write_to_file()
     next(fund_web_page_parse)
     next(manager_web_page_parse)
+    next(write_file)
     while True:
         # 下列while的两个数字需要微调以达到比较好的效果
         while having_fund_need_to_crawl and input_queue.qsize() < 10 and result_queue.qsize() < 100:
@@ -213,7 +216,6 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
                 break
             tem_fund_info = FundInfo()
             tem_fund_info.set_fund_info('name', name)
-            print(name)
             tem_fund_info.set_fund_info('code', code)
             input_queue.put(('http://fund.eastmoney.com/' + code + '.html', tem_fund_info))
 
@@ -237,8 +239,7 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
                         result_queue.put((None, None, new_fund_info))
 
                 elif a_result[2].next_step == 'writing_file':
-                    # todo 保存文件，更新进度条
-
+                    write_file.send((str(a_result[2]), 'test.csv'))
                     cur_process += 1
                     line_progress.update(100 * cur_process / num_of_fund)
                 else:
@@ -256,13 +257,10 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
 
 if __name__ == '__main__':
     start_time = time.time()
-    # 文件名设置
-    index_fund_filename = 'index_fund_with_achievement.csv'  # 指数/股票型基金完整信息
-    guaranteed_fund_filename = 'guaranteed_fund_with_achievement.csv'  # 保本型基金完整信息
 
     # todo 对网络环境的判断与测试
 
     # just for test
     crawling_fund(GetFundListByWebForTest())
 
-    print("\n爬取总用时", time.time() - start_time)
+    print(f'\n爬取总用时{time.time() - start_time} s', )
