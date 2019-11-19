@@ -49,7 +49,7 @@ class GetFundListByWeb(GetFundList):
         self.sum_of_fund = len(fund_list)
         print('共发现' + str(self.sum_of_fund) + '个基金')
 
-        self._fund_list_generator = (f'{i[1:7]},{i[10:-1]})' for i in fund_list)
+        self._fund_list_generator = (f'{i[1:7]},{i[10:-1]}' for i in fund_list)
 
 
 class GetFundListByWebForTest(GetFundListByWeb):

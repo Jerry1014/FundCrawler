@@ -213,6 +213,7 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
                 break
             tem_fund_info = FundInfo()
             tem_fund_info.set_fund_info('name', name)
+            print(name)
             tem_fund_info.set_fund_info('code', code)
             input_queue.put(('http://fund.eastmoney.com/' + code + '.html', tem_fund_info))
 
