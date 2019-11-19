@@ -229,9 +229,6 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
                         input_queue.put((new_fund_info.manager_need_process_list[-1][1], new_fund_info))
                     else:
                         result_queue.put((None, None, new_fund_info))
-
-                    # 测试用
-                    print(f'fund  {new_fund_info}')
                 elif a_result[2].next_step == 'parsing_manager':
                     new_fund_info: FundInfo = manager_web_page_parse.send(a_result[1:])
                     if new_fund_info.next_step == 'parsing_manager':
@@ -239,15 +236,11 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
                     else:
                         result_queue.put((None, None, new_fund_info))
 
-                    # 测试用
-                    print(f'manager  {new_fund_info}')
                 elif a_result[2].next_step == 'writing_file':
                     # todo 保存文件，更新进度条
 
-                    # 测试用
-                    print(f'write  {a_result[2]}')
                     cur_process += 1
-                    # line_progress.update(100 * cur_process / num_of_fund)
+                    line_progress.update(100 * cur_process / num_of_fund)
                 else:
                     print(f'请检查FundInfo的next_step(此处为{a_result[2].next_step})设置，出现了未知的参数')
 
