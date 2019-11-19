@@ -178,11 +178,11 @@ def write_to_file(first_crawling):
             filename_handle[line_context_and_fund_kind[1]] = f
             if line_context_and_fund_kind[1] in index_kind:
                 header = ','.join(
-                    ['基金名称', '基金代码', '基金规模'] + [index_header[i] for i in index_of_header]
+                    ['基金名称', '基金代码', '基金规模'] + index_header
                     + ['基金经理任职时间', '基金经理任职收益', '基金经理总任职时间']) + '\n'
             elif line_context_and_fund_kind[1] in guaranteed_kind:
                 header = ','.join(
-                    ['基金名称', '基金代码', '基金规模'] + [guaranteed_header[i] for i in index_of_header]
+                    ['基金名称', '基金代码', '基金规模'] + guaranteed_header
                     + ['基金经理任职时间', '基金经理任职收益', '基金经理总任职时间']) + '\n'
             else:
                 header = ','.join(['基金名称', '基金代码', '基金规模'] + capital_preservation_header
