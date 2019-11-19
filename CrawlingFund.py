@@ -100,6 +100,7 @@ def parse_fund_info():
         # 基金分类
         fund_info.fund_kind = re.search(r'基金类型：(?:<a.*?>|)(.*?)[<&]', page_context)
         fund_info.fund_kind = fund_info.fund_kind.group(1) if fund_info.fund_kind is not None else "解析基金类型失败"
+        fund_info.set_fund_info('基金规模', re.search(r'基金规模</a>：((?:\d+(?:\.\d{2}|)|--)亿元.*?)<', page_context).group(1))
 
         if fund_info.fund_kind in index_kind:
             achievement_re = re.search(r'：.*?((?:-?\d+\.\d{2}%)|--).*?'.join(index_header + ['基金类型']), page_context)
@@ -130,7 +131,7 @@ def parse_fund_info():
                 fund_info.set_fund_info('working time', fund_manager_detail.group(1))
                 fund_info.set_fund_info('rate of return', fund_manager_detail.group(2))
                 fund_managers = \
-                re.findall(r'<td class="td02">(?:<a href="(.*?)">(.+?)</a>&nbsp;&nbsp;)+', page_context)[0]
+                    re.findall(r'<td class="td02">(?:<a href="(.*?)">(.+?)</a>&nbsp;&nbsp;)+', page_context)[0]
                 fund_info.manager_need_process_list = [i for i in zip(fund_managers[1::2], fund_managers[0::2])]
             else:
                 print(f'出现无法解析基金经理的基金 {fund_info}')
@@ -175,11 +176,11 @@ def write_to_file(first_crawling):
             f = open(result_dir + line_context_and_fund_kind[1] + '.csv', open_mode)
             filename_handle[line_context_and_fund_kind[1]] = f
             if line_context_and_fund_kind[1] in index_kind:
-                header = ','.join(['基金名称', '基金代码'] + [index_header[i] for i in index_of_header]) + '\n'
+                header = ','.join(['基金名称', '基金代码', '基金规模'] + [index_header[i] for i in index_of_header]) + '\n'
             elif line_context_and_fund_kind[1] in guaranteed_kind:
-                header = ','.join(['基金名称', '基金代码'] + [guaranteed_header[i] for i in index_of_header]) + '\n'
+                header = ','.join(['基金名称', '基金代码', '基金规模'] + [guaranteed_header[i] for i in index_of_header]) + '\n'
             else:
-                header = ','.join(['基金名称', '基金代码'] + capital_preservation_header) + '\n'
+                header = ','.join(['基金名称', '基金代码', '基金规模'] + capital_preservation_header) + '\n'
             f.write(header)
         else:
             f = filename_handle[line_context_and_fund_kind[1]]
