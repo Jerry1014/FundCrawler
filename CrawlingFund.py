@@ -130,9 +130,10 @@ def parse_fund_info():
             if fund_manager_detail is not None:
                 fund_info.set_fund_info('working time', fund_manager_detail.group(1))
                 fund_info.set_fund_info('rate of return', fund_manager_detail.group(2))
-                fund_managers = \
-                    re.findall(r'<td class="td02">(?:<a href="(.*?)">(.+?)</a>&nbsp;&nbsp;)+', page_context)[0]
-                fund_info.manager_need_process_list = [i for i in zip(fund_managers[1::2], fund_managers[0::2])]
+                fund_managers = re.findall(r'(?:<a href="(.*?)">(.+?)</a>&nbsp;&nbsp;)',
+                                           re.search(r'<td class="td02">(?:<a href="(.*?)">(.+?)</a>&nbsp;&nbsp;)+',
+                                                     page_context).group(0))
+                fund_info.manager_need_process_list = fund_managers
             else:
                 print(f'出现无法解析基金经理的基金 {fund_info}')
                 fund_info.next_step = 'writing_file'
@@ -152,7 +153,7 @@ def parse_manager_info():
     fund_info: FundInfo
     while True:
         manager_info = re.search('<span>累计任职时间：</span>(.*?)<br />', page_context)
-        fund_info.set_manager_info(fund_info.manager_need_process_list.pop()[0], manager_info.group(1))
+        fund_info.set_manager_info(fund_info.manager_need_process_list.pop()[1], manager_info.group(1))
         if len(fund_info.manager_need_process_list) == 0:
             fund_info.next_step = 'writing_file'
         page_context, fund_info = yield fund_info
@@ -248,13 +249,13 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
                 if a_result[2].next_step == 'parsing_fund':
                     new_fund_info: FundInfo = fund_web_page_parse.send(a_result[1:])
                     if new_fund_info.next_step == 'parsing_manager':
-                        input_queue.put((new_fund_info.manager_need_process_list[-1][1], new_fund_info))
+                        input_queue.put((new_fund_info.manager_need_process_list[-1][0], new_fund_info))
                     else:
                         result_queue.put((None, None, new_fund_info))
                 elif a_result[2].next_step == 'parsing_manager':
                     new_fund_info: FundInfo = manager_web_page_parse.send(a_result[1:])
                     if new_fund_info.next_step == 'parsing_manager':
-                        input_queue.put((new_fund_info.manager_need_process_list[-1][1], new_fund_info))
+                        input_queue.put((new_fund_info.manager_need_process_list[-1][0], new_fund_info))
                     else:
                         result_queue.put((None, None, new_fund_info))
 
