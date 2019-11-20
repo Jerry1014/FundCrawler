@@ -73,7 +73,7 @@ class GetFundListTest(GetFundList):
     """
 
     def _set_fund_list_generator(self):
-        test_list = ['000452,multi-manager', '180002,guaranteed']
+        test_list = ['000452,test-multi-manager', '180002,test-guaranteed']
         self.sum_of_fund = len(test_list)
         self._fund_list_generator = (i for i in test_list)
 
