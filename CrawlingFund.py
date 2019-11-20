@@ -9,7 +9,7 @@ from os.path import exists
 from eprogress import LineProgress
 
 from CrawlingWebpage import GetPageByWebWithAnotherProcessAndMultiThreading
-from ProvideTheListOfFund import GetFundList, GetFundListByWeb
+from ProvideTheListOfFund import GetFundList, GetFundListByWeb, GetFundListTest
 
 
 class FundInfo:
@@ -27,19 +27,23 @@ class FundInfo:
     def get_header(self):
         return ','.join(self._fund_info.keys())
 
-    def get_info(self):
-        # 挖坑 未来升级为可定制顺序的
-        return ','.join(list(self._fund_info.values()) + ['/'.join(self._manager_info.keys()),
-                                                          '/'.join(self._manager_info.values())])
+    def get_info(self, index=None, missing='??'):
+        if index is None:
+            return ','.join(list(self._fund_info.values()) + ['/'.join(self._manager_info.keys()),
+                                                              '/'.join(self._manager_info.values())])
+        else:
+            return ','.join(self._get_info(i, missing) for i in index)
 
-    def get_fund_kind(self):
-        try:
-            return self._fund_info['fund_kind']
-        except KeyError:
-            return 'Unknown'
+    def _get_info(self, index, missing):
+        if index in self._fund_info.keys():
+            return self._fund_info[index]
+        elif index == '基金经理' or index == '任职时间':
+            return '/'.join(self._manager_info.keys()) if index == '基金经理' else '/'.join(self._manager_info.values())
+        else:
+            return str(missing)
 
     def set_fund_info(self, key, value):
-        self._fund_info[key] = value
+        self._fund_info[key] = str(value)
 
     def set_manager_info(self, key, value):
         self._manager_info[key] = value
@@ -279,5 +283,5 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
 if __name__ == '__main__':
     start_time = time.time()
     # 挖坑 对网络环境的判断与测试
-    crawling_fund(GetFundListByWeb())
+    crawling_fund(GetFundListTest())
     print(f'\n爬取总用时{time.time() - start_time} s', )
