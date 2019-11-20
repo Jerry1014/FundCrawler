@@ -109,7 +109,7 @@ def parse_fund_info():
         if fund_info.fund_kind in index_kind:
             achievement_re = re.search(r'：.*?((?:-?\d+\.\d{2}%)|--).*?'.join(index_header + ['基金类型']), page_context)
         elif fund_info.fund_kind in guaranteed_kind:
-            achievement_re = re.search(r'(：|).*?((-?\d+\.\d{2}%)|--).*?'.join(guaranteed_header + ['基金类型']),
+            achievement_re = re.search(r'(?:：|).*?((?:-?\d+\.\d{2}%)|--).*?'.join(guaranteed_header + ['基金类型']),
                                        page_context)
         elif fund_info.fund_kind in closed_period_kind:
             achievement_re = re.search(r'最近约定年化收益率(?:<.*?>)(-?\d+\.\d{2}%)<', page_context)
@@ -121,12 +121,13 @@ def parse_fund_info():
             # 清洗基金收益率
             if fund_info.fund_kind in index_kind:
                 tem_header = index_header
-            elif fund_info.fund_kind in guaranteed_header:
+            elif fund_info.fund_kind in guaranteed_kind:
                 tem_header = guaranteed_header
             else:
                 tem_header = capital_preservation_header
             for header, value in zip(tem_header, achievement_re.groups()):
                 fund_info.set_fund_info(header, value)
+            print(achievement_re.groups())
             fund_info.next_step = 'parsing_manager'
             # 清洗 基金经理在本基金的任职时间和收益率 和基金经理信息及其主页链接
             fund_manager_detail = re.search(r'</td> {2}<td class="td03">(.+?|-)</td> {2}<td class="td04 bold (?:ui-colo'
