@@ -11,6 +11,9 @@ from eprogress import LineProgress
 from CrawlingWebpage import GetPageByWebWithAnotherProcessAndMultiThreading
 from ProvideTheListOfFund import GetFundList, GetFundListByWeb, GetFundListTest
 
+# 测试标记
+if_test = True
+
 
 class FundInfo:
     """
@@ -37,7 +40,7 @@ class FundInfo:
     def _get_info(self, index, missing):
         if index in self._fund_info.keys():
             return self._fund_info[index]
-        elif index == '基金经理' or index == '任职时间':
+        elif index == '基金经理' or index == '总任职时间':
             return '/'.join(self._manager_info.keys()) if index == '基金经理' else '/'.join(self._manager_info.values())
         else:
             return str(missing)
@@ -81,7 +84,6 @@ class MyPriorityQueue:
         raise Exception('队列中')
 
 
-# 这个是根据网页的html解析的顺序，若需要指定在爬取结果中的顺序，请修改index_of_header
 index_header = ['近1月', '近1年', '近3月', '近3年', '近6月', '成立来']
 guaranteed_header = ['保本期收益', '近6月', '近1月', '近1年', '近3月', '近3年']
 capital_preservation_header = ['最近约定年化收益率']
@@ -127,14 +129,13 @@ def parse_fund_info():
                 tem_header = capital_preservation_header
             for header, value in zip(tem_header, achievement_re.groups()):
                 fund_info.set_fund_info(header, value)
-            print(achievement_re.groups())
             fund_info.next_step = 'parsing_manager'
             # 清洗 基金经理在本基金的任职时间和收益率 和基金经理信息及其主页链接
             fund_manager_detail = re.search(r'</td> {2}<td class="td03">(.+?|-)</td> {2}<td class="td04 bold (?:ui-colo'
                                             r'r-(?:red|green)|)">(-?\d+\.\d{2}%|--)</td></tr>', page_context)
             if fund_manager_detail is not None:
-                fund_info.set_fund_info('working time', fund_manager_detail.group(1))
-                fund_info.set_fund_info('rate of return', fund_manager_detail.group(2))
+                fund_info.set_fund_info('任职时间', fund_manager_detail.group(1))
+                fund_info.set_fund_info('任期收益', fund_manager_detail.group(2))
                 fund_managers = re.findall(r'(?:<a href="(.*?)">(.+?)</a>&nbsp;&nbsp;)',
                                            re.search(r'<td class="td02">(?:<a href="(.*?)">(.+?)</a>&nbsp;&nbsp;)+',
                                                      page_context).group(0))
@@ -166,39 +167,47 @@ def parse_manager_info():
 
 def write_to_file(first_crawling):
     """
-    将爬取到的信息逐行保存到文件 保存内容通过send()发送 (一行内容，文件名)
+    将爬取到的信息逐行保存到文件 保存内容通过send()发送 (FundInfo)
     当基金类型为None时，保存文件过程结束，释放所有句柄，并抛出StopIteration
     :param first_crawling: 是否是第一次爬取，这决定了是否会重新写保存文件（清空并写入列索引）
     """
-    # 挖坑 可以加入最终结果计数的功能
     open_mode = 'w' if first_crawling else 'a'
     filename_handle = dict()
-    index_of_header = [0, 2, 4, 1, 3, 5]
     if not exists(result_dir):
         makedirs(result_dir)
-    line_context_and_fund_kind = yield
-    while line_context_and_fund_kind[1] is not None:
-        if line_context_and_fund_kind[1] not in filename_handle.keys():
-            f = open(result_dir + line_context_and_fund_kind[1] + '.csv', open_mode)
-            filename_handle[line_context_and_fund_kind[1]] = f
-            if line_context_and_fund_kind[1] in index_kind:
-                header = ','.join(
-                    ['基金名称', '基金代码', '基金规模'] + index_header
-                    + ['基金经理任职时间', '基金经理任职收益', '基金经理总任职时间']) + '\n'
-            elif line_context_and_fund_kind[1] in guaranteed_kind:
-                header = ','.join(
-                    ['基金名称', '基金代码', '基金规模'] + guaranteed_header
-                    + ['基金经理任职时间', '基金经理任职收益', '基金经理总任职时间']) + '\n'
+    # 保存文件的第一行（列索引）
+    write_format_of_index = ['基金名称', '基金代码', '基金规模', '近1月', '近3月', '近6月', '近1年', '近3年', '成立来', '基金经理', '任职时间', '任期收益',
+                             '总任职时间']
+    write_format_of_guaranteed = ['基金名称', '基金代码', '基金规模', '保本期收益', '近1月', '近3月', '近6月', '近1年', '近3年', '基金经理', '任职时间',
+                                  '任期收益', '总任职时间']
+    write_format_of_capital_preservation = ['基金名称', '基金代码', '基金规模', '最近约定年化收益率', '基金经理', '任职时间', '任期收益', '总任职时间']
+
+    fund_info = yield
+    while fund_info is not None:
+        if fund_info.fund_kind not in filename_handle.keys():
+            # 此基金类型的文件尚未打开过
+            f = open(result_dir + fund_info.fund_kind + '.csv', open_mode)
+            filename_handle[fund_info.fund_kind] = f
+            if fund_info.fund_kind in index_kind:
+                header = ','.join(write_format_of_index) + '\n'
+            elif fund_info.fund_kind in guaranteed_kind:
+                header = ','.join(write_format_of_guaranteed) + '\n'
             else:
-                header = ','.join(['基金名称', '基金代码', '基金规模'] + capital_preservation_header
-                                  + ['基金经理任职时间', '基金经理任职收益', '基金经理总任职时间']) + '\n'
+                header = ','.join(write_format_of_capital_preservation) + '\n'
             f.write(header)
         else:
-            f = filename_handle[line_context_and_fund_kind[1]]
+            f = filename_handle[fund_info.fund_kind]
 
-        f.write(line_context_and_fund_kind[0])
+        # 按照列索引，取出基金数据并写入文件
+        if fund_info.fund_kind in index_kind:
+            index = write_format_of_index
+        elif fund_info.fund_kind in guaranteed_kind:
+            index = write_format_of_guaranteed
+        else:
+            index = write_format_of_capital_preservation
+        f.write(fund_info.get_info(index))
         f.write('\n')
-        line_context_and_fund_kind = yield
+        fund_info = yield
 
     for i in filename_handle.values():
         i.close()
@@ -241,8 +250,8 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
                 having_fund_need_to_crawl = False
                 break
             tem_fund_info = FundInfo()
-            tem_fund_info.set_fund_info('name', name)
-            tem_fund_info.set_fund_info('code', code)
+            tem_fund_info.set_fund_info('基金名称', name)
+            tem_fund_info.set_fund_info('基金代码', code)
             input_queue.put(('http://fund.eastmoney.com/' + code + '.html', tem_fund_info))
 
         while result_queue.qsize():
@@ -265,7 +274,7 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
                         result_queue.put((None, None, new_fund_info))
 
                 elif a_result[2].next_step == 'writing_file':
-                    write_file.send((str(a_result[2]), a_result[2].fund_kind))
+                    write_file.send(a_result[2])
                     cur_process += 1
                     line_progress.update(100 * cur_process / num_of_fund)
                 else:
@@ -284,5 +293,8 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
 if __name__ == '__main__':
     start_time = time.time()
     # 挖坑 对网络环境的判断与测试
-    crawling_fund(GetFundListTest())
+    if if_test:
+        crawling_fund(GetFundListTest())
+    else:
+        crawling_fund(GetFundListByWeb())
     print(f'\n爬取总用时{time.time() - start_time} s', )
