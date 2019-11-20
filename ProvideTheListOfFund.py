@@ -67,13 +67,13 @@ class GetFundListByWebForTest(GetFundListByWeb):
         self._fund_list_generator = (i for i in list(self._fund_list_generator)[:self.sum_of_fund])
 
 
-class GetFundListTestForMultiManager(GetFundList):
+class GetFundListTest(GetFundList):
     """
-    提供多个基金经理管理同一个基金的测试列表
+    提供测试列表
     """
 
     def _set_fund_list_generator(self):
-        test_list = ['000452,test']
+        test_list = ['000452,multi-manager', '180002,guaranteed']
         self.sum_of_fund = 1
         self._fund_list_generator = (i for i in test_list)
 
