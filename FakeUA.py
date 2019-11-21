@@ -1,13 +1,15 @@
 # -*- coding:utf-8 -*-
+"""
+使用方法
+from FakeUA import fake_ua
+fake_ua.random # return a random ua
+"""
+
 import random
 
 from fake_useragent import UserAgent, FakeUserAgentError, VERSION
 
-"""
-使用方法
-from FackUA import fake_ua
-fake_ua.random # return a random ua
-"""
+IF_UPDATE_FAKE_UA = False
 
 
 class FakeUA:
@@ -20,11 +22,14 @@ class FakeUA:
             cls.instance = super(FakeUA, cls).__new__(cls)
         return cls.instance
 
-    def __init__(self):
+    def __init__(self, if_update_fake_ua=False):
         self.fake_ua = None
         try:
-            self.fake_ua = UserAgent(path='fake_useragent%s.json' % VERSION)
-            self.fake_ua.update()
+            if if_update_fake_ua:
+                self.fake_ua = UserAgent(path='fake_useragent%s.json' % VERSION)
+                self.fake_ua.update()
+            else:
+                raise FakeUserAgentError()
         except FakeUserAgentError:
             self.some = [
                 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36 OPR/26.0.1656.60',
@@ -61,22 +66,6 @@ class FakeUA:
             raise AttributeError(r"Object does'n has attribute '%s'" % item)
 
 
-# 载入随机UA模块，若无，则使用默认的chrome ua
-print('正在载入随机UA模块')
-try:
-    # 下行为测试临时使用
-    raise ModuleNotFoundError
-
-    fake_ua = FakeUA()
-    print('载入完成')
-except ModuleNotFoundError:
-    print('未能导入随机UA模块FakeUA，使用默认的唯一的chrome UA（可能会影响爬取效果）')
-
-
-    class TemporaryUA:
-        def __init__(self):
-            self.random = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " \
-                          "Chrome/76.0.3809.100 Safari/537.36"
-
-
-    fake_ua = TemporaryUA()
+print('正在初始化随机UA模块，若此步消耗了大量时间，请将FakeUA.py中的IF_UPDATE_FAKE_UA修改为False(默认值)')
+fake_ua = FakeUA(IF_UPDATE_FAKE_UA)
+print('随机UA模块初始化完成')
