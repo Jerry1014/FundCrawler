@@ -56,13 +56,14 @@ class GetPageByWebWithAnotherProcessAndMultiThreading(Process, GetPageByWeb):
     进程会在所有的任务都完成后，将 exit_sign 设置为False，并在result_queue中的item取完后退出
     """
 
-    def __init__(self, task_queue: Queue, result_queue: Queue, exit_sign: Event):
+    def __init__(self, task_queue: Queue, result_queue: Queue, exit_sign: Event, network_health: Event):
         super().__init__()
         self._task_queue = task_queue
         self._result_queue = result_queue
         self._threading_pool = list()
         self._exit_when_task_queue_empty = exit_sign
-        self._max_threading_number = 1
+        self._max_threading_number = 2
+        self._network_health = network_health
 
     def add_task(self, task):
         self._task_queue.put(task)
@@ -75,7 +76,11 @@ class GetPageByWebWithAnotherProcessAndMultiThreading(Process, GetPageByWeb):
         if result[0] == 'success':
             self._max_threading_number += 1
         else:
-            self._max_threading_number = self._max_threading_number << 1 if self._max_threading_number > 1 else 1
+            self._max_threading_number = self._max_threading_number >> 1 if self._max_threading_number > 1 else 1
+            if self._max_threading_number == 1:
+                self._network_health.set()
+            elif self._network_health.is_set():
+                self._network_health.clear()
         self._result_queue.put(result)
 
     def run(self) -> None:

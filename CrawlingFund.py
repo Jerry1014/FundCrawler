@@ -7,6 +7,7 @@ from os import makedirs
 from os.path import exists
 
 from eprogress import LineProgress
+from requests.exceptions import RequestException
 
 from CrawlingWebpage import GetPageByWebWithAnotherProcessAndMultiThreading
 from ProvideTheListOfFund import GetFundList, GetFundListByWeb, GetFundListTest
@@ -227,7 +228,10 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
     input_queue = Queue()
     result_queue = Queue()
     finish_sign = Event()
-    GetPageByWebWithAnotherProcessAndMultiThreading(input_queue, result_queue, finish_sign).start()
+    network_health = Event()
+    crawling_core = GetPageByWebWithAnotherProcessAndMultiThreading(input_queue, result_queue, finish_sign,
+                                                                    network_health)
+    crawling_core.start()
 
     # 爬取出错时，不会自动结束爬虫进程
     fund_list = fund_list_class.get_fund_list()
@@ -241,7 +245,15 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
     next(fund_web_page_parse)
     next(manager_web_page_parse)
     next(write_file)
+    if_first_show_network_problem = True
     while True:
+        if network_health.is_set():
+            if if_first_show_network_problem:
+                print('如果此条提示持续出现，请检查当前的网络状态')
+                if_first_show_network_problem = False
+        elif not if_first_show_network_problem:
+            if_first_show_network_problem = True
+
         # todo 任务分配
         while having_fund_need_to_crawl and input_queue.qsize() < 10 and result_queue.qsize() < 100:
             try:
@@ -292,8 +304,11 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
 
 if __name__ == '__main__':
     start_time = time.time()
-    if if_test:
-        crawling_fund(GetFundListTest())
-    else:
-        crawling_fund(GetFundListByWeb())
+    try:
+        if if_test:
+            crawling_fund(GetFundListTest())
+        else:
+            crawling_fund(GetFundListByWeb())
+    except RequestException:
+        print('网络错误')
     print(f'\n爬取总用时{time.time() - start_time} s')
