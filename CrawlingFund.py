@@ -56,35 +56,6 @@ class FundInfo:
         return self.get_info()
 
 
-class MyPriorityQueue:
-    """
-    自定义的多级优先队列结构
-    """
-
-    def __init__(self, num_of_queue, default_size=None):
-        super().__init__()
-        self._queues = [Queue(default_size) for _ in range(num_of_queue if num_of_queue > 1 else 1)]
-
-    def put(self, obj, priority=None):
-        """
-        按照指定的优先级，将对象放入对应队列中
-        :param obj: 放入队列的对象
-        :param priority: 优先级 0为最高 为None或超出范围时，选择最低优先级
-        """
-        priority = -1 if not priority or priority > len(self._queues) else priority
-        self._queues[priority].put(obj)
-
-    def get(self):
-        """
-        获取当前优先级别最高，且最先进入该级别队列的对象
-        """
-        # 当队列为空时的阻塞
-        for i in self._queues:
-            if i.qsize() > 0:
-                return i.get()
-        raise Exception('队列中')
-
-
 index_header = ['近1月', '近1年', '近3月', '近3年', '近6月', '成立来']
 guaranteed_header = ['保本期收益', '近6月', '近1月', '近1年', '近3月', '近3年']
 capital_preservation_header = ['最近约定年化收益率']
