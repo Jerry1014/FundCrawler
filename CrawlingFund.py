@@ -12,7 +12,7 @@ from CrawlingWebpage import GetPageByWebWithAnotherProcessAndMultiThreading
 from ProvideTheListOfFund import GetFundList, GetFundListByWeb, GetFundListTest
 
 # 测试标记
-if_test = True
+if_test = False
 
 
 class FundInfo:
@@ -292,9 +292,8 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
 
 if __name__ == '__main__':
     start_time = time.time()
-    # 挖坑 对网络环境的判断与测试
     if if_test:
         crawling_fund(GetFundListTest())
     else:
         crawling_fund(GetFundListByWeb())
-    print(f'\n爬取总用时{time.time() - start_time} s', )
+    print(f'\n爬取总用时{time.time() - start_time} s')

@@ -49,7 +49,7 @@ class MyTestCaseForCrawling(unittest.TestCase):
     def test_write_to_file(self):
         import CrawlingFund
         context_filename = [('11', '11.txt'), ('22', '22.txt')]
-        my_iter = CrawlingFund.write_to_file()
+        my_iter = CrawlingFund.write_to_file(False)
         my_iter.send(None)
         for i in context_filename:
             my_iter.send(i)
@@ -57,3 +57,4 @@ class MyTestCaseForCrawling(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

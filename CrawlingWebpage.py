@@ -15,6 +15,7 @@ class GetPage:
     """
     获取页面基类
     """
+
     def __init__(self):
         self._task_queue = None
         self._result_queue = None
@@ -30,6 +31,7 @@ class GetPageByWeb(GetPage, ABC):
     """
     从网页中获取页面基类
     """
+
     @classmethod
     def get_page_context(cls, url, *args) -> tuple:
         """
@@ -53,6 +55,7 @@ class GetPageByWebWithAnotherProcessAndMultiThreading(Process, GetPageByWeb):
     将爬取任务发送到 task_queue，并在完成后将 exit_sign 设置为True
     进程会在所有的任务都完成后，将 exit_sign 设置为False，并在result_queue中的item取完后退出
     """
+
     def __init__(self, task_queue: Queue, result_queue: Queue, exit_sign: Event):
         super().__init__()
         self._task_queue = task_queue

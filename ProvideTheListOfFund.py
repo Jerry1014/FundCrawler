@@ -7,8 +7,6 @@ import re
 
 import requests
 
-from FakeUA import fake_ua
-
 
 class GetFundList:
     """
@@ -40,7 +38,8 @@ class GetFundListByWeb(GetFundList):
         """
         print('获取基金列表中。。。')
 
-        header = {"User-Agent": fake_ua.random}
+        header = {"User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                                'Chrome/78.0.3904.108 Safari/537.36'}
         page = requests.get('http://fund.eastmoney.com/Data/Fund_JJJZ_Data.aspx?t=1&lx=1&letter=&gsid=&text=&sort=zdf,'
                             'desc&page=1,9999&feature=|&dt=1536654761529&atfc=&onlySale=0', headers=header)
 
