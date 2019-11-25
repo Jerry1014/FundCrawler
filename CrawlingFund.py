@@ -12,8 +12,9 @@ from requests.exceptions import RequestException
 from CrawlingWebpage import GetPageByWebWithAnotherProcessAndMultiThreading
 from ProvideTheListOfFund import GetFundList, GetFundListByWeb, GetFundListTest
 
-# 测试标记
+# 测试标记 连接timeout
 if_test = False
+TIMEOUT = 3
 
 
 class FundInfo:
@@ -201,7 +202,7 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
     finish_sign = Event()
     network_health = Event()
     crawling_core = GetPageByWebWithAnotherProcessAndMultiThreading(input_queue, result_queue, finish_sign,
-                                                                    network_health)
+                                                                    network_health,TIMEOUT)
     crawling_core.start()
 
     # 爬取出错时，不会自动结束爬虫进程
@@ -266,8 +267,7 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
 
         # 完成所有任务判断
         if not having_fund_need_to_crawl and input_queue.qsize() == 0 and result_queue.qsize() == 0:
-            # 下次要将这里的等待时间设置为全局变量TIME_OUT，这样才能保证所有的数据都处理完毕
-            time.sleep(1)
+            time.sleep(TIMEOUT)
             if not having_fund_need_to_crawl and input_queue.qsize() == 0 and result_queue.qsize() == 0:
                 break
 
