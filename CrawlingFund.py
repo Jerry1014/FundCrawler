@@ -225,8 +225,8 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
         elif not if_first_show_network_problem:
             if_first_show_network_problem = True
 
-        # todo 任务分配
-        while having_fund_need_to_crawl and input_queue.qsize() < 10 and result_queue.qsize() < 100:
+        # 根据短路原则，首先是是否还有要爬取的基金，然后是判断需要解析的数据量（控制内存），最后才是查看输入队列的情况
+        while having_fund_need_to_crawl and result_queue.qsize() < 100 and input_queue.qsize() < 10:
             try:
                 code, name = next(fund_list).split(',')
             except StopIteration:
@@ -237,7 +237,8 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
             tem_fund_info.set_fund_info('基金代码', code)
             input_queue.put(('http://fund.eastmoney.com/' + code + '.html', tem_fund_info))
 
-        while result_queue.qsize():
+        # 优先补充输入队列，保证爬取的速度，再处理需要解析的数据
+        while (input_queue.qsize() > 5 or not having_fund_need_to_crawl) and result_queue.qsize():
             a_result = result_queue.get()
             # 若上次的爬取失败了，则重试，未对一直失败的进行排除
             if a_result[0] == 'error':
@@ -265,6 +266,7 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
 
         # 完成所有任务判断
         if not having_fund_need_to_crawl and input_queue.qsize() == 0 and result_queue.qsize() == 0:
+            # 下次要将这里的等待时间设置为全局变量TIME_OUT，这样才能保证所有的数据都处理完毕
             time.sleep(1)
             if not having_fund_need_to_crawl and input_queue.qsize() == 0 and result_queue.qsize() == 0:
                 break
@@ -276,6 +278,7 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
 if __name__ == '__main__':
     start_time = time.time()
     try:
+        # 在这里更换提供基金列表的类，以实现从文件或者其他方式来指定要爬取的基金
         if if_test:
             crawling_fund(GetFundListTest())
         else:
