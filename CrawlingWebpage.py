@@ -75,12 +75,12 @@ class GetPageByWebWithAnotherProcessAndMultiThreading(Process, GetPageByWeb):
         result = super().get_page_context(url, *args)
         if result[0] == 'success':
             self._max_threading_number += 1
+            if self._network_health.is_set():
+                self._network_health.clear()
         else:
             self._max_threading_number = self._max_threading_number >> 1 if self._max_threading_number > 1 else 1
             if self._max_threading_number == 1:
                 self._network_health.set()
-            elif self._network_health.is_set():
-                self._network_health.clear()
         self._result_queue.put(result)
 
     def run(self) -> None:
