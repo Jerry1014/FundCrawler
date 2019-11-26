@@ -14,18 +14,12 @@ from FakeUA import fake_ua
 
 class GetPage:
     """
-    获取页面基类
+    获取页面基类，从_task_queue中获取任务，输出结果到_result_queue中
     """
 
     def __init__(self):
         self._task_queue = None
         self._result_queue = None
-
-    def add_task(self, task):
-        raise NotImplementedError()
-
-    def get_result(self):
-        raise NotImplementedError()
 
 
 class GetPageByWeb(GetPage, ABC):
@@ -81,10 +75,12 @@ class GetPageByWebWithAnotherProcessAndMultiThreading(Process, GetPageByWeb):
         result = super().get_page_context(url, self._timeout, *args)
         if result[0] == 'success':
             self._max_threading_number += 1
-            self._record_network_down_last_time = None
+            if self._network_health.is_set():
+                self._record_network_down_last_time = None
+                self._network_health.clear()
         else:
             self._max_threading_number = self._max_threading_number >> 1 if self._max_threading_number > 1 else 1
-            if self._max_threading_number == 1:
+            if self._max_threading_number == 1 and not self._network_health.is_set():
                 if self._record_network_down_last_time is None:
                     self._record_network_down_last_time = time()
                 elif time() - self._record_network_down_last_time > \

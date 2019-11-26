@@ -10,7 +10,7 @@ import requests
 
 class GetFundList:
     """
-    调用get_fund_list来获得基金列表
+    调用get_fund_list来获得基金列表，需实现_set_fund_list_generator方法来设置_fund_list_generator的值
     """
 
     def __init__(self):

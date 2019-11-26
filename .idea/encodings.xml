@@ -3,6 +3,7 @@
   <component name="Encoding">
     <file url="file://$PROJECT_DIR$/results/QDII.csv" charset="GBK" />
     <file url="file://$PROJECT_DIR$/results/保本型.csv" charset="GBK" />
+    <file url="file://$PROJECT_DIR$/results/固定收益.csv" charset="GBK" />
     <file url="file://$PROJECT_DIR$/results/混合型.csv" charset="GBK" />
   </component>
 </project>

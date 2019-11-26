@@ -1,7 +1,9 @@
 # -*- coding:UTF-8 -*-
+"""
+爬取基金信息的主文件
+"""
 import re
 import time
-from collections import OrderedDict
 from multiprocessing import Queue, Event
 from os import makedirs
 from os.path import exists
@@ -12,9 +14,10 @@ from requests.exceptions import RequestException
 from CrawlingWebpage import GetPageByWebWithAnotherProcessAndMultiThreading
 from ProvideTheListOfFund import GetFundList, GetFundListByWeb, GetFundListTest
 
-# 测试标记 连接timeout
+# 测试标记 连接timeout 爬取结果保存目录
 if_test = False
 TIMEOUT = 3
+result_dir = './results/'
 
 
 class FundInfo:
@@ -23,23 +26,33 @@ class FundInfo:
     """
 
     def __init__(self):
+        # 基金类型 基金信息字典 基金经理信息字典 当前基金信息类状态（下一步） 需要解析的基金经理列表
         self.fund_kind = 'Unknown'
-        self._fund_info = OrderedDict()
+        self._fund_info = dict()
         self._manager_info = dict()
         self.next_step = 'parsing_fund'
         self.manager_need_process_list = list()
 
-    def get_header(self):
-        return ','.join(self._fund_info.keys())
-
-    def get_info(self, index=None, missing='??'):
+    def get_info(self, index: list = None, missing: str = '??'):
+        """
+        获取基金信息
+        :param index: 基金信息的列索引，若无，则按照保存信息的字典给出的哈希顺序
+        :param missing: 列索引无对应值的填充
+        :return: str 按照给定的列索引返回基金信息，信息之间以 , 分割
+        """
         if index is None:
             return ','.join(list(self._fund_info.values()) + ['/'.join(self._manager_info.keys()),
                                                               '/'.join(self._manager_info.values())])
         else:
             return ','.join(self._get_info(i, missing) for i in index)
 
-    def _get_info(self, index, missing):
+    def _get_info(self, index: str, missing: str):
+        """
+        内部的获取基金信息的方法
+        :param index: 要获取的基金信息索引（key）
+        :param missing: 列索引无对应值的填充
+        :return: str 对应的基金信息
+        """
         if index in self._fund_info.keys():
             return self._fund_info[index]
         elif index == '基金经理' or index == '总任职时间':
@@ -47,24 +60,35 @@ class FundInfo:
         else:
             return str(missing)
 
-    def set_fund_info(self, key, value):
+    def set_fund_info(self, key: str, value: str):
+        """
+        设置基金信息
+        :param key: 基金信息索引
+        :param value: 基金信息
+        """
         self._fund_info[key] = str(value)
 
     def set_manager_info(self, key, value):
+        """
+        设置基金经理信息
+        :param key: 基金经理姓名
+        :param value: 基金经理信息（目前为str 基金经理的总任职时长）
+        """
         self._manager_info[key] = value
 
     def __repr__(self):
         return self.get_info()
 
 
-index_header = ['近1月', '近1年', '近3月', '近3年', '近6月', '成立来']
-guaranteed_header = ['保本期收益', '近6月', '近1月', '近1年', '近3月', '近3年']
-capital_preservation_header = ['最近约定年化收益率']
-index_kind = ['股票型', '混合型', '债券型', '定开债券', '股票指数', '联接基金', 'QDII-指数', 'QDII', '混合-FOF', '货币型',
-              '理财型', '分级杠杆', 'ETF-场内', '债券指数']
-guaranteed_kind = ['保本型']
-closed_period_kind = ['固定收益']
-result_dir = './results/'
+# 基金类型的分类
+fund_kind_belong_to_index = ['股票型', '混合型', '债券型', '定开债券', '股票指数', '联接基金', 'QDII-指数', 'QDII',
+                             '混合-FOF', '货币型', '理财型', '分级杠杆', 'ETF-场内', '债券指数']
+fund_kind_belong_to_guaranteed = ['保本型']
+fund_kind_belong_to_closed_period = ['固定收益']
+# 不同类型基金的解析顺序定义
+parse_index_for_index_fund = ['近1月', '近1年', '近3月', '近3年', '近6月', '成立来']
+parse_index_for_guaranteed_fund = ['保本期收益', '近6月', '近1月', '近1年', '近3月', '近3年']
+parse_index_for_capital_preservation_fund = ['最近约定年化收益率']
 
 
 def parse_fund_info():
@@ -76,17 +100,20 @@ def parse_fund_info():
     page_context, fund_info = yield
 
     while True:
-        # 基金分类
+        # 获取基金类型和规模
         fund_info.fund_kind = re.search(r'基金类型：(?:<a.*?>|)(.*?)[<&]', page_context)
         fund_info.fund_kind = fund_info.fund_kind.group(1) if fund_info.fund_kind is not None else "解析基金类型失败"
         fund_info.set_fund_info('基金规模', re.search(r'基金规模</a>：((?:\d+(?:\.\d{2}|)|--)亿元.*?)<', page_context).group(1))
 
-        if fund_info.fund_kind in index_kind:
-            achievement_re = re.search(r'：.*?((?:-?\d+\.\d{2}%)|--).*?'.join(index_header + ['基金类型']), page_context)
-        elif fund_info.fund_kind in guaranteed_kind:
-            achievement_re = re.search(r'(?:：|).*?((?:-?\d+\.\d{2}%)|--).*?'.join(guaranteed_header + ['基金类型']),
+        # 按照基金类型分类并获取其收益数据
+        if fund_info.fund_kind in fund_kind_belong_to_index:
+            achievement_re = re.search(r'：.*?((?:-?\d+\.\d{2}%)|--).*?'.join(parse_index_for_index_fund + ['基金类型']),
                                        page_context)
-        elif fund_info.fund_kind in closed_period_kind:
+        elif fund_info.fund_kind in fund_kind_belong_to_guaranteed:
+            achievement_re = re.search(
+                r'(?:：|).*?((?:-?\d+\.\d{2}%)|--).*?'.join(parse_index_for_guaranteed_fund + ['基金类型']),
+                page_context)
+        elif fund_info.fund_kind in fund_kind_belong_to_closed_period:
             achievement_re = re.search(r'最近约定年化收益率(?:<.*?>)(-?\d+\.\d{2}%)<', page_context)
         else:
             print(f'出现无解析方法的基金种类 {fund_info}')
@@ -94,12 +121,12 @@ def parse_fund_info():
 
         if achievement_re is not None:
             # 清洗基金收益率
-            if fund_info.fund_kind in index_kind:
-                tem_header = index_header
-            elif fund_info.fund_kind in guaranteed_kind:
-                tem_header = guaranteed_header
+            if fund_info.fund_kind in fund_kind_belong_to_index:
+                tem_header = parse_index_for_index_fund
+            elif fund_info.fund_kind in fund_kind_belong_to_guaranteed:
+                tem_header = parse_index_for_guaranteed_fund
             else:
-                tem_header = capital_preservation_header
+                tem_header = parse_index_for_capital_preservation_fund
             for header, value in zip(tem_header, achievement_re.groups()):
                 fund_info.set_fund_info(header, value)
             fund_info.next_step = 'parsing_manager'
@@ -161,9 +188,9 @@ def write_to_file(first_crawling):
             # 此基金类型的文件尚未打开过
             f = open(result_dir + fund_info.fund_kind + '.csv', open_mode)
             filename_handle[fund_info.fund_kind] = f
-            if fund_info.fund_kind in index_kind:
+            if fund_info.fund_kind in fund_kind_belong_to_index:
                 header = ','.join(write_format_of_index) + '\n'
-            elif fund_info.fund_kind in guaranteed_kind:
+            elif fund_info.fund_kind in fund_kind_belong_to_guaranteed:
                 header = ','.join(write_format_of_guaranteed) + '\n'
             else:
                 header = ','.join(write_format_of_capital_preservation) + '\n'
@@ -172,9 +199,9 @@ def write_to_file(first_crawling):
             f = filename_handle[fund_info.fund_kind]
 
         # 按照列索引，取出基金数据并写入文件
-        if fund_info.fund_kind in index_kind:
+        if fund_info.fund_kind in fund_kind_belong_to_index:
             index = write_format_of_index
-        elif fund_info.fund_kind in guaranteed_kind:
+        elif fund_info.fund_kind in fund_kind_belong_to_guaranteed:
             index = write_format_of_guaranteed
         else:
             index = write_format_of_capital_preservation
@@ -196,21 +223,20 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
     # 进度条 基金总数 爬取进度
     line_progress = LineProgress(title='爬取进度')
     cur_process = 0
-    # 爬取输入、输出队列，输入结束事件，爬取核心
+    # 爬取输入、输出队列，输入结束事件，网络状态事件，爬取核心
     input_queue = Queue()
     result_queue = Queue()
     finish_sign = Event()
     network_health = Event()
     crawling_core = GetPageByWebWithAnotherProcessAndMultiThreading(input_queue, result_queue, finish_sign,
-                                                                    network_health,TIMEOUT)
+                                                                    network_health, TIMEOUT)
     crawling_core.start()
 
-    # 爬取出错时，不会自动结束爬虫进程
     fund_list = fund_list_class.get_fund_list()
     num_of_fund = fund_list_class.sum_of_fund
     having_fund_need_to_crawl = True
 
-    # 未来有计划将解析部分分离
+    # 未来有计划将解析部分独立
     fund_web_page_parse = parse_fund_info()
     manager_web_page_parse = parse_manager_info()
     write_file = write_to_file(first_crawling)
