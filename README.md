@@ -11,7 +11,10 @@
     2019/12/24 共有7571个基金
 
 ## 食用方法
-- 下载所有脚本文件（除MonkeyTest外）
+- 环境依赖
+    运行环境Python3.7
+    依赖库eprogress、requests
+- 下载所有.py脚本文件（除MonkeyTest外）
 - 爬取基金数据
     - 运行CrawlingFund.py并等待
 - ~~筛选基金~~ 还没做
