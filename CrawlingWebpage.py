@@ -7,8 +7,6 @@ from abc import ABC
 from multiprocessing import Process, Queue, Event
 from time import time
 
-import requests
-
 from FakeUA import fake_ua
 
 
@@ -36,6 +34,7 @@ class GetPageByWeb(GetPage, ABC):
         :return: 返回二元组 爬取结果，网页内容
         """
         header = {"User-Agent": fake_ua.random}
+        import requests
         try:
             page = requests.get(url, headers=header, timeout=timeout)
             page.encoding = 'utf-8'

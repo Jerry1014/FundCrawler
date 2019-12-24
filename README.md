@@ -13,7 +13,7 @@
 ## 食用方法
 - 环境依赖
     运行环境Python3.7
-    依赖库eprogress、requests
+    依赖库requests、eprogress（非必须，若无，则会以一种简陋的方式显示当前进度）
 - 下载所有.py脚本文件（除MonkeyTest外）
 - 爬取基金数据
     - 运行CrawlingFund.py并等待

@@ -5,12 +5,18 @@
 import time
 from multiprocessing import Queue, Event
 
-from eprogress import LineProgress
 from requests.exceptions import RequestException
 
 from CrawlingWebpage import GetPageByWebWithAnotherProcessAndMultiThreading
 from ParsingHtml import ParseDefault
 from ProvideTheListOfFund import GetFundList, GetFundListByWeb, GetFundListTest
+
+# 尝试引入进度条所需库文件
+try:
+    from eprogress import LineProgress
+except ImportError:
+    print('未安装进度条依赖库，将以极简形式显示当前进度')
+    LineProgress = None
 
 # 测试标记 连接timeout
 if_test = False
@@ -85,7 +91,7 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
     :return 爬取失败的('基金代码,基金名称')(list)
     """
     # 进度条 基金总数 爬取进度
-    line_progress = LineProgress(title='爬取进度')
+    line_progress = None if LineProgress is None else LineProgress(title='爬取进度')
     cur_process = 0
     # 爬取输入、输出队列，输入结束事件，网络状态事件，爬取核心
     input_queue = Queue()
@@ -148,7 +154,10 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
                 elif a_result[2].next_step == 'writing_file':
                     write_file.send(a_result[2])
                     cur_process += 1
-                    line_progress.update(100 * cur_process / num_of_fund)
+                    if line_progress is not None:
+                        line_progress.update(100 * cur_process / num_of_fund)
+                    else:
+                        print(f'已完成{cur_process}/全部{num_of_fund}')
                 else:
                     print(f'请检查FundInfo的next_step(此处为{a_result[2].next_step})设置，出现了未知的参数')
 
