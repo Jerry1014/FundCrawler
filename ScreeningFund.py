@@ -14,7 +14,7 @@ def get_time_from_str(time_str):
     :param time_str: 描述时间的str
     :return [int(多少年),int(多少天)]
     """
-    tem = re.search('(?:(\d)年又|)(\d{0,3})天', time_str).groups()
+    tem = re.search(r'(?:(\d)年又|)(\d{0,3})天', time_str).groups()
     tem_return = list()
     for i in tem:
         if i:
