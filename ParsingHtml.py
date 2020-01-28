@@ -126,7 +126,8 @@ class ParseDefault(ParseBase):
         page_context, fund_info = yield
         while True:
             manager_info = re.search('<span>累计任职时间：</span>(.*?)<br />', page_context)
-            fund_info.set_manager_info(fund_info.manager_need_process_list.pop()[1], manager_info.group(1))
+            if manager_info:
+                fund_info.set_manager_info(fund_info.manager_need_process_list.pop()[1], manager_info.group(1))
             if len(fund_info.manager_need_process_list) == 0:
                 fund_info.next_step = 'writing_file'
             page_context, fund_info = yield fund_info
