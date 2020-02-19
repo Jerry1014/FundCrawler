@@ -70,8 +70,8 @@ class ParseDefault(ParseBase):
             fund_info.fund_kind = fund_info.fund_kind.group(1) if fund_info.fund_kind is not None else "解析基金类型失败"
             fund_basic_info = fund_info.get_fund_basic_info()
             try:
-                fund_info.set_fund_info('基金规模',re.search(r'基金规模</a>：((?:\d+(?:\.\d{2}|)|--)亿元.*?)<',
-                                                         page_context).group(1))
+                fund_scale = re.search(r'基金规模</a>：((?:\d+(?:\.\d{2}|)|--)亿元.*?)<', page_context)
+                fund_info.set_fund_info('基金规模', fund_scale.group(1))
             except AttributeError:
                 print(f'在爬取股票（代码{fund_basic_info[0]} 名称{fund_basic_info[1]})时，获取基金规模失败了，请检查正则'
                       f'表达式或程序逻辑是否存在问题')

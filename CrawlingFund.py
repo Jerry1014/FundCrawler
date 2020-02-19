@@ -84,8 +84,8 @@ class FundInfo:
         获取基金的基本信息，代码名称
         :return: (基金名称，基金代码）
         """
-        name = self._fund_info.get('基金名称', default=None)
-        code = self._fund_info.get('基金代码', default=None)
+        name = self._fund_info.get('基金名称', '无')
+        code = self._fund_info.get('基金代码', '无')
         return name, code
 
     def __repr__(self):
