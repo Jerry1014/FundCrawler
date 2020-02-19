@@ -10,6 +10,13 @@ from time import time
 from FakeUA import fake_ua
 
 
+class ServerRejectException(Exception):
+    """
+    当网络连接正常，但是服务器拒绝等情况
+    """
+    pass
+
+
 class GetPage:
     """
     获取页面基类，从_task_queue中获取任务，输出结果到_result_queue中
@@ -18,13 +25,7 @@ class GetPage:
     def __init__(self):
         self._task_queue = None
         self._result_queue = None
-
-
-class RetryException(Exception):
-    """
-    用于提示重试
-    """
-    pass
+        self._false_queue = None
 
 
 class GetPageByWeb(GetPage, ABC):
@@ -49,11 +50,11 @@ class GetPageByWeb(GetPage, ABC):
             page.encoding = 'utf-8'
             text = page.text
             if page.status_code != 200 or not text:
-                raise RetryException()
+                raise ServerRejectException()
             state = 'success'
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
             state = 'error'
-        except RetryException:
+        except ServerRejectException:
             state = 'retry'
         finally:
             result = (state, text, *args)
