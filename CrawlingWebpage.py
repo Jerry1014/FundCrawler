@@ -5,7 +5,7 @@
 import threading
 from abc import ABC
 from multiprocessing import Process, Queue, Event
-from time import time
+from time import time, sleep
 
 from FakeUA import fake_ua
 
@@ -85,6 +85,7 @@ class GetPageByWebWithAnotherProcessAndMultiThreading(Process, GetPageByWeb):
                 elif time() - self._record_network_down_last_time > \
                         GetPageByWebWithAnotherProcessAndMultiThreading.SHOW_NETWORK_DOWN_LIMIT_TIME:
                     self._network_health.set()
+                    sleep(10)
         self._result_queue.put(result)
 
     def run(self) -> None:
