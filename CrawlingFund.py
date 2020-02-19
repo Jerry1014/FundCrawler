@@ -79,6 +79,15 @@ class FundInfo:
         """
         self._manager_info[key] = value
 
+    def get_fund_basic_info(self):
+        """
+        获取基金的基本信息，代码名称
+        :return: (基金名称，基金代码）
+        """
+        name = self._fund_info.get('基金名称', default=None)
+        code = self._fund_info.get('基金代码', default=None)
+        return name, code
+
     def __repr__(self):
         return self.get_info()
 
