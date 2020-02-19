@@ -20,6 +20,13 @@ class GetPage:
         self._result_queue = None
 
 
+class RetryException(Exception):
+    """
+    用于提示重试
+    """
+    pass
+
+
 class GetPageByWeb(GetPage, ABC):
     """
     从网页中获取页面基类
@@ -35,13 +42,22 @@ class GetPageByWeb(GetPage, ABC):
         """
         header = {"User-Agent": fake_ua.random}
         import requests
+        state = None
+        text = None
         try:
             page = requests.get(url, headers=header, timeout=timeout)
             page.encoding = 'utf-8'
-            result = ('success', page.text, *args)
+            text = page.text
+            if page.status_code != 200 or not text:
+                raise RetryException()
+            state = 'success'
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
-            result = ('error', url, *args)
-        return result
+            state = 'error'
+        except RetryException:
+            state = 'retry'
+        finally:
+            result = (state, text, *args)
+            return result
 
 
 class GetPageByWebWithAnotherProcessAndMultiThreading(Process, GetPageByWeb):
@@ -77,6 +93,10 @@ class GetPageByWebWithAnotherProcessAndMultiThreading(Process, GetPageByWeb):
             if self._network_health.is_set():
                 self._record_network_down_last_time = None
                 self._network_health.clear()
+            self._result_queue.put(result)
+        elif result[0] == 'retry':
+            self._max_threading_number = self._max_threading_number - 1 if self._max_threading_number > 1 else 1
+            self._task_queue.put((url, *args))
         else:
             self._max_threading_number = self._max_threading_number >> 1 if self._max_threading_number > 1 else 1
             if self._max_threading_number == 1 and not self._network_health.is_set():
@@ -85,7 +105,8 @@ class GetPageByWebWithAnotherProcessAndMultiThreading(Process, GetPageByWeb):
                 elif time() - self._record_network_down_last_time > \
                         GetPageByWebWithAnotherProcessAndMultiThreading.SHOW_NETWORK_DOWN_LIMIT_TIME:
                     self._network_health.set()
-        self._result_queue.put(result)
+            # 在此处，若有一直爬取失败的任务，则任务队列永远不能为空，即不能终止。未来加入爬取失败队列
+            self._task_queue.put((url, *args))
 
     def run(self) -> None:
         while True:

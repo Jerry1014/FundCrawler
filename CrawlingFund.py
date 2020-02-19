@@ -20,7 +20,7 @@ except ImportError:
 
 # 测试标记 连接timeout
 if_test = False
-TIMEOUT = 3
+TIMEOUT = 30
 
 
 class FundInfo:
@@ -148,6 +148,8 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
                 input_queue.put(a_result[1:])
             else:
                 if a_result[2].next_step == 'parsing_fund':
+                    if a_result[1] == None:
+                        print('stop')
                     new_fund_info: FundInfo = fund_web_page_parse.send(a_result[1:])
                     if new_fund_info.next_step == 'parsing_manager':
                         input_queue.put((new_fund_info.manager_need_process_list[-1][0], new_fund_info))
