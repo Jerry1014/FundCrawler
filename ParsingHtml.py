@@ -68,10 +68,16 @@ class ParseDefault(ParseBase):
             # 获取基金类型和规模
             fund_info.fund_kind = re.search(r'基金类型：(?:<a.*?>|)(.*?)[<&]', page_context)
             fund_info.fund_kind = fund_info.fund_kind.group(1) if fund_info.fund_kind is not None else "解析基金类型失败"
-            fund_info.set_fund_info('基金规模',
-                                    re.search(r'基金规模</a>：((?:\d+(?:\.\d{2}|)|--)亿元.*?)<', page_context).group(1))
+            fund_basic_info = fund_info.get_fund_basic_info()
+            try:
+                fund_info.set_fund_info('基金规模',re.search(r'基金规模</a>：((?:\d+(?:\.\d{2}|)|--)亿元.*?)<',
+                                                         page_context).group(1))
+            except AttributeError:
+                print(f'在爬取股票（代码{fund_basic_info[0]} 名称{fund_basic_info[1]})时，获取基金规模失败了，请检查正则'
+                      f'表达式或程序逻辑是否存在问题')
 
             # 按照基金类型分类并获取其收益数据
+            # todo 基金信息获取失败时的处理
             if fund_info.fund_kind in ParseDefault.fund_kind_belong_to_index:
                 achievement_re = re.search(
                     r'：.*?((?:-?\d+\.\d{2}%)|--).*?'.join(ParseDefault.parse_index_for_index_fund + ['基金类型']),
