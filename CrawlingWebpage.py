@@ -10,6 +10,13 @@ from time import time
 from FakeUA import fake_ua
 
 
+class ServerRejectException(Exception):
+    """
+    当网络连接正常，但是服务器拒绝等情况
+    """
+    pass
+
+
 class GetPage:
     """
     获取页面基类，从_task_queue中获取任务，输出结果到_result_queue中
@@ -18,13 +25,7 @@ class GetPage:
     def __init__(self):
         self._task_queue = None
         self._result_queue = None
-
-
-class RetryException(Exception):
-    """
-    用于提示重试
-    """
-    pass
+        self._false_queue = None
 
 
 class GetPageByWeb(GetPage, ABC):
@@ -49,12 +50,12 @@ class GetPageByWeb(GetPage, ABC):
             page.encoding = 'utf-8'
             text = page.text
             if page.status_code != 200 or not text:
-                raise RetryException()
+                raise ServerRejectException()
             state = 'success'
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
             state = 'error'
-        except RetryException:
-            state = 'retry'
+        except ServerRejectException:
+            state = 'servererror'
         finally:
             result = (state, text, *args)
             return result
@@ -67,16 +68,19 @@ class GetPageByWebWithAnotherProcessAndMultiThreading(Process, GetPageByWeb):
     进程会在所有的任务都完成后，将 exit_sign 设置为False，并在result_queue中的item取完后退出
     """
     # 描述在持续几秒连接失败之后向用户展示提示信息，单位 秒
-    SHOW_NETWORK_DOWN_LIMIT_TIME = 3
+    # todo 下次重构，建立中间过程类，而不是通过元组传递
+    SHOW_NETWORK_DOWN_LIMIT_TIME = 10
 
-    def __init__(self, task_queue: Queue, result_queue: Queue, exit_sign: Event, network_health: Event, timeout):
+    def __init__(self, task_queue: Queue, result_queue: Queue, false_queue: Queue, exit_sign: Event,
+                 network_health: Event, timeout):
         super().__init__()
         self._task_queue = task_queue
         self._result_queue = result_queue
+        self._false_queue = false_queue
         self._threading_pool = list()
         self._exit_when_task_queue_empty = exit_sign
         self._max_threading_number = 2
-        self._record_network_down_last_time = None
+        self._record_last_network_down_time = None
         self._network_health = network_health
         self._timeout = timeout
 
@@ -91,22 +95,28 @@ class GetPageByWebWithAnotherProcessAndMultiThreading(Process, GetPageByWeb):
         if result[0] == 'success':
             self._max_threading_number += 1
             if self._network_health.is_set():
-                self._record_network_down_last_time = None
+                self._record_last_network_down_time = None
                 self._network_health.clear()
             self._result_queue.put(result)
-        elif result[0] == 'retry':
-            self._max_threading_number = self._max_threading_number - 1 if self._max_threading_number > 1 else 1
+        elif result[0] == 'servererror':
+            # 服务器拒绝造成网络缓慢，不对用户提示
+            self._max_threading_number = self._max_threading_number >> 1 if self._max_threading_number > 1 else 1
             self._task_queue.put((url, *args))
+
+            if self._network_health.is_set():
+                self._record_last_network_down_time = None
+                self._network_health.clear()
         else:
             self._max_threading_number = self._max_threading_number >> 1 if self._max_threading_number > 1 else 1
-            if self._max_threading_number == 1 and not self._network_health.is_set():
-                if self._record_network_down_last_time is None:
-                    self._record_network_down_last_time = time()
-                elif time() - self._record_network_down_last_time > \
-                        GetPageByWebWithAnotherProcessAndMultiThreading.SHOW_NETWORK_DOWN_LIMIT_TIME:
-                    self._network_health.set()
             # 在此处，若有一直爬取失败的任务，则任务队列永远不能为空，即不能终止。未来加入爬取失败队列
             self._task_queue.put((url, *args))
+
+            if self._max_threading_number == 1 and not self._network_health.is_set():
+                if self._record_last_network_down_time is None:
+                    self._record_last_network_down_time = time()
+                elif time() - self._record_last_network_down_time > \
+                        GetPageByWebWithAnotherProcessAndMultiThreading.SHOW_NETWORK_DOWN_LIMIT_TIME:
+                    self._network_health.set()
 
     def run(self) -> None:
         while True:
