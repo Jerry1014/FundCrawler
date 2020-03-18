@@ -21,7 +21,7 @@ except ImportError:
 
 # 测试标记 连接timeout
 if_test = False
-TIMEOUT = 30
+TIMEOUT = 3
 
 
 def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
@@ -37,9 +37,10 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
     # 爬取输入、输出队列，输入结束事件，网络状态事件，爬取核心
     input_queue = Queue()
     result_queue = Queue()
+    false_queue = Queue()
     finish_sign = Event()
     network_health = Event()
-    crawling_core = GetPageByWebWithAnotherProcessAndMultiThreading(input_queue, result_queue, finish_sign,
+    crawling_core = GetPageByWebWithAnotherProcessAndMultiThreading(input_queue, result_queue, false_queue, finish_sign,
                                                                     network_health, TIMEOUT)
     crawling_core.start()
 
