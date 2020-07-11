@@ -5,9 +5,9 @@
 import threading
 from abc import ABC
 from multiprocessing import Process, Queue, Event
-from time import time, sleep
+from time import time
 
-from FakeUAGetter import my_fake_ua
+from FakeUA import fake_ua
 
 
 class GetPage:
@@ -33,7 +33,7 @@ class GetPageByWeb(GetPage, ABC):
         :param url:要爬取的url
         :return: 返回二元组 爬取结果，网页内容
         """
-        header = {"User-Agent": my_fake_ua.random}
+        header = {"User-Agent": fake_ua.random}
         import requests
         try:
             page = requests.get(url, headers=header, timeout=timeout)
@@ -85,7 +85,6 @@ class GetPageByWebWithAnotherProcessAndMultiThreading(Process, GetPageByWeb):
                 elif time() - self._record_network_down_last_time > \
                         GetPageByWebWithAnotherProcessAndMultiThreading.SHOW_NETWORK_DOWN_LIMIT_TIME:
                     self._network_health.set()
-                    sleep(10)
         self._result_queue.put(result)
 
     def run(self) -> None:
