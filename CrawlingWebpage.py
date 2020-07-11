@@ -7,7 +7,7 @@ from abc import ABC
 from multiprocessing import Process, Queue, Event
 from time import time, sleep
 
-from FakeUA import fake_ua
+from FakeUAGetter import my_fake_ua
 
 
 class GetPage:
@@ -33,7 +33,7 @@ class GetPageByWeb(GetPage, ABC):
         :param url:要爬取的url
         :return: 返回二元组 爬取结果，网页内容
         """
-        header = {"User-Agent": fake_ua.random}
+        header = {"User-Agent": my_fake_ua.random}
         import requests
         try:
             page = requests.get(url, headers=header, timeout=timeout)

@@ -1,15 +1,17 @@
 # -*- coding:utf-8 -*-
 """
-使用方法
-from FakeUA import fake_ua
-fake_ua.random # return a random ua
+获取虚假ua的模块
 """
-
 import random
+from socket import timeout
 
-from fake_useragent import UserAgent, FakeUserAgentError, VERSION
-
-IF_UPDATE_FAKE_UA = False
+try:
+    from fake_useragent import UserAgent, FakeUserAgentError
+    offline = False
+except ImportError:
+    print('没有安装fake_useragent模块，offline将设置为True')
+    offline = True
+    FakeUserAgentError = Exception
 
 
 class FakeUA:
@@ -17,20 +19,16 @@ class FakeUA:
     用于提供ua，单例模式，fake_ua能用则用，否则用自带的ua集，通过FakeUA.random获取随机ua
     """
 
-    def __new__(cls, *args, **kwargs):
-        if not hasattr(cls, 'instance'):
-            cls.instance = super(FakeUA, cls).__new__(cls)
-        return cls.instance
-
-    def __init__(self, if_update_fake_ua=False):
+    def __init__(self, user_offline=True):
+        user_offline = offline or user_offline
         self.fake_ua = None
         try:
-            if if_update_fake_ua:
-                self.fake_ua = UserAgent(path='fake_useragent%s.json' % VERSION)
-                self.fake_ua.update()
-            else:
-                raise FakeUserAgentError()
-        except FakeUserAgentError:
+            if user_offline:
+                print('offline设置为True，将不更新ua库')
+                raise timeout()
+            self.fake_ua = UserAgent()
+        except (FakeUserAgentError, timeout):
+            print('fake_useragent库更新失败，正在使用本地ua库')
             self.some = [
                 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36 OPR/26.0.1656.60',
                 'Opera/8.0 (Windows NT 5.1; U; en)',
@@ -66,6 +64,4 @@ class FakeUA:
             raise AttributeError(r"Object does'n has attribute '%s'" % item)
 
 
-print('正在初始化随机UA模块，若此步消耗了大量时间，请将FakeUA.py中的IF_UPDATE_FAKE_UA修改为False(默认值)')
-fake_ua = FakeUA(IF_UPDATE_FAKE_UA)
-print('随机UA模块初始化完成')
+my_fake_ua = FakeUA()
