@@ -7,7 +7,7 @@ from abc import ABC
 from multiprocessing import Process, Queue, Event
 from time import time
 
-from FakeUA import fake_ua
+from FakeUAGetter import my_fake_ua
 
 
 class GetPage:
@@ -33,7 +33,7 @@ class GetPageByWeb(GetPage, ABC):
         :param url:要爬取的url
         :return: 返回二元组 爬取结果，网页内容
         """
-        header = {"User-Agent": fake_ua.random}
+        header = {"User-Agent": my_fake_ua.random}
         import requests
         try:
             page = requests.get(url, headers=header, timeout=timeout)
@@ -53,7 +53,7 @@ class GetPageByWebWithAnotherProcessAndMultiThreading(Process, GetPageByWeb):
     # 描述在持续几秒连接失败之后向用户展示提示信息，单位 秒
     SHOW_NETWORK_DOWN_LIMIT_TIME = 3
 
-    def __init__(self, task_queue: Queue, result_queue: Queue, exit_sign: Event, network_health: Event, timeout):
+    def __init__(self, task_queue: Queue, result_queue: Queue, exit_sign: Event, network_health: Event):
         super().__init__()
         self._task_queue = task_queue
         self._result_queue = result_queue
@@ -62,7 +62,7 @@ class GetPageByWebWithAnotherProcessAndMultiThreading(Process, GetPageByWeb):
         self._max_threading_number = 2
         self._record_network_down_last_time = None
         self._network_health = network_health
-        self._timeout = timeout
+        self._timeout = 3
 
     def add_task(self, task):
         self._task_queue.put(task)
