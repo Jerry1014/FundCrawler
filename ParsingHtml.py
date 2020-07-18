@@ -32,7 +32,7 @@ class ParseDefault(ParseBase):
     # 基金类型的分类
     result_dir = './results/'
     fund_kind_belong_to_index = ['股票型', '混合型', '债券型', '定开债券', '股票指数', '联接基金', 'QDII-指数', 'QDII',
-                                 '混合-FOF', '货币型', '理财型', '分级杠杆', 'ETF-场内', '债券指数']
+                                 '混合-FOF', '货币型', '理财型', '分级杠杆', 'ETF-场内', '债券指数', '股票-FOF']
     fund_kind_belong_to_guaranteed = ['保本型']
     fund_kind_belong_to_closed_period = ['固定收益']
     # 不同类型基金的解析顺序定义
@@ -73,8 +73,7 @@ class ParseDefault(ParseBase):
                 fund_scale = re.search(r'基金规模</a>：((?:\d+(?:\.\d{2}|)|--)亿元.*?)<', page_context)
                 fund_info.set_fund_info('基金规模', fund_scale.group(1))
             except AttributeError:
-                print(f'在爬取股票（代码{fund_basic_info[0]} 名称{fund_basic_info[1]})时，获取基金规模失败了，请检查正则'
-                      f'表达式或程序逻辑是否存在问题')
+                print(f'股票（名称：{fund_basic_info[0]} 代码：{fund_basic_info[1]})时，获取基金规模失败')
 
             # 按照基金类型分类并获取其收益数据
             # todo 基金信息获取失败时的处理

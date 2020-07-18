@@ -80,6 +80,10 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
                 if a_result[2].next_step == 'parsing_fund':
                     if a_result[1] == None:
                         print('stop')
+                    # # fixme 临时措施，重新爬取返回空网页的基金
+                    # if a_result[1] == '':
+                    #     tem_fund_info = a_result[3]
+                    #     input_queue.put(('http://fund.eastmoney.com/' + tem_fund_info._fund_info('code') + '.html', tem_fund_info))
                     new_fund_info: FundInfo = fund_web_page_parse.send(a_result[1:])
                     if new_fund_info.next_step == 'parsing_manager':
                         input_queue.put((new_fund_info.manager_need_process_list[-1][0], new_fund_info))
