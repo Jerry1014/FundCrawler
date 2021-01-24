@@ -2,14 +2,16 @@
 """
 爬取基金信息的主文件
 """
+import os
 import time
+import traceback
 from multiprocessing import Queue, Event
 
 from requests.exceptions import RequestException
 
 from CrawlingWebpage import GetPageByWebWithAnotherProcessAndMultiThreading
 from ParsingHtml import ParseDefault
-from ProvideTheListOfFund import GetFundList, GetFundListByWeb, GetFundListTest
+from ProvideTheListOfFund import GetFundList, GetFundListFromWeb, GetFundListTest
 from DataStructure import FundInfo
 
 # 尝试引入进度条所需库文件
@@ -18,9 +20,6 @@ try:
 except ImportError:
     print('未安装进度条依赖库，将以极简形式显示当前进度')
     LineProgress = None
-
-# 测试标记 连接timeout
-if_test = False
 
 
 def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
@@ -42,7 +41,7 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
     crawling_core.start()
 
     fund_list = fund_list_class.get_fund_list()
-    num_of_fund = fund_list_class.sum_of_fund
+    num_of_fund = fund_list_class._sum_of_fund
     having_fund_need_to_crawl = True
 
     parse_html_core = ParseDefault()
@@ -117,13 +116,28 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
 
 
 if __name__ == '__main__':
+    # 获取用于区分测试环境和正式环境的 标记
+    if_test_env = os.environ["ifTest"]
+
+    # 记录开始时间
     start_time = time.time()
+
+    # 干活
     try:
-        # 在这里更换提供基金列表的类，以实现从文件或者其他方式来指定要爬取的基金
-        if if_test:
-            crawling_fund(GetFundListTest())
+        # 需要爬取的基金列表
+        if if_test_env:
+            # 仅供测试
+            fund_list = GetFundListTest()
         else:
-            crawling_fund(GetFundListByWeb())
-    except RequestException:
-        print('网络错误')
+            # 获取当前网络上的基金列表
+            fund_list = GetFundListFromWeb()
+
+        # 在这里更换提供基金列表的类，以实现从文件或者其他方式来指定要爬取的基金
+        crawling_fund(fund_list)
+    except Exception:
+        if not if_test_env:
+            print('不知道为了什么，程序死掉了。')
+        traceback.print_exc()
+
+    # 输出总时间
     print(f'\n爬取总用时{time.time() - start_time} s')

@@ -6,23 +6,17 @@ import time
 import unittest
 
 
-class MyTestCaseForFakeUA(unittest.TestCase):
-    def test(self):
-        from FakeUA import fake_ua
-        for i in range(10):
-            print(fake_ua.random)
-
-
 class MyTestCaseForGetFundList(unittest.TestCase):
     def test(self):
-        from ProvideTheListOfFund import GetFundListByWebForTest
-        tem = GetFundListByWebForTest()
+        from ProvideTheListOfFund import GetFundListFromWebForTest
+        tem = GetFundListFromWebForTest()
         my_iter = tem.get_fund_list()
         try:
             while True:
-                print(next(my_iter))
+                a_fund = next(my_iter)
+                print(a_fund)
         except StopIteration:
-            print(f'end of iter {tem.sum_of_fund}')
+            pass
 
 
 class MyTestCaseForCrawlingWebpage(unittest.TestCase):
@@ -39,7 +33,7 @@ class MyTestCaseForCrawlingWebpage(unittest.TestCase):
         input_queue.put(('http://baidu.com', ('just', 'for', 'test')))
         input_queue.put(('http://www.10jqka.com.cn/', ('just', 'for', 'test')))
         exit_after_finish.set()
-        while exit_after_finish.is_set():time.sleep(1)
+        while exit_after_finish.is_set(): time.sleep(1)
 
         while not output_queue.empty():
             print(output_queue.get())
@@ -57,4 +51,3 @@ class MyTestCaseForCrawling(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
