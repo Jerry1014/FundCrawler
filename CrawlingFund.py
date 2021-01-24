@@ -9,9 +9,9 @@ from multiprocessing import Queue, Event
 
 from requests.exceptions import RequestException
 
-from CrawlingWebpage import GetPageByWebWithAnotherProcessAndMultiThreading
-from ParsingHtml import ParseDefault
-from ProvideTheListOfFund import GetFundList, GetFundListFromWeb, GetFundListTest
+from CrawlingCore import GetPageByWebWithAnotherProcessAndMultiThreading
+from Parser import ParseDefault
+from FundListProvider import GetFundList, GetFundListFromWeb, GetFundListTest
 from DataStructure import FundInfo
 
 # 尝试引入进度条所需库文件

@@ -8,7 +8,7 @@ import unittest
 
 class MyTestCaseForGetFundList(unittest.TestCase):
     def test(self):
-        from ProvideTheListOfFund import GetFundListFromWebForTest
+        from FundListProvider import GetFundListFromWebForTest
         tem = GetFundListFromWebForTest()
         my_iter = tem.get_fund_list()
         try:
@@ -22,7 +22,7 @@ class MyTestCaseForGetFundList(unittest.TestCase):
 class MyTestCaseForCrawlingWebpage(unittest.TestCase):
     def test_for_get_page_context(self):
         from multiprocessing import Queue, Event
-        from CrawlingWebpage import GetPageByWebWithAnotherProcessAndMultiThreading
+        from CrawlingCore import GetPageByWebWithAnotherProcessAndMultiThreading
 
         input_queue = Queue()
         output_queue = Queue()
