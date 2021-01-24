@@ -117,7 +117,10 @@ def crawling_fund(fund_list_class: GetFundList, first_crawling=True):
 
 if __name__ == '__main__':
     # 获取用于区分测试环境和正式环境的 标记
-    if_test_env = os.environ["ifTest"]
+    try:
+        if_test_env = os.environ["ifTest"]
+    except KeyError:
+        if_test_env = False
 
     # 记录开始时间
     start_time = time.time()
