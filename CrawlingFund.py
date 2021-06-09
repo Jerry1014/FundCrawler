@@ -5,7 +5,12 @@
 import os
 import time
 import traceback
-from multiprocessing import Queue, Event
+import sys
+from multiprocessing import Event
+if 'darwin' in sys.platform:
+    from methods import Queue
+else:
+    from multiprocessing import Queue
 
 from requests.exceptions import RequestException
 
