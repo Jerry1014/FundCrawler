@@ -38,7 +38,12 @@ class GetPageByWeb(GetPage, ABC):
         try:
             page = requests.get(url, headers=header, timeout=timeout)
             page.encoding = 'utf-8'
-            result = ('success', page.text, *args)
+            # fixme 临时措施 返回内容为空视为错误
+            # 反爬虫策略之 给你返回空白的 200结果
+            if page.text:
+                result = ('success', page.text, *args)
+            else:
+                result = ('error', url, *args)
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
             result = ('error', url, *args)
         return result

@@ -31,8 +31,8 @@ class ParseDefault(ParseBase):
     """
     # 基金类型的分类
     result_dir = './results/'
-    fund_kind_belong_to_index = ['股票型', '混合型', '债券型', '定开债券', '股票指数', '联接基金', 'QDII-指数', 'QDII',
-                                 '混合-FOF', '货币型', '理财型', '分级杠杆', 'ETF-场内', '债券指数', '股票-FOF']
+    #fund_kind_belong_to_index = ['股票型', '混合型-偏股', '混合型-灵活', '混合型-平衡', '混合型-偏债', '指数型-股票','债券型-长债','债券型-混合债', '债券型-可转债', '债券型-中短债', 'QDII', '商品（不含QDII）', '混合-绝对收益', 'FOF']
+    fund_kind_belong_to_index = []
     fund_kind_belong_to_guaranteed = ['保本型']
     fund_kind_belong_to_closed_period = ['固定收益']
     # 不同类型基金的解析顺序定义
@@ -77,19 +77,17 @@ class ParseDefault(ParseBase):
 
             # 按照基金类型分类并获取其收益数据
             # todo 基金信息获取失败时的处理
-            if fund_info.fund_kind in ParseDefault.fund_kind_belong_to_index:
-                achievement_re = re.search(
-                    r'：.*?((?:-?\d+\.\d{2}%)|--).*?'.join(ParseDefault.parse_index_for_index_fund + ['基金类型']),
-                    page_context)
-            elif fund_info.fund_kind in ParseDefault.fund_kind_belong_to_guaranteed:
+            if fund_info.fund_kind in ParseDefault.fund_kind_belong_to_guaranteed:
                 achievement_re = re.search(
                     r'(?:：|).*?((?:-?\d+\.\d{2}%)|--).*?'.join(ParseDefault.parse_index_for_guaranteed_fund + ['基金类型']),
                     page_context)
             elif fund_info.fund_kind in ParseDefault.fund_kind_belong_to_closed_period:
                 achievement_re = re.search(r'最近约定年化收益率(?:<.*?>)(-?\d+\.\d{2}%)<', page_context)
             else:
-                print(f'出现无解析方法的基金种类 {fund_info}')
-                achievement_re = None
+                ParseDefault.fund_kind_belong_to_index.append(fund_info.fund_kind)
+                achievement_re = re.search(
+                    r'：.*?((?:-?\d+\.\d{2}%)|--).*?'.join(ParseDefault.parse_index_for_index_fund + ['基金类型']),
+                    page_context)
 
             if achievement_re is not None:
                 # 清洗基金收益率

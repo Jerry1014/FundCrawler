@@ -1,15 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/results/QDII-指数.csv" charset="GBK" />
     <file url="file://$PROJECT_DIR$/results/QDII.csv" charset="GBK" />
     <file url="file://$PROJECT_DIR$/results/保本型.csv" charset="GBK" />
     <file url="file://$PROJECT_DIR$/results/债券型.csv" charset="GBK" />
     <file url="file://$PROJECT_DIR$/results/债券指数.csv" charset="GBK" />
     <file url="file://$PROJECT_DIR$/results/固定收益.csv" charset="GBK" />
     <file url="file://$PROJECT_DIR$/results/定开债券.csv" charset="GBK" />
+    <file url="file://$PROJECT_DIR$/results/混合-FOF.csv" charset="GBK" />
     <file url="file://$PROJECT_DIR$/results/混合型.csv" charset="GBK" />
     <file url="file://$PROJECT_DIR$/results/联接基金.csv" charset="GBK" />
+    <file url="file://$PROJECT_DIR$/results/股票-FOF.csv" charset="GBK" />
     <file url="file://$PROJECT_DIR$/results/股票型.csv" charset="GBK" />
     <file url="file://$PROJECT_DIR$/results/股票指数.csv" charset="GBK" />
+    <file url="file://$PROJECT_DIR$/results/解析基金类型失败.csv" charset="GBK" />
   </component>
 </project>
