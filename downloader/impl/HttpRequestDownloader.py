@@ -3,10 +3,12 @@
 新起一个进程 以避免和主进程间的竞争，通过队列进行通信
 进程内通过线程池消费需要爬取的任务
 """
+import time
 from concurrent.futures import ThreadPoolExecutor, Future
 from enum import Enum
 from multiprocessing import Process, Queue, cpu_count
 from queue import Empty
+from typing import Optional
 
 from fake_useragent import UserAgent
 from requests import Response as RequestsResponse, RequestException, get
@@ -29,7 +31,7 @@ class State(Enum):
 
 
 class Response(BaseResponse):
-    def __init__(self, request: Request, result: RequestsResponse | None, state: State):
+    def __init__(self, request: Request, result: Optional[RequestsResponse], state: State):
         super().__init__(request, result)
         self.state = state
 
@@ -45,7 +47,7 @@ class HttpRequestDownloader(HttpDownloader):
     def summit(self, request: Request):
         self._request_queue.put(request)
 
-    def get_result(self) -> Response | None:
+    def get_result(self) -> Optional[Response]:
         try:
             return self._result_queue.get_nowait()
         except Empty:
@@ -89,6 +91,7 @@ class HttpRequestDownloader(HttpDownloader):
 
                     result: Response = future.result()
                     if result.state == State.FALSE and result.request.retry_time > 0:
+                        # 失败重试
                         result.request.retry_time -= 1
                         self._request_queue.put(result.request)
                         continue
@@ -96,3 +99,6 @@ class HttpRequestDownloader(HttpDownloader):
                     self._result_queue.put(result)
 
                 self._future_list = new_future_list
+
+                # 做成动态睡眠，空闲时多睡会
+                time.sleep(1000)
