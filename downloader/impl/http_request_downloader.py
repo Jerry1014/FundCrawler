@@ -64,6 +64,8 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
     def shutdown(self):
         self._request_queue.close()
         self._exit_sign.set()
+        # 这里不要join子进程
+        # 在子进程的队列没有被消费完时，子进程不会退出，join阻塞住了队列的消费，导致死锁
 
     class GetPageByMultiThreading(Process):
         def __init__(self, request_queue: Queue, result_queue: Queue, exit_sign: synchronize.Event):
@@ -124,4 +126,6 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                 sleep(1 * len(future_list) / thread_max_workers * 2)
 
             # 确保数据都写入后，再退出主线程
+            # OS pipes are not infinitely long, so the process which queues data could be blocked in the OS during the
+            # put() operation until some other process uses get() to retrieve data from the queue
             self._result_queue.join_thread()
