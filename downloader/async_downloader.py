@@ -13,9 +13,9 @@ R = TypeVar('R', bound=BaseRequest)
 
 
 class BaseResponse:
-    def __init__(self, request: R, result):
+    def __init__(self, request: R, response):
         self.request = request
-        self.result = result
+        self.response = response
 
 
 class AsyncHttpDownloader:
@@ -33,7 +33,7 @@ class AsyncHttpDownloader:
         """
         return NotImplemented
 
-    def not_next_result(self) -> bool:
+    def has_next_result(self) -> bool:
         """
         http爬取结果已经全部获取完
         :return: true，没有更多结果

@@ -3,20 +3,18 @@
 新起一个进程 以避免和主进程间的竞争，通过队列进行通信
 进程内通过线程池消费需要爬取的任务
 """
-import multiprocessing
-import time
-from concurrent.futures import ThreadPoolExecutor, Future
-from enum import Enum
-from multiprocessing import Process, Queue
-from multiprocessing.synchronize import Event
+from concurrent.futures import Future, ThreadPoolExecutor
+from enum import Enum, auto, unique
+from multiprocessing import Queue, Process, Event, synchronize
 from os import cpu_count
 from queue import Empty
+from time import sleep
 from typing import Optional, NoReturn
 
-from fake_useragent import UserAgent
 from requests import Response as RequestsResponse, RequestException, get
 
-from downloader.Downloader import AsyncHttpDownloader, BaseRequest, BaseResponse
+from FakeUAGetter import singleton_fake_ua
+from downloader.async_downloader import AsyncHttpDownloader, BaseRequest, BaseResponse
 
 
 class Request(BaseRequest):
@@ -28,14 +26,15 @@ class Request(BaseRequest):
         self.retry_time = retry_time
 
 
+@unique
 class State(Enum):
-    SUCCESS = 1
-    FALSE = 2
+    SUCCESS = auto()
+    FALSE = auto()
 
 
 class Response(BaseResponse):
-    def __init__(self, request: Request, result: Optional[RequestsResponse], state: State):
-        super().__init__(request, result)
+    def __init__(self, request: Request, response: Optional[RequestsResponse], state: State):
+        super().__init__(request, response)
         self.state = state
 
 
@@ -43,7 +42,7 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
     def __init__(self):
         self._request_queue: Queue[Request] = Queue()
         self._result_queue: Queue[Response] = Queue()
-        self._exit_sign: Event = multiprocessing.Event()
+        self._exit_sign: synchronize.Event = Event()
 
         self._child_process = AsyncHttpRequestDownloader.GetPageByMultiThreading(self._request_queue,
                                                                                  self._result_queue,
@@ -53,8 +52,8 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
     def summit(self, request: Request):
         self._request_queue.put(request)
 
-    def not_next_result(self) -> bool:
-        return self._result_queue.empty()
+    def has_next_result(self) -> bool:
+        return self._child_process.is_alive()
 
     def get_result(self) -> Optional[Response]:
         try:
@@ -65,40 +64,47 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
     def shutdown(self):
         self._request_queue.close()
         self._exit_sign.set()
-        self._child_process.join()
+        # 等待子进程将剩余工作完成
+        # 此处不可以join子进程，只有队列全部被消费完毕后，子进程才会退出，否则死锁
+        while self._exit_sign.is_set():
+            sleep(1)
 
     class GetPageByMultiThreading(Process):
-        def __init__(self, request_queue: Queue[Request], result_queue: Queue[Response], exit_sign: Event):
+        def __init__(self, request_queue: Queue, result_queue: Queue, exit_sign: synchronize.Event):
             super().__init__()
-            self._fake_ua = UserAgent()
             self._request_queue = request_queue
             self._result_queue = result_queue
-            self._thread_max_workers = cpu_count() * 5
-            self._executor = ThreadPoolExecutor(max_workers=self._thread_max_workers)
-            self._future_list: list[Future] = list()
             self._exit_sign = exit_sign
 
         def get_page(self, request: Request) -> Response:
-            header = {"User-Agent": self._fake_ua.random}
+            header = {"User-Agent": singleton_fake_ua.get_random_ua()}
             try:
                 page = get(request.url, headers=header, timeout=1)
                 if not page.text:
                     # 反爬虫策略之 给你返回空白的 200结果
                     raise AttributeError
                 return Response(request, page, State.SUCCESS)
-            except (RequestException, AttributeError):
+            except (RequestException, AttributeError) as e:
                 return Response(request, None, State.FALSE)
 
         def run(self) -> NoReturn:
+            thread_max_workers = cpu_count() * 5
+            executor = ThreadPoolExecutor(max_workers=thread_max_workers)
+            future_list: list[Future] = list()
+
             while True:
+                # todo 可以做一定的监控 成功率之类的
+
                 # 结束
-                if self._exit_sign.is_set() and self._request_queue.empty() and not self._future_list:
-                    self._executor.shutdown()
+                if self._exit_sign.is_set() and self._request_queue.empty() and not future_list:
+                    executor.shutdown()
+                    self._result_queue.close()
+                    self._exit_sign.clear()
                     break
 
                 # 处理结果
                 new_future_list: list[Future] = list()
-                for future in self._future_list:
+                for future in future_list:
                     if not future.done():
                         new_future_list.append(future)
                         continue
@@ -110,14 +116,17 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                         self._request_queue.put(result.request)
                         continue
                     self._result_queue.put(result)
-                self._future_list = new_future_list
+                future_list = new_future_list
 
                 # 处理请求
-                request_once_handle_max_num = self._thread_max_workers * 2 - len(self._future_list)
+                request_once_handle_max_num = thread_max_workers * 2 - len(future_list)
                 while not self._request_queue.empty() and request_once_handle_max_num > 0:
                     request = self._request_queue.get()
-                    self._future_list.append(self._executor.submit(self.get_page, request))
+                    future_list.append(executor.submit(self.get_page, request))
                     request_once_handle_max_num -= 1
 
                 # 根据当前未完成的任务数量，休眠主线程，避免循环占用过多的cpu时间
-                time.sleep(1000 * len(self._future_list) / self._thread_max_workers * 2)
+                sleep(1 * len(future_list) / thread_max_workers * 2)
+
+            # 确保数据都写入后，再退出主线程
+            self._result_queue.join_thread()
