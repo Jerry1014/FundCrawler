@@ -36,7 +36,8 @@ class AsyncHttpDownloader:
     def has_next_result(self) -> bool:
         """
         http爬取结果已经全部获取完
-        :return: true，没有更多结果
+        在 shutdown后，当返回false时，可以认为所有的结果均已得到处理
+        :return: false，当前结果已经处理完
         """
         return NotImplemented
 

@@ -64,10 +64,6 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
     def shutdown(self):
         self._request_queue.close()
         self._exit_sign.set()
-        # 等待子进程将剩余工作完成
-        # 此处不可以join子进程，只有队列全部被消费完毕后，子进程才会退出，否则死锁
-        while self._exit_sign.is_set():
-            sleep(1)
 
     class GetPageByMultiThreading(Process):
         def __init__(self, request_queue: Queue, result_queue: Queue, exit_sign: synchronize.Event):
@@ -76,7 +72,8 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
             self._result_queue = result_queue
             self._exit_sign = exit_sign
 
-        def get_page(self, request: Request) -> Response:
+        @staticmethod
+        def get_page(request: Request) -> Response:
             header = {"User-Agent": singleton_fake_ua.get_random_ua()}
             try:
                 page = get(request.url, headers=header, timeout=1)
@@ -84,7 +81,7 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                     # 反爬虫策略之 给你返回空白的 200结果
                     raise AttributeError
                 return Response(request, page, State.SUCCESS)
-            except (RequestException, AttributeError) as e:
+            except (RequestException, AttributeError):
                 return Response(request, None, State.FALSE)
 
         def run(self) -> NoReturn:
@@ -93,16 +90,14 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
             future_list: list[Future] = list()
 
             while True:
-                # todo 可以做一定的监控 成功率之类的
-
-                # 结束
+                # 爬取结束
                 if self._exit_sign.is_set() and self._request_queue.empty() and not future_list:
                     executor.shutdown()
                     self._result_queue.close()
                     self._exit_sign.clear()
                     break
 
-                # 处理结果
+                # 处理爬取结果
                 new_future_list: list[Future] = list()
                 for future in future_list:
                     if not future.done():
@@ -118,7 +113,7 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                     self._result_queue.put(result)
                 future_list = new_future_list
 
-                # 处理请求
+                # 处理爬取请求
                 request_once_handle_max_num = thread_max_workers * 2 - len(future_list)
                 while not self._request_queue.empty() and request_once_handle_max_num > 0:
                     request = self._request_queue.get()
