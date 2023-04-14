@@ -40,7 +40,7 @@ class Response(BaseResponse):
 
 class AsyncHttpRequestDownloader(AsyncHttpDownloader):
     def __init__(self):
-        self._request_queue: Queue[Request] = Queue()
+        self._request_queue: Queue[Request] = Queue(cpu_count() * 5)
         self._result_queue: Queue[Response] = Queue()
         self._exit_sign: synchronize.Event = Event()
 
@@ -50,7 +50,7 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
         self._child_process.start()
 
     def summit(self, request: Request):
-        self._request_queue.put(request)
+        self._request_queue.put_nowait(request)
 
     def has_next_result(self) -> bool:
         return self._child_process.is_alive()
