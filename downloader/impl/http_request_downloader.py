@@ -50,7 +50,7 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
         self._child_process.start()
 
     def summit(self, request: Request):
-        self._request_queue.put_nowait(request)
+        self._request_queue.put(request)
 
     def has_next_result(self) -> bool:
         return self._child_process.is_alive()
