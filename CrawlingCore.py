@@ -7,7 +7,7 @@ from abc import ABC
 from multiprocessing import Process, Queue, Event
 from time import time
 
-from FakeUAGetter import singleton_fake_ua
+from utils.fake_ua_getter import singleton_fake_ua
 
 
 class GetPage:

@@ -13,7 +13,7 @@ from typing import Optional, NoReturn
 
 from requests import Response as RequestsResponse, RequestException, get
 
-from FakeUAGetter import singleton_fake_ua
+from utils.fake_ua_getter import singleton_fake_ua
 from downloader.async_downloader import AsyncHttpDownloader, BaseRequest, BaseResponse
 
 
