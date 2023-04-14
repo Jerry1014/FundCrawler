@@ -19,7 +19,7 @@
 - 爬取全部数据需要505s，瓶颈为网站的反爬策略
 
 - 结果展示
-  ![Image text](./image/result-2.png)
+  ![Image text](docs/image/result-2.png)
   2021-01-24 共有10203个基金
 
 ## 食用方法
