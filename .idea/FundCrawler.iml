@@ -8,9 +8,4 @@
     <orderEntry type="jdk" jdkName="Python 3.11 (FundCrawler)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
-  <component name="PackageRequirementsSettings">
-    <option name="versionSpecifier" value="Greater or equal (&gt;=x.y.z)" />
-    <option name="removeUnused" value="true" />
-    <option name="keepMatchingSpecifier" value="false" />
-  </component>
 </module>
