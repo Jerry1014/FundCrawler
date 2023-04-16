@@ -13,8 +13,8 @@ from typing import Optional, NoReturn
 
 from requests import Response as RequestsResponse, RequestException, get
 
-from utils.fake_ua_getter import singleton_fake_ua
 from downloader.async_downloader import AsyncHttpDownloader, BaseRequest, BaseResponse
+from utils.fake_ua_getter import singleton_fake_ua
 
 
 class Request(BaseRequest):
@@ -26,13 +26,12 @@ class Request(BaseRequest):
         self.retry_time = retry_time
 
 
-@unique
-class State(Enum):
-    SUCCESS = auto()
-    FALSE = auto()
-
-
 class Response(BaseResponse):
+    @unique
+    class State(Enum):
+        SUCCESS = auto()
+        FALSE = auto()
+
     def __init__(self, request: Request, response: Optional[RequestsResponse], state: State):
         super().__init__(request, response)
         self.state = state
@@ -82,9 +81,9 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                 if not page.text:
                     # 反爬虫策略之 给你返回空白的 200结果
                     raise AttributeError
-                return Response(request, page, State.SUCCESS)
+                return Response(request, page, Response.State.SUCCESS)
             except (RequestException, AttributeError):
-                return Response(request, None, State.FALSE)
+                return Response(request, None, Response.State.FALSE)
 
         def run(self) -> NoReturn:
             thread_max_workers = cpu_count() * 5
@@ -107,7 +106,7 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                         continue
 
                     result: Response = future.result()
-                    if result.state == State.FALSE and result.request.retry_time > 0:
+                    if result.state == Response.State.FALSE and result.request.retry_time > 0:
                         # 失败重试
                         result.request.retry_time -= 1
                         self._request_queue.put(result.request)
