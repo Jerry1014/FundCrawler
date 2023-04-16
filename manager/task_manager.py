@@ -2,13 +2,14 @@
 爬取核心
 对爬取过程的管理
 """
+from abc import abstractmethod, ABC
 from asyncio import TaskGroup
 from collections.abc import Generator
 from enum import Enum, unique, auto
 from typing import NoReturn
 
 
-class NeedCrawledFundModule:
+class NeedCrawledFundModule(ABC):
     """
     基金爬取任务模块
     通过生成器逐个给出 需要爬取的基金
@@ -23,9 +24,15 @@ class NeedCrawledFundModule:
             self.code = code
             self.name = name
 
-    def __init__(self, total: int, generator: Generator[NeedCrawledOnceFund]):
-        self.total = total
-        self.task_generator = generator
+    def __init__(self):
+        self.total = None
+        self.task_generator: Generator[NeedCrawledFundModule.NeedCrawledOnceFund] = None
+
+        self.init()
+
+    @abstractmethod
+    def init(self):
+        return NotImplemented
 
 
 class FundCrawlingResult:
@@ -42,27 +49,31 @@ class FundCrawlingResult:
         self._fund_info_dict = fund_info_dict
 
 
-class CrawlingDataModule:
+class CrawlingDataModule(ABC):
     """
     数据爬取模块
     包括数据的下载和清洗
     """
 
+    @abstractmethod
     def do_crawling(self, task: NeedCrawledFundModule.NeedCrawledOnceFund):
         return NotImplemented
 
+    @abstractmethod
     def is_end(self):
         return NotImplemented
 
+    @abstractmethod
     def get_an_result(self) -> FundCrawlingResult:
         return NotImplemented
 
 
-class SaveResultModule:
+class SaveResultModule(ABC):
     """
     基金数据的保存模块
     """
 
+    @abstractmethod
     def save_result(self, result: FundCrawlingResult) -> NoReturn:
         """
         爬取结果的保存
