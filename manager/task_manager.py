@@ -60,7 +60,7 @@ class CrawlingDataModule(ABC):
         return NotImplemented
 
     @abstractmethod
-    def is_end(self):
+    def is_end(self) -> bool:
         return NotImplemented
 
     @abstractmethod
@@ -102,14 +102,14 @@ class TaskManager:
                 task: NeedCrawledFundModule.NeedCrawledOnceFund = next(generator)
             except StopIteration:
                 break
-            self._crawling_data_module.do_crawling(task)
+            await self._crawling_data_module.do_crawling(task)
 
     async def get_result_and_save(self):
         while not self._crawling_data_module.is_end():
             result: FundCrawlingResult = self._crawling_data_module.get_an_result()
             self._save_result_module.save_result(result)
 
-    def run(self) -> NoReturn:
+    async def run(self) -> NoReturn:
         """
         爬取主流程
         从 基金爬取任务模块 将任务传递给 数据爬取和清洗模块
