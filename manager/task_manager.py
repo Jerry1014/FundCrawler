@@ -1,18 +1,18 @@
 """
 爬取核心
-爬取过程的管理
+对爬取过程的管理
 """
-from typing import Generator, NoReturn
+from asyncio import TaskGroup
+from collections.abc import Generator
+from enum import Enum, unique, auto
+from typing import NoReturn
 
 
-class NeedCrawledFund:
+class NeedCrawledFundModule:
     """
+    基金爬取任务模块
     通过生成器逐个给出 需要爬取的基金
     """
-
-    def __init__(self, total: int, generator: Generator):
-        self.total = total
-        self.generator = generator
 
     class NeedCrawledOnceFund:
         """
@@ -23,27 +23,46 @@ class NeedCrawledFund:
             self.code = code
             self.name = name
 
-
-class Pair:
-    def __init__(self, key, value):
-        self._key = key
-        self._value = value
+    def __init__(self, total: int, generator: Generator[NeedCrawledOnceFund]):
+        self.total = total
+        self.task_generator = generator
 
 
 class FundCrawlingResult:
     """
-    基金的最终爬取结果
+    基金的最终爬取结果定义
     """
 
-    def __init__(self, fund_info_list: list[Pair]):
-        self._fund_info_list = fund_info_list
+    @unique
+    class FundInfoHeader(Enum):
+        FUND_CODE = auto(),
+        FUND_NAME = auto()
+
+    def __init__(self, fund_info_dict: dict[FundInfoHeader, str]):
+        self._fund_info_dict = fund_info_dict
 
 
-class CrawlingData:
-    pass
+class CrawlingDataModule:
+    """
+    数据爬取模块
+    包括数据的下载和清洗
+    """
+
+    def do_crawling(self, task: NeedCrawledFundModule.NeedCrawledOnceFund):
+        return NotImplemented
+
+    def is_end(self):
+        return NotImplemented
+
+    def get_an_result(self) -> FundCrawlingResult:
+        return NotImplemented
 
 
-class SaveResult:
+class SaveResultModule:
+    """
+    基金数据的保存模块
+    """
+
     def save_result(self, result: FundCrawlingResult) -> NoReturn:
         """
         爬取结果的保存
@@ -52,17 +71,40 @@ class SaveResult:
 
 
 class TaskManager:
-    def __init__(self, need_crawled_fund_generator: NeedCrawledFund, crawling_data_generator: CrawlingData,
-                 save_result: SaveResult):
+    def __init__(self, need_crawled_fund_module: NeedCrawledFundModule, crawling_data_module: CrawlingDataModule,
+                 save_result_module: SaveResultModule):
         """
-        :param need_crawled_fund_generator: 获取需要 爬取的基金 的生成器
-        :param crawling_data_generator: 数据爬取、清洗的生成器
-        :param save_result: 数据保存类
+        :param need_crawled_fund_module: 负责给出 基金爬取任务
+        :param crawling_data_module: 负责 数据爬取和清洗
+        :param save_result_module: 负责 数据保存
         """
-        self._need_crawled_fund_generator = need_crawled_fund_generator
-        self._crawling_data_generator = crawling_data_generator
-        self._save_result = save_result
+        self._need_crawled_fund_module = need_crawled_fund_module
+        self._crawling_data_module = crawling_data_module
+        self._save_result_module = save_result_module
 
-    def run(self):
-        # todo 爬取主流程
-        pass
+    async def get_task_and_crawling(self):
+        generator = self._need_crawled_fund_module.task_generator
+        next(generator)
+
+        while True:
+            try:
+                task: NeedCrawledFundModule.NeedCrawledOnceFund = next(generator)
+            except StopIteration:
+                break
+            self._crawling_data_module.do_crawling(task)
+
+    async def get_result_and_save(self):
+        while not self._crawling_data_module.is_end():
+            result: FundCrawlingResult = self._crawling_data_module.get_an_result()
+            self._save_result_module.save_result(result)
+
+    def run(self) -> NoReturn:
+        """
+        爬取主流程
+        从 基金爬取任务模块 将任务传递给 数据爬取和清洗模块
+        从 数据爬取和清洗模块 将结果传递给 数据保存模块
+        两部分的任务都是阻塞的（主要会阻塞在 数据爬取和清洗）
+        """
+        async with TaskGroup() as tg:
+            tg.create_task(self.get_task_and_crawling())
+            tg.create_task(self.get_result_and_save())
