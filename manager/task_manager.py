@@ -106,5 +106,5 @@ class TaskManager:
         两部分的任务都是阻塞的（主要会阻塞在 数据爬取和清洗）
         """
         async with TaskGroup() as tg:
-            tg.create_task(self.get_task_and_crawling())
-            tg.create_task(self.get_result_and_save())
+            await tg.create_task(self.get_task_and_crawling())
+            await tg.create_task(self.get_result_and_save())
