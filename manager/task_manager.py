@@ -2,11 +2,12 @@
 爬取核心
 对爬取过程的管理
 """
+import asyncio
 from abc import abstractmethod, ABC
 from asyncio import TaskGroup
 from collections.abc import Generator
 from enum import Enum, unique, auto
-from typing import NoReturn
+from typing import NoReturn, Optional
 
 
 class NeedCrawledFundModule(ABC):
@@ -46,7 +47,7 @@ class FundCrawlingResult:
         FUND_NAME = auto()
 
     def __init__(self, fund_info_dict: dict[FundInfoHeader, str]):
-        self._fund_info_dict = fund_info_dict
+        self.fund_info_dict = fund_info_dict
 
 
 class CrawlingDataModule(ABC):
@@ -64,7 +65,7 @@ class CrawlingDataModule(ABC):
         return NotImplemented
 
     @abstractmethod
-    def get_an_result(self) -> FundCrawlingResult:
+    def get_an_result(self) -> Optional[FundCrawlingResult]:
         return NotImplemented
 
 
@@ -95,17 +96,24 @@ class TaskManager:
 
     async def get_task_and_crawling(self):
         generator = self._need_crawled_fund_module.task_generator
-        next(generator)
 
         while True:
+            # 临时措施，sleep以便可以将cpu让出，未来应该是在队列block的时候让出
+            await asyncio.sleep(0.1)
+
             try:
                 task: NeedCrawledFundModule.NeedCrawledOnceFund = next(generator)
             except StopIteration:
                 break
-            await self._crawling_data_module.do_crawling(task)
+            self._crawling_data_module.do_crawling(task)
+
+        self._crawling_data_module._is_end = True
 
     async def get_result_and_save(self):
         while not self._crawling_data_module.is_end():
+            # 临时措施，sleep以便可以将cpu让出，未来应该是在队列block的时候让出
+            await asyncio.sleep(0.1)
+
             result: FundCrawlingResult = self._crawling_data_module.get_an_result()
             self._save_result_module.save_result(result)
 
@@ -117,5 +125,5 @@ class TaskManager:
         两部分的任务都是阻塞的（主要会阻塞在 数据爬取和清洗）
         """
         async with TaskGroup() as tg:
-            await tg.create_task(self.get_task_and_crawling())
-            await tg.create_task(self.get_result_and_save())
+            tg.create_task(self.get_task_and_crawling())
+            tg.create_task(self.get_result_and_save())
