@@ -21,13 +21,9 @@ class TestCrawlingDataModule(CrawlingDataModule):
         self._is_end = False
 
     def do_crawling(self, task: NeedCrawledFundModule.NeedCrawledOnceFund):
-        # 模拟从队列中取结果时的block和超时
-        max_iteration = 10
-        while len(self._task_list) > 0 and max_iteration > 0:
+        # 模拟从队列中取结果时的block
+        while len(self._task_list) > 0:
             time.sleep(0.1)
-            max_iteration -= 1
-        if max_iteration == 0:
-            return
 
         self._task_list.append(task)
 
@@ -58,5 +54,6 @@ class TestSaveResultModule(SaveResultModule):
 
 
 class TestTaskManager(TestCase):
-    manager = TaskManager(TestNeedCrawledFundModule(), TestCrawlingDataModule(), TestSaveResultModule())
-    asyncio.run(manager.run())
+    def test_run(self):
+        manager = TaskManager(TestNeedCrawledFundModule(), TestCrawlingDataModule(), TestSaveResultModule())
+        asyncio.run(manager.run())

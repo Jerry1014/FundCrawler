@@ -2,7 +2,6 @@
 爬取核心
 对爬取过程的管理
 """
-import asyncio
 from abc import abstractmethod, ABC
 from asyncio import TaskGroup
 from collections.abc import Generator
@@ -32,7 +31,10 @@ class NeedCrawledFundModule(ABC):
         self.init()
 
     @abstractmethod
-    def init(self):
+    def init(self) -> NoReturn:
+        """
+        初始化 生成器
+        """
         return NotImplemented
 
 
@@ -57,15 +59,25 @@ class CrawlingDataModule(ABC):
     """
 
     @abstractmethod
-    def do_crawling(self, task: NeedCrawledFundModule.NeedCrawledOnceFund):
+    def do_crawling(self, task: NeedCrawledFundModule.NeedCrawledOnceFund) -> NoReturn:
+        """
+        提交任务
+        当任务处理不过来时，阻塞(不应该超时)
+        """
         return NotImplemented
 
     @abstractmethod
     def is_end(self) -> bool:
+        """
+        是否所有的结果都处理完了
+        """
         return NotImplemented
 
     @abstractmethod
     def get_an_result(self) -> Optional[FundCrawlingResult]:
+        """
+        (阻塞，会超时)获取一个处理好的结果
+        """
         return NotImplemented
 
 
@@ -98,9 +110,6 @@ class TaskManager:
         generator = self._need_crawled_fund_module.task_generator
 
         while True:
-            # 临时措施，sleep以便可以将cpu让出，未来应该是在队列block的时候让出
-            await asyncio.sleep(0.1)
-
             try:
                 task: NeedCrawledFundModule.NeedCrawledOnceFund = next(generator)
             except StopIteration:
@@ -111,9 +120,6 @@ class TaskManager:
 
     async def get_result_and_save(self):
         while not self._crawling_data_module.is_end():
-            # 临时措施，sleep以便可以将cpu让出，未来应该是在队列block的时候让出
-            await asyncio.sleep(0.1)
-
             result: FundCrawlingResult = self._crawling_data_module.get_an_result()
             self._save_result_module.save_result(result)
 
