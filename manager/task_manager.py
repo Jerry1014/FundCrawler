@@ -5,7 +5,7 @@
 from abc import abstractmethod, ABC
 from asyncio import TaskGroup
 from collections.abc import Generator
-from enum import Enum, unique
+from enum import unique, StrEnum
 from typing import NoReturn, Optional
 
 
@@ -44,11 +44,11 @@ class FundCrawlingResult:
     """
 
     @unique
-    class FundInfoHeader(Enum):
+    class FundInfoHeader(StrEnum):
         FUND_CODE = '基金代码',
         FUND_NAME = '基金名称',
         FUND_TYPE = '基金类型',
-        FUND_SIZE = '基金规模'
+        FUND_SIZE = '基金规模',
         # 兼容带新场景，A+B -> B -> B+C，此时基金经理为时长最长的B，对应的任职时间为 这三段B连续任职的任职时间
         FUND_MANAGERS = '基金经理',
         LENGTH_OF_TENURE_IN_CUR_FUND = '本基金任职时间',
@@ -100,6 +100,12 @@ class SaveResultModule(ABC):
         """
         return NotImplemented
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
 
 class TaskManager:
     def __init__(self, need_crawled_fund_module: NeedCrawledFundModule, crawling_data_module: CrawlingDataModule,
@@ -128,9 +134,10 @@ class TaskManager:
         self._has_put_all_request = True
 
     async def get_result_and_save(self):
-        while not (self._has_put_all_request and self._crawling_data_module.empty_request_and_result()):
-            result: FundCrawlingResult = self._crawling_data_module.get_an_result()
-            self._save_result_module.save_result(result)
+        with self._save_result_module:
+            while not (self._has_put_all_request and self._crawling_data_module.empty_request_and_result()):
+                result: FundCrawlingResult = self._crawling_data_module.get_an_result()
+                self._save_result_module.save_result(result)
 
     async def run(self) -> NoReturn:
         """
