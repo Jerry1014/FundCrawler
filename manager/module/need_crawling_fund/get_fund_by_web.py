@@ -11,8 +11,9 @@ class GetNeedCrawledFundByWeb(NeedCrawledFundModule):
     def init(self) -> NoReturn:
         header = {"User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                                 'Chrome/78.0.3904.108 Safari/537.36'}
-        page = requests.get('http://fund.eastmoney.com/Data/Fund_JJJZ_Data.aspx?t=1&lx=1&letter=&gsid=&text=&sort=zdf,'
-                            'desc&page=1,&feature=|&dt=1536654761529&atfc=&onlySale=0', headers=header)
+        # 全部（不一定可购） 的开放式基金
+        url = 'http://fund.eastmoney.com/Data/Fund_JJJZ_Data.aspx?page=1,&onlySale=0'
+        page = requests.get(url, headers=header)
 
         # 基金目录
         fund_list = re.findall(r'"[0-9]{6}",".+?"', page.text)
