@@ -67,14 +67,14 @@ class CrawlingDataModule(ABC):
         return NotImplemented
 
     @abstractmethod
-    def is_end(self) -> bool:
+    def empty_request_and_result(self) -> bool:
         """
-        是否所有的结果都处理完了
+        请求已经全部处理完, 且结果都被取出了
         """
         return NotImplemented
 
     @abstractmethod
-    def get_an_result(self) -> Optional[FundCrawlingResult]:
+    def get_an_result(self) -> FundCrawlingResult:
         """
         (阻塞)获取一个处理好的结果
         """
@@ -105,6 +105,8 @@ class TaskManager:
         self._need_crawled_fund_module = need_crawled_fund_module
         self._crawling_data_module = crawling_data_module
         self._save_result_module = save_result_module
+        # 请求是否都塞到 数据爬取和清洗 模块了,用于判断是否可以结束
+        self._has_put_all_request = False
 
     async def get_task_and_crawling(self):
         generator = self._need_crawled_fund_module.task_generator
@@ -116,10 +118,10 @@ class TaskManager:
                 break
             self._crawling_data_module.do_crawling(task)
 
-        self._crawling_data_module._is_end = True
+        self._has_put_all_request = True
 
     async def get_result_and_save(self):
-        while not self._crawling_data_module.is_end():
+        while not (self._has_put_all_request and self._crawling_data_module.empty_request_and_result()):
             result: FundCrawlingResult = self._crawling_data_module.get_an_result()
             self._save_result_module.save_result(result)
 

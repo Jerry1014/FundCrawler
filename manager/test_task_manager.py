@@ -11,14 +11,13 @@ class TestNeedCrawledFundModule(NeedCrawledFundModule):
 
     def init_generator(self):
         self.total = 2
-        self.task_generator = (NeedCrawledFundModule.NeedCrawledOnceFund(str(i), str(i)) for i in range(2))
+        self.task_generator = (NeedCrawledFundModule.NeedCrawledOnceFund(str(i), str(i)) for i in range(100))
 
 
 class TestCrawlingDataModule(CrawlingDataModule):
     def __init__(self):
         self._task_list: list[NeedCrawledFundModule.NeedCrawledOnceFund] = list()
         self._result_list: list[FundCrawlingResult] = list()
-        self._is_end = False
 
     def do_crawling(self, task: NeedCrawledFundModule.NeedCrawledOnceFund):
         # 模拟从队列中取结果时的block
@@ -30,8 +29,8 @@ class TestCrawlingDataModule(CrawlingDataModule):
         task = self._task_list.pop()
         self._result_list.append(FundCrawlingResult({FundCrawlingResult.FundInfoHeader.FUND_NAME: task.name}))
 
-    def is_end(self) -> bool:
-        return len(self._task_list) == 0 and len(self._result_list) == 0 and self._is_end
+    def empty_request_and_result(self) -> bool:
+        return len(self._task_list) == 0 and len(self._result_list) == 0
 
     def get_an_result(self) -> Optional[FundCrawlingResult]:
         # 模拟从队列中取结果时的block
