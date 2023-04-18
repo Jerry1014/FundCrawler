@@ -55,7 +55,7 @@ class FundCrawlingResult:
         TOTAL_LENGTH_OF_TENURE_OF_MANAGER = '总任职时间',
         SHARPE_LAST_THREE_YEARS = '近三年夏普'
 
-    def __init__(self, fund_info_dict: dict[FundInfoHeader, str]):
+    def __init__(self, fund_info_dict: dict[FundInfoHeader, Optional[str]]):
         self.fund_info_dict = fund_info_dict
 
 
