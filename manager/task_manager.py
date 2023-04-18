@@ -5,7 +5,7 @@
 from abc import abstractmethod, ABC
 from asyncio import TaskGroup
 from collections.abc import Generator
-from enum import Enum, unique, auto
+from enum import Enum, unique
 from typing import NoReturn, Optional
 
 
@@ -45,8 +45,15 @@ class FundCrawlingResult:
 
     @unique
     class FundInfoHeader(Enum):
-        FUND_CODE = auto(),
-        FUND_NAME = auto()
+        FUND_CODE = '基金代码',
+        FUND_NAME = '基金名称',
+        FUND_TYPE = '基金类型',
+        FUND_SIZE = '基金规模'
+        # 兼容带新场景，A+B -> B -> B+C，此时基金经理为时长最长的B，对应的任职时间为 这三段B连续任职的任职时间
+        FUND_MANAGERS = '基金经理',
+        LENGTH_OF_TENURE_IN_CUR_FUND = '本基金任职时间',
+        TOTAL_LENGTH_OF_TENURE_OF_MANAGER = '总任职时间',
+        SHARPE_LAST_THREE_YEARS = '近三年夏普'
 
     def __init__(self, fund_info_dict: dict[FundInfoHeader, str]):
         self.fund_info_dict = fund_info_dict
