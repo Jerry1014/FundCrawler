@@ -26,12 +26,12 @@ class NeedCrawledFundModule(ABC):
 
     def __init__(self):
         self.total = None
-        self.task_generator: Generator[NeedCrawledFundModule.NeedCrawledOnceFund] = None
+        self.task_generator: Optional[Generator[NeedCrawledFundModule.NeedCrawledOnceFund]] = None
 
-        self.init()
+        self.init_generator()
 
     @abstractmethod
-    def init(self) -> NoReturn:
+    def init_generator(self) -> NoReturn:
         """
         初始化 生成器
         """
@@ -62,7 +62,7 @@ class CrawlingDataModule(ABC):
     def do_crawling(self, task: NeedCrawledFundModule.NeedCrawledOnceFund) -> NoReturn:
         """
         提交任务
-        当任务处理不过来时，阻塞(不应该超时)
+        当任务处理不过来时，阻塞
         """
         return NotImplemented
 
@@ -76,7 +76,7 @@ class CrawlingDataModule(ABC):
     @abstractmethod
     def get_an_result(self) -> Optional[FundCrawlingResult]:
         """
-        (阻塞，会超时)获取一个处理好的结果
+        (阻塞)获取一个处理好的结果
         """
         return NotImplemented
 

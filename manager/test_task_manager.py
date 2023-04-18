@@ -9,7 +9,7 @@ from manager.task_manager import NeedCrawledFundModule, CrawlingDataModule, Fund
 
 class TestNeedCrawledFundModule(NeedCrawledFundModule):
 
-    def init(self):
+    def init_generator(self):
         self.total = 2
         self.task_generator = (NeedCrawledFundModule.NeedCrawledOnceFund(str(i), str(i)) for i in range(2))
 
@@ -34,13 +34,9 @@ class TestCrawlingDataModule(CrawlingDataModule):
         return len(self._task_list) == 0 and len(self._result_list) == 0 and self._is_end
 
     def get_an_result(self) -> Optional[FundCrawlingResult]:
-        # 模拟从队列中取结果时的block和超时
-        max_iteration = 10
-        while len(self._result_list) == 0 and max_iteration > 0:
+        # 模拟从队列中取结果时的block
+        while len(self._result_list) == 0:
             time.sleep(0.1)
-            max_iteration -= 1
-        if max_iteration == 0:
-            return None
 
         result = self._result_list.pop()
         return result
