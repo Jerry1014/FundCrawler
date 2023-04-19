@@ -6,7 +6,14 @@ from typing import Optional, TypeVar, NoReturn
 
 
 class BaseRequest:
-    def __init__(self, url):
+    class UniqueKey(ABC):
+        """
+        下载唯一键，用于确认某个请求是谁发起的
+        """
+        pass
+
+    def __init__(self, unique_key: UniqueKey, url):
+        self._unique_key = unique_key
         self.url = url
 
 
