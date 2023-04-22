@@ -29,7 +29,7 @@ class GetNeedCrawledFundByWeb4Test(NeedCrawledFundModule):
     """
     测试用的 基金任务 提供者
     """
-    _test_case_num = 10
+    _test_case_num = 2
 
     def init_generator(self) -> NoReturn:
         # 全部（不一定可购） 的开放式基金

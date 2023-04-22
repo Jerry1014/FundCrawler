@@ -13,13 +13,13 @@ from typing import Optional, NoReturn
 
 from requests import Response as RequestsResponse, RequestException, get
 
-from downloader.async_downloader import AsyncHttpDownloader, BaseRequest, BaseResponse
+from utils.downloader.async_downloader import AsyncHttpDownloader, BaseRequest, BaseResponse
 from utils.fake_ua_getter import singleton_fake_ua
 
 
 class Request(BaseRequest):
-    def __init__(self, url, retry_time=3):
-        super().__init__(url)
+    def __init__(self, unique_key: BaseRequest.UniqueKey, url, retry_time=3):
+        super().__init__(unique_key, url)
         if retry_time < 1:
             raise AttributeError
 
