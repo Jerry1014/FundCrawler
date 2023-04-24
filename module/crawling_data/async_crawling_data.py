@@ -47,10 +47,12 @@ class AsyncCrawlingData(CrawlingDataModule):
             context.task_finish(unique_key.task_id, result.response)
 
             # 如果爬取上下文中所有需要爬取的任务都完成了, 就可以取出进行数据清洗并返回结果
+            result = None
             if context.all_task_finished():
                 for task in context.finished_task:
                     # todo 数据清洗 and 最终结果的拼接
                     pass
+            return result
 
     def get_context_id_and_increase(self) -> int:
         """
