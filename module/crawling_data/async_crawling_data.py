@@ -40,7 +40,17 @@ class AsyncCrawlingData(CrawlingDataModule):
         2 当某个context的pageTask全部处理完成时, 走到第三步, 否则重复1 直到某个context被全部处理完
         3 清洗 context中 所有的pageTask中的数据, 构造得到最终的爬取结果
         """
-        # todo
+        while True:
+            result = self._downloader.get_result()
+            unique_key: AsyncCrawlingData.Context.UniqueKey = result.request.unique_key
+            context = self._context_dict.get(unique_key.context_id)
+            context.task_finish(unique_key.task_id, result.response)
+
+            # 如果爬取上下文中所有需要爬取的任务都完成了, 就可以取出进行数据清洗并返回结果
+            if context.all_task_finished():
+                for task in context.finished_task:
+                    # todo 数据清洗 and 最终结果的拼接
+                    pass
 
     def get_context_id_and_increase(self) -> int:
         """
@@ -62,7 +72,7 @@ class AsyncCrawlingData(CrawlingDataModule):
             self._task_id = 0
             self._context_id = context_id
             self._downloader = downloader
-            self._finished_task: list[AsyncCrawlingData.PageCrawlingTask] = []
+            self.finished_task: list[AsyncCrawlingData.PageCrawlingTask] = []
 
             # 构造页面爬取任务
             self._running_task_dict: dict[int, AsyncCrawlingData.PageCrawlingTask] = {}
@@ -70,7 +80,7 @@ class AsyncCrawlingData(CrawlingDataModule):
             task_id = self.get_task_id_and_increase()
             url = PageType.OVERVIEW.value().substitute(fund_code=fund_task.code)
             self._downloader.summit(BaseRequest(AsyncCrawlingData.Context.UniqueKey(self._context_id, task_id), url))
-            self._running_task_dict[task_id] = AsyncCrawlingData.PageCrawlingTask(url, None)
+            self._running_task_dict[task_id] = AsyncCrawlingData.PageCrawlingTask(url)
 
         def get_task_id_and_increase(self) -> int:
             """
@@ -88,16 +98,22 @@ class AsyncCrawlingData(CrawlingDataModule):
             """
             return len(self._running_task_dict) == 0
 
+        def task_finish(self, task_id: int, response):
+            task = self._running_task_dict.pop(task_id)
+            task.response = response
+
+            self.finished_task.append(task)
+
         class UniqueKey(BaseRequest.UniqueKey):
             def __init__(self, context_id: int, task_id: int):
-                self._context_id = context_id
-                self._task_id = task_id
+                self.context_id = context_id
+                self.task_id = task_id
 
     class PageCrawlingTask:
         """
         页面爬取任务
         """
 
-        def __init__(self, url, response):
+        def __init__(self, url):
             self.url = url
-            self.response = response
+            self.response = None

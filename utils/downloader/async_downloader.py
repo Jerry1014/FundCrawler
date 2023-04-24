@@ -13,7 +13,7 @@ class BaseRequest:
         pass
 
     def __init__(self, unique_key: UniqueKey, url):
-        self._unique_key = unique_key
+        self.unique_key = unique_key
         self.url = url
 
 
