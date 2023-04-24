@@ -51,6 +51,7 @@ class AsyncCrawlingData(CrawlingDataModule):
             if context.all_task_finished():
                 for task in context.finished_task:
                     # todo 数据清洗 and 最终结果的拼接
+                    # 策略模式, 选择对应的parser来解析
                     pass
             return result
 
