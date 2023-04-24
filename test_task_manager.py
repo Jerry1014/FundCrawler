@@ -3,7 +3,7 @@ import time
 from typing import NoReturn, Optional
 from unittest import TestCase
 
-from manager.task_manager import NeedCrawledFundModule, CrawlingDataModule, FundCrawlingResult, SaveResultModule, \
+from task_manager import NeedCrawledFundModule, CrawlingDataModule, FundCrawlingResult, SaveResultModule, \
     TaskManager
 
 

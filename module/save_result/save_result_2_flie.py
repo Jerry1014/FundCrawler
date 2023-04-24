@@ -4,7 +4,7 @@
 from csv import DictWriter
 from typing import NoReturn
 
-from manager.task_manager import SaveResultModule, FundCrawlingResult
+from task_manager import SaveResultModule, FundCrawlingResult
 
 
 class SaveResult2File(SaveResultModule):
@@ -13,7 +13,7 @@ class SaveResult2File(SaveResultModule):
     def __init__(self):
         fieldnames = [header.value for header in FundCrawlingResult.FundInfoHeader]
 
-        self._file = open('./result.csv', 'w', newline='', encoding='utf-8')
+        self._file = open('result.csv', 'w', newline='', encoding='utf-8')
         self._writer: DictWriter = DictWriter(self._file, fieldnames=fieldnames, restval=self._restval)
 
         self._writer.writeheader()

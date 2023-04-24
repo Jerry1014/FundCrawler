@@ -1,7 +1,7 @@
 from unittest import TestCase
 
-from manager.module.save_result.save_result_2_flie import SaveResult2File
-from manager.task_manager import FundCrawlingResult
+from module.save_result.save_result_2_flie import SaveResult2File
+from task_manager import FundCrawlingResult
 
 
 class TestSaveResult2File(TestCase):

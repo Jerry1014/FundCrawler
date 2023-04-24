@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from manager.module.need_crawling_fund.get_fund_by_web import GetNeedCrawledFundByWeb
+from module.need_crawling_fund.get_fund_by_web import GetNeedCrawledFundByWeb
 
 
 class TestGetNeedCrawledFundByWeb(TestCase):

@@ -1,6 +1,6 @@
 from typing import NoReturn
 
-from manager.task_manager import CrawlingDataModule, FundCrawlingResult, NeedCrawledFundModule
+from task_manager import CrawlingDataModule, FundCrawlingResult, NeedCrawledFundModule
 from utils.downloader.impl.http_request_downloader import AsyncHttpRequestDownloader
 
 
