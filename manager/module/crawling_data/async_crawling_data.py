@@ -47,7 +47,9 @@ class AsyncCrawlingData(CrawlingDataModule):
     class Context:
         def __init__(self, context_id: int, fund_task: NeedCrawledFundModule.NeedCrawledOnceFund):
             # todo 创建每一个页面的爬取任务，并加入到下载器中
-            self._task_dict: dict[AsyncCrawlingData.PageCrawlingTask, int] = dict()
+            self._task_dict: dict[int, AsyncCrawlingData.PageCrawlingTask] = dict()
+
+            #
 
     class PageCrawlingTask:
         def __init__(self):
