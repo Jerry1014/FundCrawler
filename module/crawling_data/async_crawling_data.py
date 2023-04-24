@@ -1,24 +1,32 @@
+"""
+数据爬取模块
+"""
 from typing import NoReturn
 
+from module.crawling_data.data_mining.data_mining_type import PageType
 from task_manager import CrawlingDataModule, FundCrawlingResult, NeedCrawledFundModule
+from utils.downloader.async_downloader import AsyncHttpDownloader, BaseRequest
 from utils.downloader.impl.http_request_downloader import AsyncHttpRequestDownloader
 
 
 class AsyncCrawlingData(CrawlingDataModule):
+    """
+    数据爬取模块类
+    负责处理基金爬取任务, 爬取若干个页面, 并对爬取到的数据进行清洗, 得到最终的爬取结果
+    """
 
     def __init__(self):
         self._downloader = AsyncHttpRequestDownloader()
-        self._context_dict: dict[int, AsyncCrawlingData.Context] = dict()
+        self._context_dict: dict[int, AsyncCrawlingData.Context] = {}
 
         self._context_id = 0
-        self._task_id = 0
 
     def do_crawling(self, task: NeedCrawledFundModule.NeedCrawledOnceFund) -> NoReturn:
         """
         构造爬取上下文，并加入到集合中
         """
         context_id = self.get_context_id_and_increase()
-        self._context_dict[context_id] = AsyncCrawlingData.Context(context_id, task)
+        self._context_dict[context_id] = AsyncCrawlingData.Context(context_id, task, self._downloader)
 
     def empty_request_and_result(self) -> bool:
         """
@@ -34,23 +42,62 @@ class AsyncCrawlingData(CrawlingDataModule):
         """
         # todo
 
-    def get_context_id_and_increase(self):
+    def get_context_id_and_increase(self) -> int:
+        """
+        获取唯一 爬取上下文id
+        :return: id
+        """
         tem = self._context_id
         self._context_id += 1
         return tem
 
-    def get_task_id_and_increase(self):
-        tem = self._task_id
-        self._task_id += 1
-        return tem
-
     class Context:
-        def __init__(self, context_id: int, fund_task: NeedCrawledFundModule.NeedCrawledOnceFund):
-            # todo 创建每一个页面的爬取任务，并加入到下载器中
-            self._task_dict: dict[int, AsyncCrawlingData.PageCrawlingTask] = dict()
+        """
+        爬取上下文
+        包含若干个需要爬取的页面
+        """
 
-            #
+        def __init__(self, context_id: int, fund_task: NeedCrawledFundModule.NeedCrawledOnceFund,
+                     downloader: AsyncHttpDownloader):
+            self._task_id = 0
+            self._context_id = context_id
+            self._downloader = downloader
+            self._finished_task: list[AsyncCrawlingData.PageCrawlingTask] = []
+
+            # 构造页面爬取任务
+            self._running_task_dict: dict[int, AsyncCrawlingData.PageCrawlingTask] = {}
+
+            task_id = self.get_task_id_and_increase()
+            url = PageType.OVERVIEW.value().substitute(fund_code=fund_task.code)
+            self._downloader.summit(BaseRequest(AsyncCrawlingData.Context.UniqueKey(self._context_id, task_id), url))
+            self._running_task_dict[task_id] = AsyncCrawlingData.PageCrawlingTask(url, None)
+
+        def get_task_id_and_increase(self) -> int:
+            """
+            获取唯一 页面下载任务id
+            :return: id
+            """
+            tem = self._task_id
+            self._task_id += 1
+            return tem
+
+        def all_task_finished(self) -> bool:
+            """
+            爬取上下文, 所有的下载任务都完成了
+            :return: bool
+            """
+            return len(self._running_task_dict) == 0
+
+        class UniqueKey(BaseRequest.UniqueKey):
+            def __init__(self, context_id: int, task_id: int):
+                self._context_id = context_id
+                self._task_id = task_id
 
     class PageCrawlingTask:
-        def __init__(self):
-            pass
+        """
+        页面爬取任务
+        """
+
+        def __init__(self, url, response):
+            self.url = url
+            self.response = response
