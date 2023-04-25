@@ -149,7 +149,8 @@ class TaskManager:
         with self._save_result_module:
             while not (self._has_put_all_request and self._crawling_data_module.empty_request_and_result()):
                 result: FundCrawlingResult = self._crawling_data_module.get_an_result()
-                self._save_result_module.save_result(result)
+                if result:
+                    self._save_result_module.save_result(result)
 
     async def run(self) -> NoReturn:
         """

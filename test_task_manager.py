@@ -5,6 +5,7 @@ from unittest import TestCase
 
 from module.crawling_data.async_crawling_data import AsyncCrawlingData
 from module.need_crawling_fund.get_fund_by_web import GetNeedCrawledFundByWeb4Test
+from module.save_result.save_result_2_flie import SaveResult2File
 from task_manager import NeedCrawledFundModule, CrawlingDataModule, FundCrawlingResult, SaveResultModule, \
     TaskManager
 
@@ -49,8 +50,7 @@ class SimpleTestTaskManager(TestCase):
     class TestSaveResultModule(SaveResultModule):
 
         def save_result(self, result: FundCrawlingResult) -> NoReturn:
-            if result:
-                print(f'the result is {result.fund_info_dict}')
+            print(f'the result is {result.fund_info_dict}')
 
     def test_run(self):
         manager = TaskManager(SimpleTestTaskManager.TestNeedCrawledFundModule()
@@ -67,5 +67,5 @@ class SmokeTestTaskManager(TestCase):
     def test_run(self):
         manager = TaskManager(GetNeedCrawledFundByWeb4Test()
                               , AsyncCrawlingData()
-                              , SimpleTestTaskManager.TestSaveResultModule())
+                              , SaveResult2File())
         asyncio.run(manager.run())
