@@ -45,6 +45,9 @@ class FundCrawlingResult:
 
     @unique
     class FundInfoHeader(StrEnum):
+        """
+        结果key
+        """
         FUND_CODE = '基金代码',
         FUND_SIMPLE_NAME = '基金简称',
         FUND_TYPE = '基金类型',
@@ -55,8 +58,8 @@ class FundCrawlingResult:
         TOTAL_LENGTH_OF_TENURE_OF_MANAGER = '总任职时间',
         SHARPE_LAST_THREE_YEARS = '近三年夏普'
 
-    def __init__(self, fund_info_dict: dict[FundInfoHeader, Optional[str]]):
-        self.fund_info_dict = fund_info_dict
+    def __init__(self, fund_info_dict: dict[FundInfoHeader, Optional[str]] = None):
+        self.fund_info_dict = fund_info_dict if fund_info_dict is not None else {}
 
 
 class CrawlingDataModule(ABC):

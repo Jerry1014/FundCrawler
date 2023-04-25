@@ -3,6 +3,7 @@
 """
 from typing import NoReturn
 
+from module.crawling_data.data_mining.data_cleaning_strategy_factory import DataCleaningStrategyFactory
 from module.crawling_data.data_mining.data_mining_type import PageType
 from task_manager import CrawlingDataModule, FundCrawlingResult, NeedCrawledFundModule
 from utils.downloader.async_downloader import AsyncHttpDownloader, BaseRequest
@@ -47,12 +48,11 @@ class AsyncCrawlingData(CrawlingDataModule):
             context.task_finish(unique_key.task_id, result.response)
 
             # 如果爬取上下文中所有需要爬取的任务都完成了, 就可以取出进行数据清洗并返回结果
-            result = None
+            result = FundCrawlingResult()
             if context.all_task_finished():
                 for task in context.finished_task:
-                    # todo 数据清洗 and 最终结果的拼接
-                    # 策略模式, 选择对应的parser来解析
-                    pass
+                    strategy = DataCleaningStrategyFactory.get_strategy(task.page_type)
+                    strategy.fill_result(task.response, result)
             return result
 
     def get_context_id_and_increase(self) -> int:
@@ -81,9 +81,10 @@ class AsyncCrawlingData(CrawlingDataModule):
             self._running_task_dict: dict[int, AsyncCrawlingData.PageCrawlingTask] = {}
 
             task_id = self.get_task_id_and_increase()
-            url = PageType.OVERVIEW.value().substitute(fund_code=fund_task.code)
+            page_type = PageType.OVERVIEW
+            url = page_type.value().substitute(fund_code=fund_task.code)
             self._downloader.summit(BaseRequest(AsyncCrawlingData.Context.UniqueKey(self._context_id, task_id), url))
-            self._running_task_dict[task_id] = AsyncCrawlingData.PageCrawlingTask(url)
+            self._running_task_dict[task_id] = AsyncCrawlingData.PageCrawlingTask(page_type, url)
 
         def get_task_id_and_increase(self) -> int:
             """
@@ -101,7 +102,10 @@ class AsyncCrawlingData(CrawlingDataModule):
             """
             return len(self._running_task_dict) == 0
 
-        def task_finish(self, task_id: int, response):
+        def task_finish(self, task_id: int, response) -> NoReturn:
+            """
+            页面爬取任务完成
+            """
             task = self._running_task_dict.pop(task_id)
             task.response = response
 
@@ -117,6 +121,7 @@ class AsyncCrawlingData(CrawlingDataModule):
         页面爬取任务
         """
 
-        def __init__(self, url):
+        def __init__(self, page_type: PageType, url: str):
+            self.page_type = page_type
             self.url = url
             self.response = None
