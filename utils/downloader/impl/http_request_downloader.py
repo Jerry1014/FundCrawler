@@ -1,7 +1,5 @@
 """
-通过request进行http下载的实现
-新起一个进程 以避免和主进程间的竞争，通过队列进行通信
-进程内通过线程池消费需要爬取的任务
+通过requests进行http下载
 """
 from concurrent.futures import Future, ThreadPoolExecutor
 from enum import Enum, auto, unique
@@ -18,6 +16,10 @@ from utils.fake_ua_getter import singleton_fake_ua
 
 
 class Request(BaseRequest):
+    """
+    在基础的请求上, 增加了重试次数
+    """
+
     def __init__(self, unique_key: BaseRequest.UniqueKey, url, retry_time=3):
         super().__init__(unique_key, url)
         if retry_time < 1:
@@ -27,22 +29,34 @@ class Request(BaseRequest):
 
 
 class Response(BaseResponse):
+    """
+    在基础的返回上, 增加了请求状态(用于重试)
+    """
+
     @unique
     class State(Enum):
         SUCCESS = auto()
         FALSE = auto()
 
-    def __init__(self, request: Request, response: Optional[RequestsResponse], state: State):
+    def __init__(self, request: Request, state: State, response: Optional[RequestsResponse]):
         super().__init__(request, response)
         self.state = state
 
 
 class AsyncHttpRequestDownloader(AsyncHttpDownloader):
+    """
+    通过request进行http下载的实现
+    新起一个进程 以避免和主进程间的竞争，通过队列进行通信
+    进程内通过线程池消费需要爬取的任务
+    """
+
     def __init__(self):
+        # 和爬取进程间的通信
         self._request_queue: Queue[Request] = Queue(cpu_count() * 5)
         self._result_queue: Queue[Response] = Queue()
         self._exit_sign: synchronize.Event = Event()
 
+        # 独立的爬取进程
         self._child_process = AsyncHttpRequestDownloader.GetPageByMultiThreading(self._request_queue,
                                                                                  self._result_queue,
                                                                                  self._exit_sign)
@@ -56,7 +70,7 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
 
     def get_result(self) -> Optional[Response]:
         try:
-            return self._result_queue.get_nowait()
+            return self._result_queue.get(timeout=1)
         except Empty:
             return None
 
@@ -64,9 +78,14 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
         self._request_queue.close()
         self._exit_sign.set()
         # 这里不要join子进程
-        # 在子进程的队列没有被消费完时，子进程不会退出，join阻塞住了队列的消费，导致死锁
+        # 在子进程的队列没有被消费完时，子进程不会退出，join会阻塞住队列的消费，导致死锁
 
     class GetPageByMultiThreading(Process):
+        """
+        独立爬取进程
+        内部维护了一个线程池 来进行请求的爬取
+        """
+
         def __init__(self, request_queue: Queue, result_queue: Queue, exit_sign: synchronize.Event):
             super().__init__()
             self._request_queue = request_queue
@@ -75,20 +94,26 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
 
         @staticmethod
         def get_page(request: Request) -> Response:
+            """
+            页面下载
+            """
             header = {"User-Agent": singleton_fake_ua.get_random_ua()}
             try:
                 page = get(request.url, headers=header, timeout=1)
-                if not page.text:
+                if page.status_code != 200 or not page.text:
                     # 反爬虫策略之 给你返回空白的 200结果
                     raise AttributeError
-                return Response(request, page, Response.State.SUCCESS)
+                return Response(request, Response.State.SUCCESS, page)
             except (RequestException, AttributeError):
-                return Response(request, None, Response.State.FALSE)
+                return Response(request, Response.State.FALSE, None)
 
         def run(self) -> NoReturn:
+            """
+            爬取主流程
+            """
             thread_max_workers = cpu_count() * 5
             executor = ThreadPoolExecutor(max_workers=thread_max_workers)
-            future_list: list[Future] = list()
+            future_list: list[Future] = []
 
             while True:
                 # 爬取结束
@@ -128,4 +153,3 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
             # OS pipes are not infinitely long, so the process which queues data could be blocked in the OS during the
             # put() operation until some other process uses get() to retrieve data from the queue
             self._result_queue.join_thread()
-            print("AsyncHttpRequestDownloader exit")
