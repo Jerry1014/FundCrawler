@@ -1,7 +1,7 @@
 """
 数据爬取模块
 """
-from typing import NoReturn
+from typing import NoReturn, Optional
 
 from module.crawling_data.data_mining.data_cleaning_strategy_factory import DataCleaningStrategyFactory
 from module.crawling_data.data_mining.data_mining_type import PageType
@@ -35,7 +35,7 @@ class AsyncCrawlingData(CrawlingDataModule):
         """
         return len(self._context_dict) == 0
 
-    def get_an_result(self) -> FundCrawlingResult:
+    def get_an_result(self) -> Optional[FundCrawlingResult]:
         """
         1 在下载器中取回一个结果, 并将结果填充到对应的 context的 pageTask中
         2 当某个context的pageTask全部处理完成时, 走到第三步, 否则重复1 直到某个context被全部处理完
@@ -43,8 +43,11 @@ class AsyncCrawlingData(CrawlingDataModule):
         """
         while True:
             result = self._downloader.get_result()
+            if not result:
+                return
+
             unique_key: AsyncCrawlingData.Context.UniqueKey = result.request.unique_key
-            context = self._context_dict.get(unique_key.context_id)
+            context = self._context_dict.pop(unique_key.context_id)
             context.task_finish(unique_key.task_id, result.response)
 
             # 如果爬取上下文中所有需要爬取的任务都完成了, 就可以取出进行数据清洗并返回结果
@@ -66,6 +69,9 @@ class AsyncCrawlingData(CrawlingDataModule):
         self._context_id += 1
         return tem
 
+    def shutdown(self):
+        self._downloader.shutdown()
+
     class Context:
         """
         爬取上下文
@@ -85,7 +91,7 @@ class AsyncCrawlingData(CrawlingDataModule):
 
             task_id = self.get_task_id_and_increase()
             page_type = PageType.OVERVIEW
-            url = page_type.value().substitute(fund_code=fund_task.code)
+            url = page_type.value.substitute(fund_code=fund_task.code)
             self._downloader.summit(BaseRequest(AsyncCrawlingData.Context.UniqueKey(self._context_id, task_id), url))
             self._running_task_dict[task_id] = AsyncCrawlingData.PageCrawlingTask(page_type, url)
 

@@ -9,4 +9,4 @@ class PageType(Enum):
     """
     枚举
     """
-    OVERVIEW: Template('http://fundf10.eastmoney.com/jbgk_%fund_code.html')
+    OVERVIEW = Template('http://fundf10.eastmoney.com/jbgk_$fund_code.html')

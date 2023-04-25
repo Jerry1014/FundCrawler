@@ -84,10 +84,14 @@ class CrawlingDataModule(ABC):
         return NotImplemented
 
     @abstractmethod
-    def get_an_result(self) -> FundCrawlingResult:
+    def get_an_result(self) -> Optional[FundCrawlingResult]:
         """
         (阻塞)获取一个处理好的结果
         """
+        return NotImplemented
+
+    @abstractmethod
+    def shutdown(self):
         return NotImplemented
 
 
@@ -111,6 +115,10 @@ class SaveResultModule(ABC):
 
 
 class TaskManager:
+    """
+    爬取核心
+    """
+
     def __init__(self, need_crawled_fund_module: NeedCrawledFundModule, crawling_data_module: CrawlingDataModule,
                  save_result_module: SaveResultModule):
         """
@@ -134,6 +142,7 @@ class TaskManager:
                 break
             self._crawling_data_module.do_crawling(task)
 
+        self._crawling_data_module.shutdown()
         self._has_put_all_request = True
 
     async def get_result_and_save(self):

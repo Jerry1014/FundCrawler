@@ -29,11 +29,11 @@ class GetNeedCrawledFundByWeb4Test(NeedCrawledFundModule):
     """
     测试用的 基金任务 提供者
     """
-    _test_case_num = 2
+    test_case_num = 2
 
     def init_generator(self) -> NoReturn:
         # 全部（不一定可购） 的开放式基金
-        url = f'http://fund.eastmoney.com/Data/Fund_JJJZ_Data.aspx?page=1,{self._test_case_num}&onlySale=0'
+        url = f'http://fund.eastmoney.com/Data/Fund_JJJZ_Data.aspx?page=1,{self.test_case_num}&onlySale=0'
         page = requests.get(url, headers={
             "User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                           'Chrome/78.0.3904.108 Safari/537.36'})

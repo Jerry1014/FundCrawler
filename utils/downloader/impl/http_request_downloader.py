@@ -128,3 +128,4 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
             # OS pipes are not infinitely long, so the process which queues data could be blocked in the OS during the
             # put() operation until some other process uses get() to retrieve data from the queue
             self._result_queue.join_thread()
+            print("AsyncHttpRequestDownloader exit")

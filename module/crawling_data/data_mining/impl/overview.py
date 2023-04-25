@@ -5,4 +5,4 @@ from module.crawling_data.data_mining.data_cleaning_strategy_factory import Data
 
 class OverviewDataCleaningStrategy(DataCleaningStrategy):
     def fill_result(self, response, result) -> NoReturn:
-        pass
+        print(f'爬取结果 url:{response.url}')
