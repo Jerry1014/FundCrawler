@@ -72,26 +72,30 @@ class CrawlingDataModule(ABC):
     def do_crawling(self, task: NeedCrawledFundModule.NeedCrawledOnceFund) -> NoReturn:
         """
         提交任务
-        当任务处理不过来时，阻塞
+        需要有任务堆积时的阻塞, 以便可以将时间片让出来 处理结果
         """
         return NotImplemented
 
     @abstractmethod
-    def empty_request_and_result(self) -> bool:
+    def has_next_result(self) -> bool:
         """
         请求已经全部处理完, 且结果都被取出了
+        在shutdown后调用
         """
         return NotImplemented
 
     @abstractmethod
     def get_an_result(self) -> Optional[FundCrawlingResult]:
         """
-        (阻塞)获取一个处理好的结果
+        (阻塞, 有超时)获取一个处理好的结果
         """
         return NotImplemented
 
     @abstractmethod
     def shutdown(self):
+        """
+        请求已经全部传递完了
+        """
         return NotImplemented
 
 
@@ -129,8 +133,6 @@ class TaskManager:
         self._need_crawled_fund_module = need_crawled_fund_module
         self._crawling_data_module = crawling_data_module
         self._save_result_module = save_result_module
-        # 请求是否都塞到 数据爬取和清洗 模块了,用于判断是否可以结束
-        self._has_put_all_request = False
 
     async def get_task_and_crawling(self):
         generator = self._need_crawled_fund_module.task_generator
@@ -141,13 +143,11 @@ class TaskManager:
             except StopIteration:
                 break
             self._crawling_data_module.do_crawling(task)
-
         self._crawling_data_module.shutdown()
-        self._has_put_all_request = True
 
     async def get_result_and_save(self):
         with self._save_result_module:
-            while not (self._has_put_all_request and self._crawling_data_module.empty_request_and_result()):
+            while self._crawling_data_module.has_next_result():
                 result: FundCrawlingResult = self._crawling_data_module.get_an_result()
                 if result:
                     self._save_result_module.save_result(result)

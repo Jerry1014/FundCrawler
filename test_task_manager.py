@@ -36,7 +36,7 @@ class SimpleTestTaskManager(TestCase):
             task = self._task_list.pop()
             self._result_list.append(FundCrawlingResult({FundCrawlingResult.FundInfoHeader.FUND_NAME: task.name}))
 
-        def empty_request_and_result(self) -> bool:
+        def has_next_result(self) -> bool:
             return len(self._task_list) == 0 and len(self._result_list) == 0
 
         def get_an_result(self) -> Optional[FundCrawlingResult]:
