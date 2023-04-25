@@ -48,12 +48,14 @@ class AsyncCrawlingData(CrawlingDataModule):
             context.task_finish(unique_key.task_id, result.response)
 
             # 如果爬取上下文中所有需要爬取的任务都完成了, 就可以取出进行数据清洗并返回结果
-            result = FundCrawlingResult()
             if context.all_task_finished():
+                result = FundCrawlingResult(
+                    {FundCrawlingResult.FundInfoHeader.FUND_CODE: context.fund_task.code
+                        , FundCrawlingResult.FundInfoHeader.FUND_SIMPLE_NAME: context.fund_task.name})
                 for task in context.finished_task:
                     strategy = DataCleaningStrategyFactory.get_strategy(task.page_type)
                     strategy.fill_result(task.response, result)
-            return result
+                return result
 
     def get_context_id_and_increase(self) -> int:
         """
@@ -75,6 +77,7 @@ class AsyncCrawlingData(CrawlingDataModule):
             self._task_id = 0
             self._context_id = context_id
             self._downloader = downloader
+            self.fund_task = fund_task
             self.finished_task: list[AsyncCrawlingData.PageCrawlingTask] = []
 
             # 构造页面爬取任务

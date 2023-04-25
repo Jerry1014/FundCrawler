@@ -1,10 +1,11 @@
 """
 数据清洗策略
 """
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import NoReturn
 
 from module.crawling_data.data_mining.data_mining_type import PageType
+from module.crawling_data.data_mining.impl.overview import OverviewDataCleaningStrategy
 
 
 class DataCleaningStrategy(ABC):
@@ -12,6 +13,7 @@ class DataCleaningStrategy(ABC):
     数据清洗策略
     """
 
+    @abstractmethod
     def fill_result(self, response, result) -> NoReturn:
         return NotImplemented
 
@@ -21,7 +23,9 @@ class DataCleaningStrategyFactory:
     数据清洗策略工厂
     """
 
-    _strategy_dict: dict[PageType, DataCleaningStrategy] = {}
+    _strategy_dict: dict[PageType, DataCleaningStrategy] = {
+        PageType.OVERVIEW, OverviewDataCleaningStrategy()
+    }
 
     @classmethod
     def get_strategy(cls, page_type: PageType) -> DataCleaningStrategy:
