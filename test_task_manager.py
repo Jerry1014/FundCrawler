@@ -34,7 +34,7 @@ class SimpleTestTaskManager(TestCase):
             self._task_list.append(task)
 
             task = self._task_list.pop()
-            self._result_list.append(FundCrawlingResult({FundCrawlingResult.FundInfoHeader.FUND_NAME: task.name}))
+            self._result_list.append(FundCrawlingResult(task.code, task.name))
 
         def has_next_result(self) -> bool:
             return len(self._task_list) == 0 and len(self._result_list) == 0
@@ -65,6 +65,7 @@ class SmokeTestTaskManager(TestCase):
     """
 
     def test_run(self):
+        GetNeedCrawledFundByWeb4Test.test_case_num = 100
         manager = TaskManager(GetNeedCrawledFundByWeb4Test()
                               , AsyncCrawlingData()
                               , SaveResult2File())

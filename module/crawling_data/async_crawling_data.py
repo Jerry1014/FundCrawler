@@ -1,13 +1,13 @@
 """
 数据爬取模块
 """
-from typing import NoReturn, Optional
+from typing import NoReturn, Optional, Any
 
 from module.crawling_data.data_mining.data_cleaning_strategy_factory import DataCleaningStrategyFactory
 from module.crawling_data.data_mining.data_mining_type import PageType
 from task_manager import CrawlingDataModule, FundCrawlingResult, NeedCrawledFundModule
 from utils.downloader.async_downloader import AsyncHttpDownloader, BaseRequest
-from utils.downloader.impl.http_request_downloader import AsyncHttpRequestDownloader
+from utils.downloader.impl.http_request_downloader import AsyncHttpRequestDownloader, Request
 
 
 class AsyncCrawlingData(CrawlingDataModule):
@@ -43,26 +43,29 @@ class AsyncCrawlingData(CrawlingDataModule):
         3 清洗 context中 所有的pageTask中的数据, 构造得到最终的爬取结果
         """
         while True:
-            result = self._downloader.get_result()
-            if not result:
+            crawling_result = self._downloader.get_result()
+            if not crawling_result:
                 return None
 
-            unique_key: AsyncCrawlingData.Context.UniqueKey = result.request.unique_key
+            unique_key: AsyncCrawlingData.Context.UniqueKey = crawling_result.request.unique_key
             context = self._unfinished_context_dict.get(unique_key.context_id)
-            context.finish_task(unique_key.task_id, result.response)
+            context.finish_task(unique_key.task_id, crawling_result.response)
 
             # 如果爬取上下文中所有需要爬取的任务都完成了, 就可以取出进行数据清洗并返回结果
             if context.all_task_finished():
                 del self._unfinished_context_dict[unique_key.context_id]
 
-                result = FundCrawlingResult(
-                    {FundCrawlingResult.FundInfoHeader.FUND_CODE: context.fund_task.code
-                        , FundCrawlingResult.FundInfoHeader.FUND_SIMPLE_NAME: context.fund_task.name})
-
-                for task in context.finished_task:
-                    strategy = DataCleaningStrategyFactory.get_strategy(task.page_type)
-                    strategy.fill_result(task.response, result)
-                return result
+                fund_result = FundCrawlingResult(context.fund_task.code, context.fund_task.name)
+                try:
+                    for task in context.finished_task:
+                        if task.response:
+                            strategy = DataCleaningStrategyFactory.get_strategy(task.page_type)
+                            strategy.fill_result(task.response, fund_result)
+                        else:
+                            print(f"基金{context.fund_task.code} {task.page_type}数据 爬取失败")
+                except:
+                    print(f"基金{context.fund_task.code} 数据解析失败")
+                return fund_result
 
     def get_context_id_and_increase(self) -> int:
         """
@@ -103,7 +106,7 @@ class AsyncCrawlingData(CrawlingDataModule):
             task_id = self.get_task_id_and_increase()
             page_type = PageType.OVERVIEW
             url = page_type.value.substitute(fund_code=fund_code)
-            self._downloader.summit(BaseRequest(AsyncCrawlingData.Context.UniqueKey(self._context_id, task_id), url))
+            self._downloader.summit(Request(AsyncCrawlingData.Context.UniqueKey(self._context_id, task_id), url))
             self._running_task_dict[task_id] = AsyncCrawlingData.PageCrawlingTask(page_type, url)
 
         def get_task_id_and_increase(self) -> int:
@@ -120,9 +123,10 @@ class AsyncCrawlingData(CrawlingDataModule):
             """
             return len(self._running_task_dict) == 0
 
-        def finish_task(self, task_id: int, response) -> NoReturn:
+        def finish_task(self, task_id: int, response: Optional[Any]) -> NoReturn:
             """
             页面爬取任务完成
+            :param response: None代表数据爬取失败了
             """
             task = self._running_task_dict.pop(task_id)
             task.response = response

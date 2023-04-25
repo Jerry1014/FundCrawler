@@ -7,10 +7,6 @@ from task_manager import FundCrawlingResult
 class TestSaveResult2File(TestCase):
     def test(self):
         with SaveResult2File() as save:
-            save.save_result(FundCrawlingResult(
-                {FundCrawlingResult.FundInfoHeader.FUND_CODE: '1'}
-            ))
+            save.save_result(FundCrawlingResult('1', '1'))
 
-            save.save_result(FundCrawlingResult(
-                {FundCrawlingResult.FundInfoHeader.FUND_NAME: '1'}
-            ))
+            save.save_result(FundCrawlingResult('1', '1'))

@@ -58,8 +58,9 @@ class FundCrawlingResult:
         TOTAL_LENGTH_OF_TENURE_OF_MANAGER = '总任职时间',
         SHARPE_LAST_THREE_YEARS = '近三年夏普'
 
-    def __init__(self, fund_info_dict: dict[FundInfoHeader, Optional[str]] = None):
-        self.fund_info_dict = fund_info_dict if fund_info_dict is not None else {}
+    def __init__(self, fund_code: str, fund_name: str):
+        self.fund_info_dict = {FundCrawlingResult.FundInfoHeader.FUND_CODE: fund_code,
+                               FundCrawlingResult.FundInfoHeader.FUND_SIMPLE_NAME: fund_name}
 
 
 class CrawlingDataModule(ABC):
@@ -88,6 +89,8 @@ class CrawlingDataModule(ABC):
     def get_an_result(self) -> Optional[FundCrawlingResult]:
         """
         (阻塞, 有超时)获取一个处理好的结果
+        数据爬取尽量保证成功, 实在失败时 爬取数据为None, 所以不期望的异常
+        可以认为只存在于 数据解析 部分, 需要防止一个任务失败导致全部失败
         """
         return NotImplemented
 
@@ -134,6 +137,8 @@ class TaskManager:
         self._crawling_data_module = crawling_data_module
         self._save_result_module = save_result_module
 
+        self._fail_task: list[NeedCrawledFundModule.NeedCrawledOnceFund] = []
+
     async def get_task_and_crawling(self):
         generator = self._need_crawled_fund_module.task_generator
 
@@ -143,6 +148,7 @@ class TaskManager:
             except StopIteration:
                 break
             self._crawling_data_module.do_crawling(task)
+
         self._crawling_data_module.shutdown()
 
     async def get_result_and_save(self):
