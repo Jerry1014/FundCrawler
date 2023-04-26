@@ -8,5 +8,9 @@ class DataCleaningStrategy(ABC):
     """
 
     @abstractmethod
+    def build_url(self, fund_code: str) -> str:
+        return NotImplemented
+
+    @abstractmethod
     def fill_result(self, response, result) -> NoReturn:
         return NotImplemented

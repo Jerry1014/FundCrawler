@@ -16,7 +16,9 @@ class AsyncCrawlingData(CrawlingDataModule):
     负责处理基金爬取任务, 爬取若干个页面, 并对爬取到的数据进行清洗, 得到最终的爬取结果
     """
 
-    def __init__(self):
+    def __init__(self, need_data_type_list: list[PageType] = None):
+        self._need_data_type_list = need_data_type_list if need_data_type_list else [i for i in PageType]
+
         self._shutdown = False
         self._downloader = AsyncHttpRequestDownloader()
 
@@ -28,7 +30,8 @@ class AsyncCrawlingData(CrawlingDataModule):
         构造爬取上下文，并加入到集合中
         """
         context_id = self.get_context_id_and_increase()
-        self._unfinished_context_dict[context_id] = AsyncCrawlingData.Context(context_id, task, self._downloader)
+        self._unfinished_context_dict[context_id] = AsyncCrawlingData.Context(context_id, task, self._downloader,
+                                                                              self._need_data_type_list)
 
     def has_next_result(self) -> bool:
         """
@@ -86,28 +89,23 @@ class AsyncCrawlingData(CrawlingDataModule):
         """
 
         def __init__(self, context_id: int, fund_task: NeedCrawledFundModule.NeedCrawledOnceFund,
-                     downloader: AsyncHttpDownloader):
+                     downloader: AsyncHttpDownloader, need_data_type_list: list[PageType]):
             self._context_id = context_id
             self._downloader = downloader
             self.fund_task = fund_task
 
-            self.finished_task: list[AsyncCrawlingData.PageCrawlingTask] = []
-
-            # 构造页面爬取任务
             self._cur_task_id = 0
+            self.finished_task: list[AsyncCrawlingData.PageCrawlingTask] = []
             self._running_task_dict: dict[int, AsyncCrawlingData.PageCrawlingTask] = {}
 
-            self.init_task(fund_task.code)
+            # 构造页面爬取任务
+            for date_type in need_data_type_list:
+                task_id = self.get_task_id_and_increase()
 
-        def init_task(self, fund_code):
-            """
-            初始化需要爬取的页面task
-            """
-            task_id = self.get_task_id_and_increase()
-            page_type = PageType.OVERVIEW
-            url = page_type.value.substitute(fund_code=fund_code)
-            self._downloader.summit(Request(AsyncCrawlingData.Context.UniqueKey(self._context_id, task_id), url))
-            self._running_task_dict[task_id] = AsyncCrawlingData.PageCrawlingTask(page_type, url)
+                strategy = DataCleaningStrategyFactory.get_strategy(date_type)
+                url = strategy.build_url(fund_task.code)
+                self._downloader.summit(Request(AsyncCrawlingData.Context.UniqueKey(self._context_id, task_id), url))
+                self._running_task_dict[task_id] = AsyncCrawlingData.PageCrawlingTask(date_type, url)
 
         def get_task_id_and_increase(self) -> int:
             """
