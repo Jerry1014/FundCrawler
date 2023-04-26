@@ -52,6 +52,7 @@ class FundCrawlingResult:
         FUND_SIMPLE_NAME = '基金简称',
         FUND_TYPE = '基金类型',
         FUND_SIZE = '资产规模',
+        FUND_COMPANY = '基金管理人',
         # 兼容带新场景，A+B -> B -> B+C，此时基金经理为时长最长的B，对应的任职时间为 这三段B连续任职的任职时间
         FUND_MANAGERS = '基金经理',
         LENGTH_OF_TENURE_IN_CUR_FUND = '本基金任职时间',

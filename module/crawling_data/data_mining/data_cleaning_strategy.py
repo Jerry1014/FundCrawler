@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import NoReturn
 
+from process_manager import FundCrawlingResult
+
 
 class DataCleaningStrategy(ABC):
     """
@@ -12,5 +14,5 @@ class DataCleaningStrategy(ABC):
         return NotImplemented
 
     @abstractmethod
-    def fill_result(self, response, result) -> NoReturn:
+    def fill_result(self, response, result: FundCrawlingResult) -> NoReturn:
         return NotImplemented
