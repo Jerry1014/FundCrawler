@@ -137,8 +137,6 @@ class TaskManager:
         self._crawling_data_module = crawling_data_module
         self._save_result_module = save_result_module
 
-        self._fail_task: list[NeedCrawledFundModule.NeedCrawledOnceFund] = []
-
     async def get_task_and_crawling(self):
         generator = self._need_crawled_fund_module.task_generator
 
