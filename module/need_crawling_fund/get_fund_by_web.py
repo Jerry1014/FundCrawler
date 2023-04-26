@@ -6,7 +6,7 @@ from typing import NoReturn
 
 import requests
 
-from task_manager import NeedCrawledFundModule
+from process_manager import NeedCrawledFundModule
 
 
 class GetNeedCrawledFundByWeb(NeedCrawledFundModule):

@@ -5,7 +5,7 @@ from typing import NoReturn, Optional, Any
 
 from module.crawling_data.data_mining.data_cleaning_strategy_factory import DataCleaningStrategyFactory
 from module.crawling_data.data_mining.data_mining_type import PageType
-from task_manager import CrawlingDataModule, FundCrawlingResult, NeedCrawledFundModule
+from process_manager import CrawlingDataModule, FundCrawlingResult, NeedCrawledFundModule
 from utils.downloader.async_downloader import AsyncHttpDownloader, BaseRequest
 from utils.downloader.impl.http_request_downloader import AsyncHttpRequestDownloader, Request
 

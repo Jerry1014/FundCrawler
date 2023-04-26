@@ -4,7 +4,7 @@
 from csv import DictWriter
 from typing import NoReturn
 
-from task_manager import SaveResultModule, FundCrawlingResult
+from process_manager import SaveResultModule, FundCrawlingResult
 
 
 class SaveResult2File(SaveResultModule):

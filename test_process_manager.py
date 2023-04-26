@@ -6,7 +6,7 @@ from unittest import TestCase
 from module.crawling_data.async_crawling_data import AsyncCrawlingData
 from module.need_crawling_fund.get_fund_by_web import GetNeedCrawledFundByWeb4Test
 from module.save_result.save_result_2_flie import SaveResult2File
-from task_manager import NeedCrawledFundModule, CrawlingDataModule, FundCrawlingResult, SaveResultModule, \
+from process_manager import NeedCrawledFundModule, CrawlingDataModule, FundCrawlingResult, SaveResultModule, \
     TaskManager
 
 
