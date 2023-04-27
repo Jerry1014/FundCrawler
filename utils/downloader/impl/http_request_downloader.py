@@ -113,10 +113,17 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
             """
             爬取主流程
             """
+            logging.basicConfig(filename='downloader.log', encoding='utf-8', level=logging.INFO)
+
             thread_max_workers = cpu_count() * 5
             executor = ThreadPoolExecutor(max_workers=thread_max_workers)
             future_list: list[Future] = []
             need_retry_task_list: list[Request] = list()
+
+            circle_count = 10
+            success_count_ring = [0] * circle_count
+            fail_count_ring = [0] * circle_count
+            number_of_iterations = 0
 
             while True:
                 # 爬取结束
@@ -141,11 +148,26 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                         need_retry_task_list.append(result.request)
                         continue
                     self._result_queue.put(result)
+
+                new_success_count = 0
+                new_fail_count = 0
+                for future in future_list:
+                    result: Response = future.result()
+                    if result.state == Response.State.FALSE:
+                        new_fail_count += 1
+                    else:
+                        new_success_count += 1
+                success_count_ring[number_of_iterations % circle_count] = new_success_count
+                fail_count_ring[number_of_iterations % circle_count] = new_fail_count
+
                 future_list = new_future_list
 
                 # 处理爬取请求
-                # todo 这里需要根据失败率进行动态优化，控制爬取速率
-                request_once_handle_max_num = thread_max_workers * 2 - len(future_list)
+                # 根据失败率进行动态优化，控制爬取速率
+                total = sum(success_count_ring) + sum(fail_count_ring)
+                fail_rate = (sum(fail_count_ring) / total) if total != 0 else 1
+                logging.info(f"当前爬取失败率{fail_rate}")
+                request_once_handle_max_num = thread_max_workers * 2 - len(future_list) * fail_rate
                 while (not self._request_queue.empty() or len(need_retry_task_list) > 0) \
                         and request_once_handle_max_num > 0:
                     request = need_retry_task_list.pop() if len(need_retry_task_list) > 0 else self._request_queue.get()
@@ -153,7 +175,8 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                     request_once_handle_max_num -= 1
 
                 # 根据当前未完成的任务数量，休眠主线程，避免循环占用过多的cpu时间
-                sleep(1 * len(future_list) / thread_max_workers * 2)
+                sleep(fail_rate + 1 * len(future_list) / thread_max_workers * 2)
+                number_of_iterations += 1
 
             # 确保数据都写入后，再退出主线程
             # OS pipes are not infinitely long, so the process which queues data could be blocked in the OS during the
