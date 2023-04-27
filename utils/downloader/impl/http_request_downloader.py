@@ -168,7 +168,7 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
 
                 if fail_rate > 0.0:
                     last_fail_request_once_handle_max_num = request_once_handle_max_num
-                    request_once_handle_max_num = max(1, request_once_handle_max_num >> 1)
+                    request_once_handle_max_num = max(1, request_once_handle_max_num / 2)
                 else:
                     request_once_handle_max_num = max(int(last_fail_request_once_handle_max_num / 2),
                                                       request_once_handle_max_num + 0.01)
