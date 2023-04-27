@@ -21,7 +21,7 @@ class Request(BaseRequest):
     在基础的请求上, 增加了重试次数
     """
 
-    def __init__(self, unique_key: BaseRequest.UniqueKey, url, retry_time=3):
+    def __init__(self, unique_key: BaseRequest.UniqueKey, url, retry_time=10):
         super().__init__(unique_key, url)
         if retry_time < 1:
             raise AttributeError
@@ -103,7 +103,7 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                 page = get(request.url, headers=header, timeout=1)
                 if page.status_code != 200 or not page.text:
                     # 反爬虫策略之 给你返回空白的 200结果
-                    logging.warning(f'网页{request.url}下载失败 code:{page.status_code}')
+                    logging.warning(f'网页{request.url}下 载失败 code:{page.status_code}')
                     raise AttributeError
                 return Response(request, Response.State.SUCCESS, page)
             except (RequestException, AttributeError):
@@ -113,17 +113,18 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
             """
             爬取主流程
             """
-            logging.basicConfig(filename='downloader.log', encoding='utf-8', level=logging.INFO)
+            logging.basicConfig(filename='downloader.text', encoding='utf-8', level=logging.INFO,
+                                format='%(asctime)s %(message)s')
 
-            thread_max_workers = cpu_count() * 5
-            executor = ThreadPoolExecutor(max_workers=thread_max_workers)
+            executor = ThreadPoolExecutor()
             future_list: list[Future] = []
             need_retry_task_list: list[Request] = list()
 
-            circle_count = 10
+            circle_count = 3
             success_count_ring = [0] * circle_count
             fail_count_ring = [0] * circle_count
             number_of_iterations = 0
+            request_once_handle_max_num = 1.0
 
             while True:
                 # 爬取结束
@@ -148,10 +149,12 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                         need_retry_task_list.append(result.request)
                         continue
                     self._result_queue.put(result)
+                old_future_list = future_list
+                future_list = new_future_list
 
                 new_success_count = 0
                 new_fail_count = 0
-                for future in future_list:
+                for future in old_future_list:
                     result: Response = future.result()
                     if result.state == Response.State.FALSE:
                         new_fail_count += 1
@@ -159,23 +162,25 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                         new_success_count += 1
                 success_count_ring[number_of_iterations % circle_count] = new_success_count
                 fail_count_ring[number_of_iterations % circle_count] = new_fail_count
+                total = sum(success_count_ring) + sum(fail_count_ring)
+                fail_rate = (sum(fail_count_ring) / total) if total != 0 else 0.0
 
-                future_list = new_future_list
+                if fail_rate > 0.0:
+                    request_once_handle_max_num = max(1, request_once_handle_max_num - int(fail_rate * 100))
+                else:
+                    request_once_handle_max_num += 0.01
+                logging.info(f"当前爬取失败率{fail_rate} 最大任务数{request_once_handle_max_num}")
 
                 # 处理爬取请求
-                # 根据失败率进行动态优化，控制爬取速率
-                total = sum(success_count_ring) + sum(fail_count_ring)
-                fail_rate = (sum(fail_count_ring) / total) if total != 0 else 1
-                logging.info(f"当前爬取失败率{fail_rate}")
-                request_once_handle_max_num = thread_max_workers * 2 - len(future_list) * fail_rate
+                tem_request_once_handle_max_num = int(request_once_handle_max_num)
                 while (not self._request_queue.empty() or len(need_retry_task_list) > 0) \
-                        and request_once_handle_max_num > 0:
+                        and tem_request_once_handle_max_num > 0:
                     request = need_retry_task_list.pop() if len(need_retry_task_list) > 0 else self._request_queue.get()
                     future_list.append(executor.submit(self.get_page, request))
-                    request_once_handle_max_num -= 1
+                    tem_request_once_handle_max_num -= 1
 
                 # 根据当前未完成的任务数量，休眠主线程，避免循环占用过多的cpu时间
-                sleep(fail_rate + 1 * len(future_list) / thread_max_workers * 2)
+                sleep(0.1)
                 number_of_iterations += 1
 
             # 确保数据都写入后，再退出主线程

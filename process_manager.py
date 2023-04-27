@@ -139,7 +139,7 @@ class TaskManager:
         self._crawling_data_module = crawling_data_module
         self._save_result_module = save_result_module
 
-        logging.basicConfig(filename='process.log', encoding='utf-8', level=log_level)
+        logging.basicConfig(filename='process.text', encoding='utf-8', level=log_level)
         logging.info(f"需要爬取的基金总数:{self._need_crawled_fund_module.total}")
         self._cur = 0
 
