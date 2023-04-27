@@ -10,8 +10,7 @@ from process_manager import FundCrawlingResult
 
 class OverviewDataCleaningStrategy(DataCleaningStrategy):
     """
-    数据解析 适用网站
-    http://fundf10.eastmoney.com/jbgk_007696.html
+    解析基金的基本概况
     """
     url_template = Template('http://fundf10.eastmoney.com/jbgk_$fund_code.html')
 

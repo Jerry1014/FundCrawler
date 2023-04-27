@@ -10,3 +10,4 @@ class PageType(Enum):
     """
     OVERVIEW = auto()
     MANAGER = auto
+    METRICS = auto()

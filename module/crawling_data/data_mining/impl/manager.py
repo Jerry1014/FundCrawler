@@ -10,10 +10,10 @@ from process_manager import FundCrawlingResult
 
 class ManagerDataCleaningStrategy(DataCleaningStrategy):
     """
-    数据解析 适用网站
-    http://fundf10.eastmoney.com/jjjl_007696.html
+    解析基金经理信息
     """
     url_template = Template('http://fundf10.eastmoney.com/jjjl_$fund_code.html')
+
     fund_manager_name_pattern = re.compile(r'现任基金经理简介[\s\S]+?姓名：[\s\S]+?<a.+?>([\s\S]+?)</a>')
     fund_manager_date_of_appointment_pattern = re.compile(r'现任基金经理简介[\s\S]+?上任日期：[\s\S]+?>(.+?)</p>')
 
