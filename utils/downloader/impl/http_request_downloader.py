@@ -112,7 +112,7 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
             """
             爬取主流程
             """
-            logging.basicConfig(filename='downloader.text', encoding='utf-8', level=logging.INFO,
+            logging.basicConfig(filename='downloader.text', encoding='utf-8', level=logging.INFO, filemode='w',
                                 format='%(asctime)s %(message)s')
 
             executor = ThreadPoolExecutor()
@@ -170,7 +170,7 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                     last_fail_request_once_handle_max_num = request_once_handle_max_num
                     request_once_handle_max_num = max(1, request_once_handle_max_num >> 1)
                 else:
-                    request_once_handle_max_num = max(int(last_fail_request_once_handle_max_num >> 1),
+                    request_once_handle_max_num = max(int(last_fail_request_once_handle_max_num / 2),
                                                       request_once_handle_max_num + 0.01)
                 logging.info(f"当前爬取失败率{fail_rate} 最大任务数{request_once_handle_max_num}")
 
