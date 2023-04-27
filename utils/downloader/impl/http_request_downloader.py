@@ -103,7 +103,6 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                 page = get(request.url, headers=header, timeout=1)
                 if page.status_code != 200 or not page.text:
                     # 反爬虫策略之 给你返回空白的 200结果
-                    logging.warning(f'网页{request.url}下 载失败 code:{page.status_code}')
                     raise AttributeError
                 return Response(request, Response.State.SUCCESS, page)
             except (RequestException, AttributeError):
@@ -120,11 +119,12 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
             future_list: list[Future] = []
             need_retry_task_list: list[Request] = list()
 
-            circle_count = 3
+            circle_count = 5
             success_count_ring = [0] * circle_count
             fail_count_ring = [0] * circle_count
             number_of_iterations = 0
             request_once_handle_max_num = 1.0
+            last_fail_request_once_handle_max_num = request_once_handle_max_num
 
             while True:
                 # 爬取结束
@@ -167,9 +167,11 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                 fail_rate = (sum(fail_count_ring) / total) if total != 0 else 0.0
 
                 if fail_rate > 0.0:
-                    request_once_handle_max_num = max(1, request_once_handle_max_num - int(fail_rate * 100))
+                    last_fail_request_once_handle_max_num = request_once_handle_max_num
+                    request_once_handle_max_num = max(1, request_once_handle_max_num >> 1)
                 else:
-                    request_once_handle_max_num += 0.01
+                    request_once_handle_max_num = max(int(last_fail_request_once_handle_max_num / 2),
+                                                      request_once_handle_max_num + 0.01)
                 logging.info(f"当前爬取失败率{fail_rate} 最大任务数{request_once_handle_max_num}")
 
                 # 处理爬取请求
