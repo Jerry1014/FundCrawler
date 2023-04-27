@@ -152,6 +152,7 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                 old_future_list = future_list
                 future_list = new_future_list
 
+                # 爬取速率控制
                 new_success_count = 0
                 new_fail_count = 0
                 for future in old_future_list:
