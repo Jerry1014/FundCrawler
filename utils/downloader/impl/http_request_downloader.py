@@ -114,10 +114,12 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
             thread_max_workers = cpu_count() * 5
             executor = ThreadPoolExecutor(max_workers=thread_max_workers)
             future_list: list[Future] = []
+            need_retry_task_list: list[Request] = list()
 
             while True:
                 # 爬取结束
-                if self._exit_sign.is_set() and self._request_queue.empty() and not future_list:
+                if self._exit_sign.is_set() and self._request_queue.empty() and not future_list \
+                        and not need_retry_task_list:
                     executor.shutdown()
                     self._result_queue.close()
                     self._exit_sign.clear()
@@ -134,15 +136,16 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                     if result.state == Response.State.FALSE and result.request.retry_time > 0:
                         # 失败重试
                         result.request.retry_time -= 1
-                        self._request_queue.put(result.request)
+                        need_retry_task_list.append(result.request)
                         continue
                     self._result_queue.put(result)
                 future_list = new_future_list
 
                 # 处理爬取请求
                 request_once_handle_max_num = thread_max_workers * 2 - len(future_list)
-                while not self._request_queue.empty() and request_once_handle_max_num > 0:
-                    request = self._request_queue.get()
+                while (not self._request_queue.empty() or len(need_retry_task_list) > 0) \
+                        and request_once_handle_max_num > 0:
+                    request = need_retry_task_list.pop() if len(need_retry_task_list) > 0 else self._request_queue.get()
                     future_list.append(executor.submit(self.get_page, request))
                     request_once_handle_max_num -= 1
 

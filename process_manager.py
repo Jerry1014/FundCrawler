@@ -138,6 +138,9 @@ class TaskManager:
         self._crawling_data_module = crawling_data_module
         self._save_result_module = save_result_module
 
+        print(f'total: {self._need_crawled_fund_module.total}')
+        self._cur = 0
+
     async def get_task_and_crawling(self):
         generator = self._need_crawled_fund_module.task_generator
 
@@ -155,6 +158,8 @@ class TaskManager:
             while self._crawling_data_module.has_next_result():
                 result: FundCrawlingResult = self._crawling_data_module.get_an_result()
                 if result:
+                    self._cur += 1
+                    print(f'cur {self._cur}')
                     self._save_result_module.save_result(result)
 
     async def run(self) -> NoReturn:
