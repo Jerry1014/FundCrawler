@@ -44,7 +44,7 @@ class FundCrawlingResult:
     """
 
     @unique
-    class FundInfoHeader(StrEnum):
+    class Header(StrEnum):
         """
         结果key
         """
@@ -54,14 +54,13 @@ class FundCrawlingResult:
         FUND_SIZE = '资产规模',
         FUND_COMPANY = '基金管理人',
         # 兼容带新场景，A+B -> B -> B+C，此时基金经理为时长最长的B，对应的任职时间为 这三段 B连续任职的任职时间
-        FUND_MANAGERS = '基金经理(最近连续最长任职)',
-        LENGTH_OF_TENURE_IN_CUR_FUND = '本基金任职时间(最近连续最长任职)',
-        TOTAL_LENGTH_OF_TENURE_OF_MANAGER = '总任职时间',
+        FUND_MANAGER = '基金经理(最近连续最长任职)',
+        DATE_OF_APPOINTMENT = '基金经理的上任时间',
         SHARPE_LAST_THREE_YEARS = '近三年夏普'
 
     def __init__(self, fund_code: str, fund_name: str):
-        self.fund_info_dict = {FundCrawlingResult.FundInfoHeader.FUND_CODE: fund_code,
-                               FundCrawlingResult.FundInfoHeader.FUND_SIMPLE_NAME: fund_name}
+        self.fund_info_dict = {FundCrawlingResult.Header.FUND_CODE: fund_code,
+                               FundCrawlingResult.Header.FUND_SIMPLE_NAME: fund_name}
 
 
 class CrawlingDataModule(ABC):

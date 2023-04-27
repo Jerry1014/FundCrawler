@@ -27,10 +27,10 @@ class OverviewDataCleaningStrategy(DataCleaningStrategy):
 
         fund_kind_result = self.fund_type_pattern.search(page_text)
         if fund_kind_result:
-            result.fund_info_dict[FundCrawlingResult.FundInfoHeader.FUND_TYPE] = fund_kind_result.group(1)
+            result.fund_info_dict[FundCrawlingResult.Header.FUND_TYPE] = fund_kind_result.group(1)
         fund_size_result = self.fund_size_pattern.search(page_text)
         if fund_size_result:
-            result.fund_info_dict[FundCrawlingResult.FundInfoHeader.FUND_SIZE] = fund_size_result.group(1)
+            result.fund_info_dict[FundCrawlingResult.Header.FUND_SIZE] = fund_size_result.group(1)
         fund_company_result = self.fund_company_pattern.search(page_text)
         if fund_company_result:
-            result.fund_info_dict[FundCrawlingResult.FundInfoHeader.FUND_COMPANY] = fund_company_result.group(1)
+            result.fund_info_dict[FundCrawlingResult.Header.FUND_COMPANY] = fund_company_result.group(1)

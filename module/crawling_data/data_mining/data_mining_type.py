@@ -9,3 +9,4 @@ class PageType(Enum):
     枚举
     """
     OVERVIEW = auto()
+    MANAGER = auto

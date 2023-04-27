@@ -4,6 +4,7 @@
 
 from module.crawling_data.data_mining.data_cleaning_strategy import DataCleaningStrategy
 from module.crawling_data.data_mining.data_mining_type import PageType
+from module.crawling_data.data_mining.impl.manager import ManagerDataCleaningStrategy
 from module.crawling_data.data_mining.impl.overview import OverviewDataCleaningStrategy
 
 
@@ -13,7 +14,8 @@ class DataCleaningStrategyFactory:
     """
 
     _strategy_dict: dict[PageType, DataCleaningStrategy] = {
-        PageType.OVERVIEW: OverviewDataCleaningStrategy()
+        PageType.OVERVIEW: OverviewDataCleaningStrategy(),
+        PageType.MANAGER: ManagerDataCleaningStrategy()
     }
 
     @classmethod
