@@ -1,6 +1,7 @@
 """
 通过requests进行http下载
 """
+import logging
 from concurrent.futures import Future, ThreadPoolExecutor
 from enum import Enum, auto, unique
 from multiprocessing import Queue, Process, Event, synchronize
@@ -102,6 +103,7 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                 page = get(request.url, headers=header, timeout=1)
                 if page.status_code != 200 or not page.text:
                     # 反爬虫策略之 给你返回空白的 200结果
+                    logging.warning(f'网页{request.url}下载失败 code:{page.status_code}')
                     raise AttributeError
                 return Response(request, Response.State.SUCCESS, page)
             except (RequestException, AttributeError):
@@ -142,6 +144,7 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                 future_list = new_future_list
 
                 # 处理爬取请求
+                # todo 这里需要根据失败率进行动态优化，控制爬取速率
                 request_once_handle_max_num = thread_max_workers * 2 - len(future_list)
                 while (not self._request_queue.empty() or len(need_retry_task_list) > 0) \
                         and request_once_handle_max_num > 0:

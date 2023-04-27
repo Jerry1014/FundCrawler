@@ -1,7 +1,7 @@
 """
 数据爬取模块
 """
-import traceback
+import logging
 from typing import NoReturn, Optional, Any
 
 from module.crawling_data.data_mining.data_cleaning_strategy_factory import DataCleaningStrategyFactory
@@ -66,10 +66,9 @@ class AsyncCrawlingData(CrawlingDataModule):
                             strategy = DataCleaningStrategyFactory.get_strategy(task.page_type)
                             strategy.fill_result(task.response, fund_result)
                         else:
-                            print(f"基金{context.fund_task.code} {task.page_type}数据 爬取失败")
-                except Exception:
-                    traceback.print_exc()
-                    print(f"基金{context.fund_task.code} 数据解析失败")
+                            logging.error(f"基金{context.fund_task.code} {task.page_type}数据 爬取失败")
+                except Exception as e:
+                    logging.error(f"基金{context.fund_task.code} 数据解析失败", exc_info=e)
                 return fund_result
 
     def get_context_id_and_increase(self) -> int:

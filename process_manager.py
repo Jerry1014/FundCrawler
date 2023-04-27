@@ -2,6 +2,7 @@
 爬取核心
 对爬取过程的管理
 """
+import logging
 from abc import abstractmethod, ABC
 from asyncio import TaskGroup
 from collections.abc import Generator
@@ -128,7 +129,7 @@ class TaskManager:
     """
 
     def __init__(self, need_crawled_fund_module: NeedCrawledFundModule, crawling_data_module: CrawlingDataModule,
-                 save_result_module: SaveResultModule):
+                 save_result_module: SaveResultModule, log_level=logging.DEBUG):
         """
         :param need_crawled_fund_module: 负责给出 基金爬取任务
         :param crawling_data_module: 负责 数据爬取和清洗
@@ -138,7 +139,8 @@ class TaskManager:
         self._crawling_data_module = crawling_data_module
         self._save_result_module = save_result_module
 
-        print(f'total: {self._need_crawled_fund_module.total}')
+        logging.basicConfig(filename='process.log', encoding='utf-8', level=log_level)
+        logging.info(f"需要爬取的基金总数:{self._need_crawled_fund_module.total}")
         self._cur = 0
 
     async def get_task_and_crawling(self):
@@ -159,7 +161,8 @@ class TaskManager:
                 result: FundCrawlingResult = self._crawling_data_module.get_an_result()
                 if result:
                     self._cur += 1
-                    print(f'cur {self._cur}')
+                    if self._cur % 5 == 0:
+                        logging.info(f"当前爬取基金:{self._cur}")
                     self._save_result_module.save_result(result)
 
     async def run(self) -> NoReturn:
@@ -172,3 +175,4 @@ class TaskManager:
         async with TaskGroup() as tg:
             tg.create_task(self.get_task_and_crawling())
             tg.create_task(self.get_result_and_save())
+        logging.info("基金爬取完成")
