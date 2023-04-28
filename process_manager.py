@@ -2,6 +2,7 @@
 爬取核心
 对爬取过程的管理
 """
+import datetime
 import logging
 from abc import abstractmethod, ABC
 from asyncio import TaskGroup, sleep
@@ -167,6 +168,7 @@ class TaskManager:
                     self._cur_finished_task_count += 1
                     self._save_result_module.save_result(result)
                     await sleep(0.1)
+
         self._all_task_finished = True
 
     async def show_process(self):
@@ -181,8 +183,12 @@ class TaskManager:
         从 数据爬取和清洗模块 将结果传递给 数据保存模块
         两部分的任务都是阻塞的（主要会阻塞在 数据爬取和清洗）
         """
+        start_time = datetime.datetime.now()
+
         async with TaskGroup() as tg:
+            tg.create_task(self.show_process())
             tg.create_task(self.get_task_and_crawling())
             tg.create_task(self.get_result_and_save())
-            tg.create_task(self.show_process())
-        logging.info("基金爬取完成")
+
+        cur_time = datetime.datetime.now()
+        logging.info(f"基金爬取完成 耗时{(cur_time - start_time).seconds}s")
