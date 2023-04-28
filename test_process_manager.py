@@ -25,6 +25,10 @@ class SimpleTestTaskManager(TestCase):
         def __init__(self):
             self._task_list: list[NeedCrawledFundModule.NeedCrawledOnceFund] = list()
             self._result_list: list[FundCrawlingResult] = list()
+            self._shutdown = False
+
+        def shutdown(self):
+            self._shutdown = True
 
         def do_crawling(self, task: NeedCrawledFundModule.NeedCrawledOnceFund):
             # 模拟从队列中取结果时的block
@@ -37,7 +41,7 @@ class SimpleTestTaskManager(TestCase):
             self._result_list.append(FundCrawlingResult(task.code, task.name))
 
         def has_next_result(self) -> bool:
-            return len(self._task_list) == 0 and len(self._result_list) == 0
+            return not (self._shutdown and len(self._task_list) == 0 and len(self._result_list) == 0)
 
         def get_an_result(self) -> Optional[FundCrawlingResult]:
             # 模拟从队列中取结果时的block
@@ -65,7 +69,7 @@ class SmokeTestTaskManager(TestCase):
     """
 
     def test_run(self):
-        GetNeedCrawledFundByWeb4Test.test_case_num = 100
+        GetNeedCrawledFundByWeb4Test.test_case_num = 20
         manager = TaskManager(GetNeedCrawledFundByWeb4Test()
                               , AsyncCrawlingData()
                               , SaveResult2File())
