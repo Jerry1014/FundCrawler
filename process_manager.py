@@ -4,7 +4,7 @@
 """
 import logging
 from abc import abstractmethod, ABC
-from asyncio import TaskGroup
+from asyncio import TaskGroup, sleep
 from collections.abc import Generator
 from enum import unique, StrEnum
 from typing import NoReturn, Optional
@@ -142,7 +142,9 @@ class TaskManager:
         logging.basicConfig(filename='process.text', encoding='utf-8', level=log_level, filemode='w',
                             format='%(asctime)s %(message)s')
         logging.info(f"需要爬取的基金总数:{self._need_crawled_fund_module.total}")
-        self._cur = 0
+
+        self._cur_finished_task_count = 0
+        self._all_task_finished = False
 
     async def get_task_and_crawling(self):
         generator = self._need_crawled_fund_module.task_generator
@@ -153,6 +155,7 @@ class TaskManager:
             except StopIteration:
                 break
             self._crawling_data_module.do_crawling(task)
+            await sleep(0.1)
 
         self._crawling_data_module.shutdown()
 
@@ -161,10 +164,15 @@ class TaskManager:
             while self._crawling_data_module.has_next_result():
                 result: FundCrawlingResult = self._crawling_data_module.get_an_result()
                 if result:
-                    self._cur += 1
-                    if self._cur % 5 == 0:
-                        logging.info(f"当前爬取基金:{self._cur}")
+                    self._cur_finished_task_count += 1
                     self._save_result_module.save_result(result)
+                    await sleep(0.1)
+        self._all_task_finished = True
+
+    async def show_process(self):
+        while not self._all_task_finished:
+            logging.info(f"当前爬取基金:{self._cur_finished_task_count}")
+            await sleep(1)
 
     async def run(self) -> NoReturn:
         """
@@ -176,4 +184,5 @@ class TaskManager:
         async with TaskGroup() as tg:
             tg.create_task(self.get_task_and_crawling())
             tg.create_task(self.get_result_and_save())
+            tg.create_task(self.show_process())
         logging.info("基金爬取完成")

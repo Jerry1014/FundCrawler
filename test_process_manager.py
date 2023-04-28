@@ -23,7 +23,6 @@ class SimpleTestTaskManager(TestCase):
 
     class TestCrawlingDataModule(CrawlingDataModule):
         def __init__(self):
-            self._task_list: list[NeedCrawledFundModule.NeedCrawledOnceFund] = list()
             self._result_list: list[FundCrawlingResult] = list()
             self._shutdown = False
 
@@ -31,21 +30,22 @@ class SimpleTestTaskManager(TestCase):
             self._shutdown = True
 
         def do_crawling(self, task: NeedCrawledFundModule.NeedCrawledOnceFund):
+            print("do_crawling")
             # 模拟从队列中取结果时的block
-            while len(self._task_list) > 0:
+            while len(self._result_list) > 0:
                 time.sleep(0.1)
 
-            self._task_list.append(task)
-
-            task = self._task_list.pop()
             self._result_list.append(FundCrawlingResult(task.code, task.name))
 
         def has_next_result(self) -> bool:
-            return not (self._shutdown and len(self._task_list) == 0 and len(self._result_list) == 0)
+            return not (self._shutdown and len(self._result_list) == 0)
 
         def get_an_result(self) -> Optional[FundCrawlingResult]:
+            print("get_an_result")
             # 模拟从队列中取结果时的block
-            while len(self._result_list) == 0:
+            max_iter = 10
+            while len(self._result_list) == 0 and max_iter > 0:
+                max_iter -= 1
                 time.sleep(0.1)
 
             result = self._result_list.pop()
