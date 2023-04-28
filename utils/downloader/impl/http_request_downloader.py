@@ -7,6 +7,7 @@ from enum import Enum, auto, unique
 from multiprocessing import Queue, Process, Event, synchronize
 from os import cpu_count
 from queue import Empty
+from sys import maxsize
 from time import sleep
 from typing import Optional, NoReturn
 
@@ -21,7 +22,7 @@ class Request(BaseRequest):
     在基础的请求上, 增加了重试次数
     """
 
-    def __init__(self, unique_key: BaseRequest.UniqueKey, url, retry_time=10):
+    def __init__(self, unique_key: BaseRequest.UniqueKey, url, retry_time: int = maxsize):
         super().__init__(unique_key, url)
         if retry_time < 1:
             raise AttributeError
@@ -192,7 +193,7 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
 
             self._rising_step = 0.01
 
-        def get_cur_number_of_concurrent_tasks(self, success_count, fail_count) -> int:
+        def get_cur_number_of_concurrent_tasks(self, success_count: int, fail_count: int) -> int:
             """
             根据当前的成功失败任务个数，决策当前最合适的并发任务数
             """

@@ -2,11 +2,11 @@
 爬取核心
 对爬取过程的管理
 """
-import datetime
 import logging
 from abc import abstractmethod, ABC
 from asyncio import TaskGroup, sleep
 from collections.abc import Generator
+from datetime import datetime
 from enum import unique, StrEnum
 from typing import NoReturn, Optional
 
@@ -183,12 +183,12 @@ class TaskManager:
         从 数据爬取和清洗模块 将结果传递给 数据保存模块
         两部分的任务都是阻塞的（主要会阻塞在 数据爬取和清洗）
         """
-        start_time = datetime.datetime.now()
+        start_time = datetime.now()
 
         async with TaskGroup() as tg:
             tg.create_task(self.show_process())
             tg.create_task(self.get_task_and_crawling())
             tg.create_task(self.get_result_and_save())
 
-        cur_time = datetime.datetime.now()
+        cur_time = datetime.now()
         logging.info(f"基金爬取完成 耗时{(cur_time - start_time).seconds}s")
