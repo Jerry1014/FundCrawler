@@ -1,6 +1,7 @@
-import logging
-
-from matplotlib import pyplot as plt
+"""
+爬取速率控制
+"""
+from csv import DictWriter
 
 
 class RateControl:
@@ -8,8 +9,11 @@ class RateControl:
     速率控制
     根据当前请求的失败率 决策当前的爬取速率
     """
+    record_file = 'analyse.csv'
+    fail_rate_key = 'fail_rate'
+    tasks_num_key = 'tasks_num'
 
-    def __init__(self):
+    def __init__(self, analyse_mode=False):
         # 记录环，记录最近circle_count次的成功失败次数
         self._circle_count = 5
         self._success_count_ring = [0] * self._circle_count
@@ -24,9 +28,13 @@ class RateControl:
         # 控制参数 成功后的任务上升率
         self._rising_step = 0.01
 
-        # todo 记录 用于分析
-        self._fail_rate_recode = []
-        self._tasks_num_recode = []
+        # 分析模式下，会记录爬取过程中的 相关数据
+        self._analyse_mode = analyse_mode
+        if analyse_mode:
+            self._file = open(RateControl.record_file, 'w', newline='', encoding='utf-8')
+            self._writer: DictWriter = DictWriter(self._file,
+                                                  fieldnames=[RateControl.fail_rate_key, RateControl.tasks_num_key])
+            self._writer.writeheader()
 
     def get_cur_number_of_concurrent_tasks(self, success_count: int, fail_count: int) -> int:
         """
@@ -38,31 +46,21 @@ class RateControl:
         total = sum(self._success_count_ring) + sum(self._fail_count_ring)
         fail_rate = (sum(self._fail_count_ring) / total) if total != 0 else 0.0
 
-        #
+        # 计算
         if fail_rate > 0.0:
             self._last_cur_number_of_concurrent_tasks = self._cur_number_of_concurrent_tasks
             self._cur_number_of_concurrent_tasks = max(1, self._cur_number_of_concurrent_tasks / 2)
         else:
             self._cur_number_of_concurrent_tasks = max(self._last_cur_number_of_concurrent_tasks / 2,
                                                        self._cur_number_of_concurrent_tasks + self._rising_step)
-        logging.info(f"当前爬取失败率{fail_rate} 最大任务数{self._cur_number_of_concurrent_tasks}")
 
-        self._fail_rate_recode.append(fail_rate)
-        self._tasks_num_recode.append(self._cur_number_of_concurrent_tasks)
+        if self._analyse_mode:
+            self._writer.writerow(
+                {RateControl.fail_rate_key: fail_rate, RateControl.tasks_num_key: self._cur_number_of_concurrent_tasks})
 
         self._number_of_iterations += 1
         return int(self._cur_number_of_concurrent_tasks)
 
-    def draw_analyse(self):
-        fig = plt.figure()
-        plot1 = fig.add_subplot()
-
-        x = range(len(self._fail_rate_recode))
-
-        plot1.plot(x, self._fail_rate_recode, '-', label="fail_rate", color='r')
-        plot1.legend()
-
-        plot2 = plot1.twinx()
-        plot2.plot(x, self._tasks_num_recode, '-', label="tasks_num", color='b')
-        plot2.legend()
-        plt.show()
+    def shutdown(self):
+        if self._analyse_mode:
+            self._file.close()

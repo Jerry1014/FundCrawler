@@ -1,7 +1,6 @@
 """
 通过requests进行http下载
 """
-import logging
 from concurrent.futures import Future, ThreadPoolExecutor
 from enum import Enum, auto, unique
 from multiprocessing import Queue, Process, Event, synchronize
@@ -99,9 +98,6 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
             # 爬取速率控制
             self._rate_control = RateControl()
 
-            logging.basicConfig(filename='downloader.text', encoding='utf-8', level=logging.INFO, filemode='w',
-                                format='%(asctime)s %(message)s')
-
         @staticmethod
         def get_page(request: Request) -> Response:
             """
@@ -130,6 +126,7 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                 if self._exit_sign.is_set() and self._request_queue.empty() and not future_list \
                         and not need_retry_task_list:
                     executor.shutdown()
+                    self._rate_control.shutdown()
                     self._result_queue.close()
                     self._exit_sign.clear()
                     break
@@ -173,5 +170,3 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
             # OS pipes are not infinitely long, so the process which queues data could be blocked in the OS during the
             # put() operation until some other process uses get() to retrieve data from the queue
             self._result_queue.join_thread()
-
-            self._rate_control.draw_analyse()
