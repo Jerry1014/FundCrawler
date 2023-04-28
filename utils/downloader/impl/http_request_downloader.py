@@ -121,6 +121,8 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
             future_list: list[Future] = []
             need_retry_task_list: list[Request] = list()
 
+            self._rate_control.start_analyze()
+
             while True:
                 # 爬取结束
                 if self._exit_sign.is_set() and self._request_queue.empty() and not future_list \

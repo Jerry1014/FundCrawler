@@ -13,7 +13,7 @@ class RateControl:
     fail_rate_key = 'fail_rate'
     tasks_num_key = 'tasks_num'
 
-    def __init__(self, analyse_mode=False):
+    def __init__(self):
         # 记录环，记录最近circle_count次的成功失败次数
         self._circle_count = 5
         self._success_count_ring = [0] * self._circle_count
@@ -29,12 +29,16 @@ class RateControl:
         self._rising_step = 0.01
 
         # 分析模式下，会记录爬取过程中的 相关数据
-        self._analyse_mode = analyse_mode
-        if analyse_mode:
-            self._file = open(RateControl.record_file, 'w', newline='', encoding='utf-8')
-            self._writer: DictWriter = DictWriter(self._file,
-                                                  fieldnames=[RateControl.fail_rate_key, RateControl.tasks_num_key])
-            self._writer.writeheader()
+        self._analyse_mode = False
+        self._file = None
+        self._writer = None
+
+    def start_analyze(self):
+        self._analyse_mode = True
+        self._file = open(RateControl.record_file, 'w', newline='', encoding='utf-8')
+        self._writer: DictWriter = DictWriter(self._file,
+                                              fieldnames=[RateControl.fail_rate_key, RateControl.tasks_num_key])
+        self._writer.writeheader()
 
     def get_cur_number_of_concurrent_tasks(self, success_count: int, fail_count: int) -> int:
         """
