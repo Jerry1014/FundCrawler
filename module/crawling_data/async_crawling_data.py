@@ -120,7 +120,7 @@ class AsyncCrawlingData(CrawlingDataModule):
             """
             爬取上下文, 所有的下载任务都完成了
             """
-            return len(self._running_task_dict) == 0
+            return not self._running_task_dict
 
         def finish_task(self, task_id: int, response: Optional[Any]) -> NoReturn:
             """

@@ -182,7 +182,7 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                     future_list.append(executor.submit(self.get_page, request))
                     tem_request_once_handle_max_num -= 1
 
-                # 根据当前未完成的任务数量，休眠主线程，避免循环占用过多的cpu时间
+                # 休眠主线程，避免循环占用过多的cpu时间
                 sleep(0.1)
                 number_of_iterations += 1
 

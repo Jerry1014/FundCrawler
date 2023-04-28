@@ -38,13 +38,13 @@ class SimpleTestTaskManager(TestCase):
             self._result_list.append(FundCrawlingResult(task.code, task.name))
 
         def has_next_result(self) -> bool:
-            return not (self._shutdown and len(self._result_list) == 0)
+            return not (self._shutdown and not self._result_list)
 
         def get_an_result(self) -> Optional[FundCrawlingResult]:
             print("get_an_result")
             # 模拟从队列中取结果时的block
             max_iter = 10
-            while len(self._result_list) == 0 and max_iter > 0:
+            while not self._result_list and max_iter > 0:
                 max_iter -= 1
                 time.sleep(0.1)
 
