@@ -5,8 +5,8 @@ from matplotlib import pyplot as plt
 from utils.downloader.rate_control.rate_control import RateControl
 
 
-def draw_analyse():
-    with open(RateControl.record_file, 'w', newline='') as csvfile:
+def draw_analyse(path='./'):
+    with open(path + RateControl.record_file, 'r', newline='') as csvfile:
         fail_rate_recode = []
         tasks_num_recode = []
 
@@ -14,7 +14,7 @@ def draw_analyse():
         reader: DictReader = DictReader(csvfile)
         for row in reader:
             fail_rate_recode.append(row[RateControl.fail_rate_key])
-            tasks_num_recode.append(row[RateControl.tasks_num_key])
+            tasks_num_recode.append(round(float(row[RateControl.tasks_num_key]), 3))
 
         # 绘图
         fig = plt.figure()
@@ -29,3 +29,7 @@ def draw_analyse():
         plot2.plot(x, tasks_num_recode, '-', label="tasks_num", color='b')
         plot2.legend()
         plt.show()
+
+
+if __name__ == '__main__':
+    draw_analyse()

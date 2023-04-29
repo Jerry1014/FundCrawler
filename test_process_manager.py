@@ -69,7 +69,7 @@ class SmokeTestTaskManager(TestCase):
     """
 
     def test_run(self):
-        GetNeedCrawledFundByWeb4Test.test_case_num = 10
+        GetNeedCrawledFundByWeb4Test.test_case_num = 100
         manager = TaskManager(GetNeedCrawledFundByWeb4Test()
                               , AsyncCrawlingData()
                               , SaveResult2File())
