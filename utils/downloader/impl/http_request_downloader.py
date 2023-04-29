@@ -54,7 +54,7 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
 
     def __init__(self):
         # 和爬取进程间的通信
-        self._request_queue: Queue[Request] = Queue(cpu_count() * 5)
+        self._request_queue: Queue[Request] = Queue(cpu_count())
         self._result_queue: Queue[Response] = Queue()
         self._exit_sign: synchronize.Event = Event()
 
@@ -160,7 +160,7 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
 
                 # 处理爬取请求
                 while (not self._request_queue.empty() or len(need_retry_task_list) > 0) \
-                        and number_of_concurrent_tasks > 0:
+                        and number_of_concurrent_tasks > len(future_list):
                     # 优先处理需要重试的任务
                     request = need_retry_task_list.pop() if len(need_retry_task_list) > 0 else self._request_queue.get()
                     future_list.append(executor.submit(self.get_page, request))
