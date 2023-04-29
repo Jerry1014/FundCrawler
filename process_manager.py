@@ -144,6 +144,7 @@ class TaskManager:
                             format='%(asctime)s %(message)s')
         logging.info(f"需要爬取的基金总数:{self._need_crawled_fund_module.total}")
 
+        self._cur_crawling_task_count = 0
         self._cur_finished_task_count = 0
         self._all_task_finished = False
 
@@ -157,6 +158,10 @@ class TaskManager:
                 break
             self._crawling_data_module.do_crawling(task)
 
+            self._cur_crawling_task_count += 1
+            if self._cur_crawling_task_count % 10 == 0:
+                logging.info(f"当前正在爬取基金数:{self._cur_crawling_task_count}")
+
         self._crawling_data_module.shutdown()
 
     async def get_result_and_save(self):
@@ -166,6 +171,9 @@ class TaskManager:
                 if result:
                     self._cur_finished_task_count += 1
                     self._save_result_module.save_result(result)
+
+                    if self._cur_finished_task_count % 10 == 0:
+                        logging.info(f"当前已爬取完成基金数:{self._cur_finished_task_count}")
 
         self._all_task_finished = True
 
