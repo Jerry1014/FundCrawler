@@ -20,7 +20,7 @@ class RateControl:
 
     def __init__(self):
         # 记录环，记录最近circle_count次的成功失败次数
-        self._circle_count = 5
+        self._circle_count = 10
         self._success_count_ring = [0] * self._circle_count
         self._fail_count_ring = [0] * self._circle_count
         self._number_of_iterations = 0
@@ -71,7 +71,7 @@ class RateControl:
             step = max(self._min_rising_step, rate * self._min_rising_step * 10) \
                 if self._cur_number < self._last_number else self._min_rising_step
             # 当失败率恢复时，尝试快速恢复到 之前失败时的1/2
-            number = max(self._last_number / 2, self._cur_number + step)
+            number = max(self._last_number / 2.0, self._cur_number + step)
             self._cur_number = min(self._max_num, number)
 
         if self._analyse_mode:
