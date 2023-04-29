@@ -6,7 +6,7 @@ from module.crawling_data.data_mining.data_cleaning_strategy import DataCleaning
 from module.crawling_data.data_mining.data_mining_type import PageType
 from module.crawling_data.data_mining.impl.manager import ManagerDataCleaningStrategy
 from module.crawling_data.data_mining.impl.overview import OverviewDataCleaningStrategy
-from module.crawling_data.data_mining.impl.sharp import MetricsDataCleaningStrategy
+from module.crawling_data.data_mining.impl.sharpe import MetricsDataCleaningStrategy
 
 
 class DataCleaningStrategyFactory:

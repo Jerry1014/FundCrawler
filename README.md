@@ -19,6 +19,7 @@
 
 - Python3.11 依赖见requirements.txt
 - 运行run.py 爬取基金数据
+- 其他
 
 # 技术相关
 
