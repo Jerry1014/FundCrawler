@@ -121,8 +121,8 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
             future_list: list[Future] = []
             need_retry_task_list: list[Request] = list()
 
-            # 爬取速率调优
-            self._rate_control.start_analyze()
+            # 爬取过程记录，用于调优，平时可注释
+            # self._rate_control.start_analyze()
 
             while True:
                 # 爬取结束
