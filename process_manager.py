@@ -145,7 +145,6 @@ class TaskManager:
                             format='%(asctime)s %(message)s')
         logging.info(f"需要爬取的基金总数:{self._need_crawled_fund_module.total}")
 
-        self._cur_crawling_task_count = 0
         self._cur_finished_task_count = 0
         self._all_task_finished = False
 
@@ -158,7 +157,6 @@ class TaskManager:
             except StopIteration:
                 break
             self._crawling_data_module.do_crawling(task)
-            self._cur_crawling_task_count += 1
 
         self._crawling_data_module.shutdown()
 
@@ -174,7 +172,6 @@ class TaskManager:
 
     def show_process(self):
         while not self._all_task_finished:
-            logging.info(f"正在爬取基金数:{self._cur_crawling_task_count}")
             logging.info(f"已爬取完成基金数:{self._cur_finished_task_count}")
             sleep(5)
 

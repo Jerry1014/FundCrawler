@@ -73,4 +73,4 @@ class SmokeTestTaskManager(TestCase):
         manager = TaskManager(GetNeedCrawledFundByWeb4Test()
                               , AsyncCrawlingData()
                               , SaveResult2File())
-        asyncio.run(manager.run())
+        manager.run()
