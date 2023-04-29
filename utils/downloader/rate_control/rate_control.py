@@ -2,6 +2,7 @@
 爬取速率控制
 """
 from csv import DictWriter
+from os import cpu_count
 
 
 class RateControl:
@@ -12,6 +13,7 @@ class RateControl:
     record_file = 'analyse.csv'
     fail_rate_key = 'fail_rate'
     tasks_num_key = 'tasks_num'
+    threshold_key = 'threshold_num'
 
     def __init__(self):
         # 记录环，记录最近circle_count次的成功失败次数
@@ -21,12 +23,12 @@ class RateControl:
         self._number_of_iterations = 0
 
         # 当前认为的最适合并发任务数 float
-        self._cur_number_of_concurrent_tasks = 1.0
-        # 上一次失败上升时的并发任务数
-        self._last_cur_number_of_concurrent_tasks = self._cur_number_of_concurrent_tasks
+        self._cur_number = 1.0
 
         # 控制参数 成功后的任务上升率
-        self._rising_step = 0.01
+        self._min_rising_step = 0.01
+        self._fail_has_recover = True
+        self._last_number = cpu_count()
 
         # 分析模式下，会记录爬取过程中的 相关数据
         self._analyse_mode = False
@@ -36,8 +38,8 @@ class RateControl:
     def start_analyze(self):
         self._analyse_mode = True
         self._file = open(RateControl.record_file, 'w', newline='', encoding='utf-8')
-        self._writer: DictWriter = DictWriter(self._file,
-                                              fieldnames=[RateControl.fail_rate_key, RateControl.tasks_num_key])
+        field_names = [RateControl.fail_rate_key, RateControl.tasks_num_key, RateControl.threshold_key]
+        self._writer: DictWriter = DictWriter(self._file, fieldnames=field_names)
         self._writer.writeheader()
 
     def get_cur_number_of_concurrent_tasks(self, success_count: int, fail_count: int) -> int:
@@ -50,20 +52,30 @@ class RateControl:
         total = sum(self._success_count_ring) + sum(self._fail_count_ring)
         fail_rate = (sum(self._fail_count_ring) / total) if total != 0 else 0.0
 
-        # 计算
+        # 根据当前失败率 动态调整爬取任务数
         if fail_rate > 0.0:
-            self._last_cur_number_of_concurrent_tasks = self._cur_number_of_concurrent_tasks
-            self._cur_number_of_concurrent_tasks = max(1, self._cur_number_of_concurrent_tasks / 2)
+            if self._fail_has_recover:
+                # 整个失败潮 只调整阈值一次
+                self._last_number = self._cur_number
+            self._cur_number = max(1.0, self._cur_number / 2)
+            self._fail_has_recover = False
         else:
-            self._cur_number_of_concurrent_tasks = max(self._last_cur_number_of_concurrent_tasks / 2,
-                                                       self._cur_number_of_concurrent_tasks + self._rising_step)
+            self._fail_has_recover = True
+            # 根据与上一次失败时的距离，计算当前步长
+            # 越接近于上一次失败的数值时，步长越小 self._min_rising_step <= x <= 1
+            rate = ((self._last_number - self._cur_number + 1) / self._last_number) ** 2
+            step = max(self._min_rising_step, rate * self._min_rising_step * 10) \
+                if self._cur_number < self._last_number else self._min_rising_step
+            # 当失败率恢复时，尝试快速恢复到 之前失败时的1/2
+            number = max(self._last_number / 2, self._cur_number + step)
+            self._cur_number = min(cpu_count() * 5, number)
 
         if self._analyse_mode:
-            self._writer.writerow(
-                {RateControl.fail_rate_key: fail_rate, RateControl.tasks_num_key: self._cur_number_of_concurrent_tasks})
+            self._writer.writerow({RateControl.fail_rate_key: fail_rate, RateControl.tasks_num_key: self._cur_number,
+                                   RateControl.threshold_key: self._last_number})
 
         self._number_of_iterations += 1
-        return int(self._cur_number_of_concurrent_tasks)
+        return int(self._cur_number)
 
     def shutdown(self):
         if self._analyse_mode:

@@ -156,7 +156,6 @@ class TaskManager:
             except StopIteration:
                 break
             self._crawling_data_module.do_crawling(task)
-            await sleep(0.1)
 
         self._crawling_data_module.shutdown()
 
@@ -167,14 +166,13 @@ class TaskManager:
                 if result:
                     self._cur_finished_task_count += 1
                     self._save_result_module.save_result(result)
-                    await sleep(0.1)
 
         self._all_task_finished = True
 
     async def show_process(self):
         while not self._all_task_finished:
             logging.info(f"当前爬取基金:{self._cur_finished_task_count}")
-            await sleep(1)
+            await sleep(5)
 
     async def run(self) -> NoReturn:
         """
@@ -186,7 +184,7 @@ class TaskManager:
         start_time = datetime.now()
 
         async with TaskGroup() as tg:
-            tg.create_task(self.show_process())
+            # tg.create_task(self.show_process())
             tg.create_task(self.get_task_and_crawling())
             tg.create_task(self.get_result_and_save())
 

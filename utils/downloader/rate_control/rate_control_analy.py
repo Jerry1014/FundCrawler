@@ -9,12 +9,14 @@ def draw_analyse(path='./'):
     with open(path + RateControl.record_file, 'r', newline='') as csvfile:
         fail_rate_recode = []
         tasks_num_recode = []
+        threshold_num_record = []
 
         # 读取数据
         reader: DictReader = DictReader(csvfile)
         for row in reader:
-            fail_rate_recode.append(row[RateControl.fail_rate_key])
+            fail_rate_recode.append(round(float(row[RateControl.fail_rate_key]), 3))
             tasks_num_recode.append(round(float(row[RateControl.tasks_num_key]), 3))
+            threshold_num_record.append(round(float(row[RateControl.threshold_key]), 3))
 
         # 绘图
         fig = plt.figure()
@@ -27,7 +29,9 @@ def draw_analyse(path='./'):
 
         plot2 = plot1.twinx()
         plot2.plot(x, tasks_num_recode, '-', label="tasks_num", color='b')
+        plot2.plot(x, threshold_num_record, '-', label="threshold_num", color='y')
         plot2.legend()
+        
         plt.show()
 
 
