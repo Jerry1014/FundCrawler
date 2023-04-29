@@ -16,7 +16,7 @@ class RateControl:
     threshold_key = 'threshold_num'
 
     # 初始的并发任务数，爬取多次后可以得到当前网络下的经验值
-    init_num = 10
+    init_num = 12
 
     def __init__(self):
         # 记录环，记录最近circle_count次的成功失败次数
