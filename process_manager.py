@@ -4,10 +4,11 @@
 """
 import logging
 from abc import abstractmethod, ABC
-from asyncio import TaskGroup, sleep
 from collections.abc import Generator
 from datetime import datetime
 from enum import unique, StrEnum
+from threading import Thread
+from time import sleep
 from typing import NoReturn, Optional
 
 
@@ -148,7 +149,7 @@ class TaskManager:
         self._cur_finished_task_count = 0
         self._all_task_finished = False
 
-    async def get_task_and_crawling(self):
+    def get_task_and_crawling(self):
         generator = self._need_crawled_fund_module.task_generator
 
         while True:
@@ -157,32 +158,27 @@ class TaskManager:
             except StopIteration:
                 break
             self._crawling_data_module.do_crawling(task)
-
             self._cur_crawling_task_count += 1
-            if self._cur_crawling_task_count % 10 == 0:
-                logging.info(f"当前正在爬取基金数:{self._cur_crawling_task_count}")
 
         self._crawling_data_module.shutdown()
 
-    async def get_result_and_save(self):
+    def get_result_and_save(self):
         with self._save_result_module:
             while self._crawling_data_module.has_next_result():
                 result: FundCrawlingResult = self._crawling_data_module.get_an_result()
                 if result:
-                    self._cur_finished_task_count += 1
                     self._save_result_module.save_result(result)
-
-                    if self._cur_finished_task_count % 10 == 0:
-                        logging.info(f"当前已爬取完成基金数:{self._cur_finished_task_count}")
+                    self._cur_finished_task_count += 1
 
         self._all_task_finished = True
 
-    async def show_process(self):
+    def show_process(self):
         while not self._all_task_finished:
-            logging.info(f"当前爬取基金:{self._cur_finished_task_count}")
-            await sleep(5)
+            logging.info(f"正在爬取基金数:{self._cur_crawling_task_count}")
+            logging.info(f"已爬取完成基金数:{self._cur_finished_task_count}")
+            sleep(5)
 
-    async def run(self) -> NoReturn:
+    def run(self) -> NoReturn:
         """
         爬取主流程
         从 基金爬取任务模块 将任务传递给 数据爬取和清洗模块
@@ -191,10 +187,17 @@ class TaskManager:
         """
         start_time = datetime.now()
 
-        async with TaskGroup() as tg:
-            # tg.create_task(self.show_process())
-            tg.create_task(self.get_task_and_crawling())
-            tg.create_task(self.get_result_and_save())
+        thread1 = Thread(target=self.get_task_and_crawling)
+        thread2 = Thread(target=self.get_result_and_save)
+        thread3 = Thread(target=self.show_process)
+
+        thread1.start()
+        thread2.start()
+        thread3.start()
+
+        thread1.join()
+        thread2.join()
+        thread3.join()
 
         cur_time = datetime.now()
         logging.info(f"基金爬取完成 耗时{(cur_time - start_time).seconds}s")
