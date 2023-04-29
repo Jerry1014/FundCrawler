@@ -15,7 +15,7 @@ class OverviewDataCleaningStrategy(DataCleaningStrategy):
     url_template = Template('http://fundf10.eastmoney.com/jbgk_$fund_code.html')
 
     fund_type_pattern = re.compile(r'基金类型</th><td>(.+?)</td>')
-    fund_size_pattern = re.compile(r'资产规模</th><td>(\d[\d,]+(\.\d+))?\D')
+    fund_size_pattern = re.compile(r'资产规模</th><td>(\d[\d,]+(\.\d+))\D')
     fund_company_pattern = re.compile(r'基金管理人</th><td><a.*?">(.+?)</a></td>')
 
     def build_url(self, fund_code: str) -> str:
