@@ -18,6 +18,9 @@ class AsyncCrawlingData(CrawlingDataModule):
     """
 
     def __init__(self, need_data_type_list: list[PageType] = None):
+        """
+        :param need_data_type_list: 需要爬取的数据
+        """
         self._need_data_type_list = need_data_type_list if need_data_type_list else [i for i in PageType]
 
         self._shutdown = False

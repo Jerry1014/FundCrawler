@@ -19,9 +19,16 @@
 
 - Python3.11 依赖见requirements.txt
 - 运行run.py 爬取基金数据
-- 其他
+- 杂七杂八
+  - 只想爬一点点数据看下效果 test_process_manager.SmokeTestTaskManager.test_run
+  - 爬了很多我不需要的数据，很慢 module.crawling_data.async_crawling_data.AsyncCrawlingData.__init__
+  - 爬取过程中的日志文件 process_manager.TaskManager.\_\_init__
+  - 爬取结果文件 module.save_result.save_result_2_file.SaveResult2File.\_\_init__
+  - 我有代理ip，想爬快点 (自己实现)utils.downloader.async_downloader.AsyncHttpDownloader
 
 # 技术相关
+- 总览
+- 拓展点
 
 ## 更新计划
 

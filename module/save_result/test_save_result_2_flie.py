@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from module.save_result.save_result_2_flie import SaveResult2File
+from module.save_result.save_result_2_file import SaveResult2File
 from process_manager import FundCrawlingResult
 
 
