@@ -6,7 +6,7 @@ from module.crawling_data.data_mining.data_cleaning_strategy import DataCleaning
 from process_manager import FundCrawlingResult
 
 
-class MetricsDataCleaningStrategy(DataCleaningStrategy):
+class MetricsStrategy(DataCleaningStrategy):
     """
     解析标准差和夏普比率
     """

@@ -4,9 +4,9 @@
 
 from module.crawling_data.data_mining.data_cleaning_strategy import DataCleaningStrategy
 from module.crawling_data.data_mining.data_mining_type import PageType
-from module.crawling_data.data_mining.impl.manager import ManagerDataCleaningStrategy
-from module.crawling_data.data_mining.impl.overview import OverviewDataCleaningStrategy
-from module.crawling_data.data_mining.impl.sharpe import MetricsDataCleaningStrategy
+from module.crawling_data.data_mining.impl.manager import ManagerStrategy
+from module.crawling_data.data_mining.impl.overview import OverviewStrategy
+from module.crawling_data.data_mining.impl.sharpe import MetricsStrategy
 
 
 class DataCleaningStrategyFactory:
@@ -15,9 +15,9 @@ class DataCleaningStrategyFactory:
     """
 
     _strategy_dict: dict[PageType, DataCleaningStrategy] = {
-        PageType.OVERVIEW: OverviewDataCleaningStrategy(),
-        PageType.MANAGER: ManagerDataCleaningStrategy(),
-        PageType.METRICS: MetricsDataCleaningStrategy()
+        PageType.OVERVIEW: OverviewStrategy(),
+        PageType.MANAGER: ManagerStrategy(),
+        PageType.METRICS: MetricsStrategy()
     }
 
     @classmethod

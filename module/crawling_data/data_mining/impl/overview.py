@@ -8,7 +8,7 @@ from module.crawling_data.data_mining.data_cleaning_strategy_factory import Data
 from process_manager import FundCrawlingResult
 
 
-class OverviewDataCleaningStrategy(DataCleaningStrategy):
+class OverviewStrategy(DataCleaningStrategy):
     """
     解析基金的基本概况
     """
