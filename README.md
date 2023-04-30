@@ -1,49 +1,38 @@
 # 天天基金爬虫
 
-爬取天天基金网上的所有基金，辅助对基金投资的选择
+## 简介
 
-#### 购买基金建议
+#### 重要提示
+
+![GitHub license](https://img.shields.io/github/license/tindy2013/subconverter.svg)
+
         购买基金前，请务必在官方网站上确认爬取的数据无误！
         推荐书籍《解读基金：我的投资观与实践》
-        晨星中国：www.morningstar.cn
+        推荐网站 晨星中国：www.morningstar.cn
+        2023-04-29对整个代码进行了重写，如有问题，请切换回deprecated分支
 
-### 重写预告 2023-03-12
-        工作了两年多之后，再回头看大学时候写的代码，简直是不堪入目
-        同时也不再满足于仅根据晨星评级来购买基金，慢慢有了一套自己的思考，并想付诸于实践
-        本爬虫会在DEV分支尝试重写，当前状态：建设中
+- 基金类型,资产规模,基金管理人,基金经理(最近连续最长任职),基金经理的上任时间,近三年标准差,近三年夏普
+- 爬取全部数据需要4190s(2023-04-29 总基金数16445)，瓶颈为网站的反爬策略
+  ![Image text](docs/img/爬取结果.png)
 
-## 功能特性
+# 食用方法
 
-- 爬取基金的近1、3、6月，近1、3年及成立来的收益率，当前基金经理及其任职时间、任职来的收益率及总的任职时间
-- 模仿tcp的拥塞避免的线程数量控制，慢开始，当出现错误时，线程最大值减半，成功则线程最大值+1
-- 爬取全部数据需要505s，瓶颈为网站的反爬策略
+- Python3.11 依赖见requirements.txt
+- 运行run.py 爬取基金数据
+- 杂七杂八
+  - 只想爬一点点数据看下效果 test_process_manager.SmokeTestTaskManager.test_run
+  - 爬了很多我不需要的数据，很慢 module.crawling_data.async_crawling_data.AsyncCrawlingData.__init__
+  - 爬取过程中的日志文件 process_manager.TaskManager.\_\_init__
+  - 爬取结果文件 module.save_result.save_result_2_file.SaveResult2File.\_\_init__
 
-- 结果展示
-  ![Image text](./image/result-2.png)
-  2021-01-24 共有10203个基金
-
-## 食用方法
-
-- 环境依赖 运行环境Python3.7 依赖见requirements.txt
-- 下载所有.py脚本文件（除MonkeyTest外）
-- 爬取基金数据
-    - 运行CrawlingFund.py并等待
-- ~~筛选基金~~ 还没做
-- ~~基金分析~~ 也没做
-
-## 文件结构
-
-        -CrawlingFund 爬取主文件，描述整个的爬取逻辑并定义了基金信息的数据结构
-        -CrawlingCore 爬取核心，定义了从输入网页链接到获得html文本的过程
-        -FakeUAGetter 提供虚假的UA（将来可能会合并到工具文件）
-        -Parser 负责html文本的解析，以及解析后的动作（保存文件），通过不同的实现类来针对性地对不同的网站内容进行解析
-        -FundListProvider 负责提供需要爬取的基金列表，包括基金名称、代码
-        -MonkeyTest 这是给我自己测试用的
-
-## 更新计划
-- 重构
-- 增加新的爬取字段
-    - 标准差
-    - 夏普比率
-    - 净值 （包括单位、累计和实时估算）
-- 增加能按收益率等初步对基金进行筛选的脚本
+# 技术相关
+![Image text](docs/img/overview.png)
+- 因为数据清洗和 http下载分别是计算密集和IO密集的，为了避免GIL和频繁的线程切换影响效率。
+AsyncHttpRequestDownloader起了一个新进程，在子进程内通过线程池进行http的爬取，通过队列来交换爬取任务和结果，通过事件来感知爬取结束
+- 目前的爬取瓶颈是网站的反爬策略，可以通过utils.downloader.rate_control.rate_control_analyse.draw_analyse来分析当前网络环境下
+所能支持的并发任务数  
+当前的速率控制策略是 1 通过环 记录和计算最近几次的任务爬取失败率（避免过于敏感）  
+2.1 失败率大于0，并发任务数的阈值修改为当前值的一半（在失败率恢复之前，只修改一次），当前的并发任务数修改为0  
+2.2 失败率等于0，当前值=max(阈值*1/2, 当前并发任务数+步长)，当 当前值和阈值的距离越大时，步长越大（尽快恢复原有的爬取速率）
+当 当前值大于阈值时，步长为固定值（缓慢增长，试探是否有进一步加速的空间）
+![Image text](docs/img/rate_control.png)

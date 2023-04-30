@@ -35,12 +35,8 @@ class FakeUA:
             'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Maxthon/4.4.3.4000 Chrome/30.0.1599.101 Safari/537.36',
             'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.122 UBrowser/4.0.3214.0 Safari/537.36']
 
-    def __getattr__(self, item):
-        try:
-            if item == 'random':
-                random.choice(self.some)
-        except KeyError:
-            raise AttributeError(r"Object does'n has attribute '%s'" % item)
+    def get_random_ua(self):
+        return random.choice(self.some)
 
 
-my_fake_ua = FakeUA()
+singleton_fake_ua = FakeUA()

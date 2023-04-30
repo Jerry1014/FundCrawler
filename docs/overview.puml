@@ -1,0 +1,47 @@
+@startuml
+
+interface AsyncHttpDownloader
+note bottom: 负责 http的下载
+class AsyncHttpRequestDownloader
+class RateControl
+class FakeUA
+
+AsyncHttpDownloader <|-- AsyncHttpRequestDownloader
+AsyncHttpRequestDownloader ..> RateControl
+AsyncHttpRequestDownloader ..> FakeUA
+
+class DataCleaningStrategyFactory
+interface DataCleaningStrategy
+note right: 定义需要下载的内容，及对应的解析和清洗逻辑
+class ManagerStrategy
+class OverviewStrategy
+class MetricsStrategy
+
+DataCleaningStrategyFactory .> DataCleaningStrategy
+DataCleaningStrategy <|-- ManagerStrategy
+DataCleaningStrategy <|-- OverviewStrategy
+DataCleaningStrategy <|-- MetricsStrategy
+
+class TaskManager
+note right: 爬取流程的管理
+interface NeedCrawledFundModule
+note bottom: 负责给出 基金爬取任务
+class GetNeedCrawledFundByWeb
+interface CrawlingDataModule
+note bottom: 负责 数据的爬取和清洗
+class AsyncCrawlingData
+interface SaveResultModule
+note bottom: 负责 数据保存
+class SaveResult2File
+
+TaskManager ..> NeedCrawledFundModule
+TaskManager ..> CrawlingDataModule
+TaskManager ..> SaveResultModule
+
+NeedCrawledFundModule <|-- GetNeedCrawledFundByWeb
+CrawlingDataModule <|-- AsyncCrawlingData
+AsyncCrawlingData ..> AsyncHttpDownloader
+AsyncCrawlingData ..> DataCleaningStrategyFactory
+SaveResultModule <|-- SaveResult2File
+
+@enduml
