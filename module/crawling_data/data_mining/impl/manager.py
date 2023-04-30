@@ -14,7 +14,7 @@ class ManagerDataCleaningStrategy(DataCleaningStrategy):
     """
     url_template = Template('http://fundf10.eastmoney.com/jjjl_$fund_code.html')
 
-    fund_manager_name_pattern = re.compile(r'现任基金经理简介[\s\S]+?姓名：[\s\S]+?<a.+?>([\s\S]+?)</a>')
+    fund_manager_name_pattern = re.compile(r'现任基金经理简介[\s\S]+?姓名：[\s\S]+?<a.+?>(.+?)</a>')
     fund_manager_date_of_appointment_pattern = re.compile(r'现任基金经理简介[\s\S]+?上任日期：[\s\S]+?>(.+?)</p>')
 
     def build_url(self, fund_code: str) -> str:

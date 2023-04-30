@@ -60,15 +60,16 @@ class AsyncCrawlingData(CrawlingDataModule):
                 del self._unfinished_context_dict[unique_key.context_id]
 
                 fund_result = FundCrawlingResult(context.fund_task.code, context.fund_task.name)
-                try:
-                    for task in context.finished_task:
-                        if task.response:
+                for task in context.finished_task:
+                    if task.response:
+                        try:
                             strategy = DataCleaningStrategyFactory.get_strategy(task.page_type)
                             strategy.fill_result(task.response, fund_result)
-                        else:
-                            logging.error(f"基金{context.fund_task.code} {task.page_type}数据 爬取失败")
-                except Exception as e:
-                    logging.error(f"基金{context.fund_task.code} 数据解析失败", exc_info=e)
+                        except Exception as e:
+                            logging.error(f"基金{context.fund_task.code} {task.page_type}数据 数据解析失败", exc_info=e)
+                    else:
+                        logging.error(f"基金{context.fund_task.code} {task.page_type}数据 爬取失败")
+
                 return fund_result
 
     def get_context_id_and_increase(self) -> int:

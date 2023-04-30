@@ -15,8 +15,9 @@ class OverviewDataCleaningStrategy(DataCleaningStrategy):
     url_template = Template('http://fundf10.eastmoney.com/jbgk_$fund_code.html')
 
     fund_type_pattern = re.compile(r'基金类型</th><td>(.+?)</td>')
-    fund_size_pattern = re.compile(r'资产规模</th><td>(\d[\d,]+(\.\d+))\D')
+    fund_size_pattern = re.compile(r'资产规模</th><td>(\d+?(,\d+)*?(\.\d+)?)亿元')
     fund_company_pattern = re.compile(r'基金管理人</th><td><a.*?">(.+?)</a></td>')
+    fund_value_pattern = re.compile(r'单位净值.*?：[\s\S]*?(\d+?(,\d+)*?(\.\d+)?)\s')
 
     def build_url(self, fund_code: str) -> str:
         return self.url_template.substitute(fund_code=fund_code)
@@ -35,3 +36,6 @@ class OverviewDataCleaningStrategy(DataCleaningStrategy):
         fund_company_result = self.fund_company_pattern.search(page_text)
         if fund_company_result:
             result.fund_info_dict[FundCrawlingResult.Header.FUND_COMPANY] = fund_company_result.group(1)
+        fund_value_result = self.fund_value_pattern.search(page_text)
+        if fund_value_result:
+            result.fund_info_dict[FundCrawlingResult.Header.FUND_VALUE] = fund_value_result.group(1)
