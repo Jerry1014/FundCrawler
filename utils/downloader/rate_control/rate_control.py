@@ -10,7 +10,7 @@ class RateControl:
     速率控制
     根据当前请求的失败率 决策当前的爬取速率
     """
-    record_file = './result/analyse.csv'
+    record_file = 'analyse.csv'
     fail_rate_key = 'fail_rate'
     tasks_num_key = 'tasks_num'
     threshold_key = 'threshold_num'

@@ -24,6 +24,12 @@
   - 爬了很多我不需要的数据，很慢 module.crawling_data.async_crawling_data.AsyncCrawlingData.__init__
   - 爬取过程中的日志文件 process_manager.TaskManager.\_\_init__
   - 爬取结果文件 module.save_result.save_result_2_file.SaveResult2File.\_\_init__
+  - 爬取结果分析 (通过堆，取三年夏普最高的前几个基金)utils.result_analyse.analyse
+  - 想爬取更多的数据  
+1 看下现有的爬取网页上是否有对应的信息  
+module.crawling_data.data_mining.data_mining_type.PageType
+有的话，直接在对应的策略上，通过正则或其他的方式将信息提取出来  
+没有的话，新增一个策略，爬取新的网页，以及进行对应的清洗
 
 # 技术相关
 ![Image text](docs/img/overview.png)
