@@ -13,7 +13,7 @@ class SaveResult2File(SaveResultModule):
     def __init__(self):
         fieldnames = [header.value for header in FundCrawlingResult.Header]
 
-        self._file = open('result.csv', 'w', newline='', encoding='utf-8')
+        self._file = open('./result/result.csv', 'w', newline='', encoding='utf-8')
         self._writer: DictWriter = DictWriter(self._file, fieldnames=fieldnames, restval=self.default_restval)
 
         self._writer.writeheader()
