@@ -1,5 +1,6 @@
 from csv import DictReader
-from heapq import heappushpop
+from datetime import date, timedelta
+from heapq import heappushpop, heappush
 from typing import NoReturn
 
 from process_manager import FundCrawlingResult
@@ -11,8 +12,20 @@ def analyse():
         # 读取数据
         reader: DictReader = DictReader(csvfile)
 
+        today = date.today()
         for row in reader:
-            sharpe = row[FundCrawlingResult.Header.SHARPE_THREE_YEARS]
+            # 基金经理至少管理了这个基金n年以上
+            date_of_appointment: date = date.fromisoformat(row[FundCrawlingResult.Header.DATE_OF_APPOINTMENT])
+            delta: timedelta = today - date_of_appointment
+            if delta.days <= 365 * 4:
+                continue
+
+            # 不考虑债基
+            fund_type: str = row[FundCrawlingResult.Header.FUND_TYPE]
+            if '债' in fund_type:
+                continue
+
+            sharpe: str = row[FundCrawlingResult.Header.SHARPE_THREE_YEARS]
             if sharpe != 'None':
                 holder.put_fund(float(sharpe), row[FundCrawlingResult.Header.FUND_CODE])
 
@@ -30,7 +43,7 @@ class FundFolder:
 
     def put_fund(self, sharpe: float, fund_code: str) -> NoReturn:
         if len(self._sharpe_heap) < self._retain_num:
-            self._sharpe_heap.append(sharpe)
+            heappush(self._sharpe_heap, sharpe)
             self._sharpe_fund_dict[sharpe].append(fund_code)
             return
 
