@@ -49,14 +49,14 @@ def analyse():
     for fund in debt_holder.get_result():
         increase = fund[FundCrawlingResult.Header.THREE_YEARS_INCREASE]
         if increase != 'None':
-            debt_increase_holder.put_fund(increase[:-1], fund)
+            debt_increase_holder.put_fund(float(increase[:-1]), fund)
     print(f'债基收益前三{debt_increase_holder.get_result()}')
 
     other_increase_holder = FundFolder(retain_num=3)
     for fund in other_holder.get_result():
         increase = fund[FundCrawlingResult.Header.THREE_YEARS_INCREASE]
         if increase != 'None':
-            other_increase_holder.put_fund(increase[:-1], fund)
+            other_increase_holder.put_fund(float(increase[:-1]), fund)
     print(f'其他基收益前三{other_increase_holder.get_result()}')
 
 
