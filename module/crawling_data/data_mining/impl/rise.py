@@ -5,6 +5,7 @@ from typing import NoReturn
 from requests import Response
 
 from module.crawling_data.data_mining.data_cleaning_strategy_factory import DataCleaningStrategy
+from module.crawling_data.data_mining.impl.constants import number_in_eng
 from process_manager import FundCrawlingResult
 
 
@@ -14,8 +15,8 @@ class RiseStrategy(DataCleaningStrategy):
     """
     url_template = Template('https://fundf10.eastmoney.com/FundArchivesDatas.aspx?type=jdzf&code=$fund_code')
 
-    fund_3_years_increase_pattern = re.compile(r'近3年[\s\S]*?((\d+?(,\d+)*?(\.\d+)?)%|---)')
-    fund_5_years_increase_pattern = re.compile(r'近5年[\s\S]*?((\d+?(,\d+)*?(\.\d+)?)%|---)')
+    fund_3_years_increase_pattern = re.compile(fr'近3年[\s\S]*?({number_in_eng}%|---)')
+    fund_5_years_increase_pattern = re.compile(fr'近5年[\s\S]*?({number_in_eng}%|---)')
 
     def build_url(self, fund_code: str) -> str:
         return self.url_template.substitute(fund_code=fund_code)
