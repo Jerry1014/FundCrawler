@@ -1,5 +1,5 @@
 from csv import DictReader
-from datetime import date, timedelta
+from datetime import date
 from heapq import heappushpop, heappush
 from typing import NoReturn
 
@@ -15,10 +15,10 @@ def analyse():
         today = date.today()
         for row in reader:
             # 基金经理至少管理了这个基金n年以上
-            date_of_appointment: date = date.fromisoformat(row[FundCrawlingResult.Header.DATE_OF_APPOINTMENT])
-            delta: timedelta = today - date_of_appointment
-            if delta.days <= 365 * 4:
-                continue
+            # date_of_appointment: date = date.fromisoformat(row[FundCrawlingResult.Header.DATE_OF_APPOINTMENT])
+            # delta: timedelta = today - date_of_appointment
+            # if delta.days <= 365 * 4:
+            #     continue
 
             # 不考虑债基
             fund_type: str = row[FundCrawlingResult.Header.FUND_TYPE]
@@ -27,7 +27,7 @@ def analyse():
 
             sharpe: str = row[FundCrawlingResult.Header.SHARPE_THREE_YEARS]
             if sharpe != 'None':
-                holder.put_fund(float(sharpe), row[FundCrawlingResult.Header.FUND_CODE])
+                holder.put_fund(float(sharpe), row)
 
     holder.show_result()
 
@@ -41,17 +41,17 @@ class FundFolder:
         self._sharpe_heap: list[float] = []
         self._sharpe_fund_dict: FundFolder.SpecialDict[float, list[str]] = FundFolder.SpecialDict()
 
-    def put_fund(self, sharpe: float, fund_code: str) -> NoReturn:
+    def put_fund(self, sharpe: float, fund_info: dict) -> NoReturn:
         if len(self._sharpe_heap) < self._retain_num:
             heappush(self._sharpe_heap, sharpe)
-            self._sharpe_fund_dict[sharpe].append(fund_code)
+            self._sharpe_fund_dict[sharpe].append(fund_info)
             return
 
         min_sharp = heappushpop(self._sharpe_heap, sharpe)
         if min_sharp == sharpe:
             return
         self._sharpe_fund_dict[min_sharp].pop()
-        self._sharpe_fund_dict[sharpe].append(fund_code)
+        self._sharpe_fund_dict[sharpe].append(fund_info)
 
     def show_result(self):
         result = []
