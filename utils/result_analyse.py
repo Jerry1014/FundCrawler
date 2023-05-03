@@ -27,23 +27,26 @@ def analyse():
 
         today = date.today()
         for row in reader:
-            # 基金经理至少管理了这个基金n年以上
-            date_of_appointment: date = date.fromisoformat(row[FundCrawlingResult.Header.DATE_OF_APPOINTMENT])
-            delta: timedelta = today - date_of_appointment
-            if delta.days <= 365 * 4:
-                continue
+            try:
+                # 基金经理至少管理了这个基金n年以上
+                date_of_appointment: date = date.fromisoformat(row[FundCrawlingResult.Header.DATE_OF_APPOINTMENT])
+                delta: timedelta = today - date_of_appointment
+                if delta.days <= 365 * 4:
+                    continue
 
-            # 不考虑没有三年夏普的基金
-            sharpe: str = row[FundCrawlingResult.Header.SHARPE_THREE_YEARS]
-            if sharpe == 'None':
-                continue
+                # 不考虑没有三年夏普的基金
+                sharpe: str = row[FundCrawlingResult.Header.SHARPE_THREE_YEARS]
+                if sharpe == 'None':
+                    continue
 
-            # 债基单独放一个篮子里
-            fund_type: str = row[FundCrawlingResult.Header.FUND_TYPE]
-            if '债' in fund_type:
-                debt_holder.put_fund(float(sharpe), row)
-            else:
-                other_holder.put_fund(float(sharpe), row)
+                # 债基单独放一个篮子里
+                fund_type: str = row[FundCrawlingResult.Header.FUND_TYPE]
+                if '债' in fund_type:
+                    debt_holder.put_fund(float(sharpe), row)
+                else:
+                    other_holder.put_fund(float(sharpe), row)
+            except:
+                print(f'基金{row[FundCrawlingResult.Header.FUND_CODE]}分析失败')
 
     debt_increase_holder = FundFolder(retain_num=3)
     for fund in debt_holder.get_result():
