@@ -18,7 +18,7 @@ from process_manager import FundCrawlingResult
 
 def analyse():
     # 债基的夏普太高了，单独放一个池子里
-    debt_holder = FundFolder(retain_num=10)
+    debt_holder = FundFolder(retain_num=20)
     other_holder = FundFolder(retain_num=10)
 
     with open('../result/result.csv', 'r', newline='', encoding='utf-8') as csvfile:
