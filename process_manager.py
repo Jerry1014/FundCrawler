@@ -61,7 +61,9 @@ class FundCrawlingResult:
         FUND_MANAGER = '基金经理(最近连续最长任职)',
         DATE_OF_APPOINTMENT = '基金经理的上任时间',
         STANDARD_DEVIATION_THREE_YEARS = '近三年标准差',
-        SHARPE_THREE_YEARS = '近三年夏普'
+        SHARPE_THREE_YEARS = '近三年夏普',
+        THREE_YEARS_INCREASE = '近三年涨幅',
+        FIVE_YEARS_INCREASE = '近五年涨幅'
 
     def __init__(self, fund_code: str, fund_name: str):
         self.fund_info_dict = {FundCrawlingResult.Header.FUND_CODE: fund_code,
