@@ -5,6 +5,7 @@ from typing import NoReturn
 from requests import Response
 
 from module.crawling_data.data_mining.data_cleaning_strategy_factory import DataCleaningStrategy
+from module.crawling_data.data_mining.impl.constants import number_in_eng
 from process_manager import FundCrawlingResult
 
 
@@ -15,9 +16,9 @@ class OverviewStrategy(DataCleaningStrategy):
     url_template = Template('http://fundf10.eastmoney.com/jbgk_$fund_code.html')
 
     fund_type_pattern = re.compile(r'基金类型</th><td>(.+?)</td>')
-    fund_size_pattern = re.compile(r'资产规模</th><td>(\d+?(,\d+)*?(\.\d+)?)亿元')
+    fund_size_pattern = re.compile(fr'资产规模</th><td>({number_in_eng})亿元')
     fund_company_pattern = re.compile(r'基金管理人</th><td><a.*?">(.+?)</a></td>')
-    fund_value_pattern = re.compile(r'单位净值.*?：[\s\S]*?(\d+?(,\d+)*?(\.\d+)?)\s')
+    fund_value_pattern = re.compile(fr'单位净值.*?：[\s\S]*?({number_in_eng})\s')
 
     def build_url(self, fund_code: str) -> str:
         return self.url_template.substitute(fund_code=fund_code)

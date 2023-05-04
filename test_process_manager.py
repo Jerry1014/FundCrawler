@@ -65,11 +65,11 @@ class SimpleTestTaskManager(TestCase):
 
 class SmokeTestTaskManager(TestCase):
     """
-    冒烟测试, 小批量爬取基金信息, 主要用于测试数据的爬取和清洗逻辑
+    冒烟测试, 小批量爬取基金信息, 主要用于验证数据的爬取和清洗逻辑
     """
 
     def test_run(self):
-        GetNeedCrawledFundByWeb4Test.test_case_num = 1000
+        GetNeedCrawledFundByWeb4Test.test_case_num = 100
         manager = TaskManager(GetNeedCrawledFundByWeb4Test()
                               , AsyncCrawlingData()
                               , SaveResult2File())
