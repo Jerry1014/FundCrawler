@@ -42,3 +42,7 @@ AsyncHttpRequestDownloader起了一个新进程，在子进程内通过线程池
 2.2 失败率等于0，当前值=max(阈值*1/2, 当前并发任务数+步长)，当 当前值和阈值的距离越大时，步长越大（尽快恢复原有的爬取速率）
 当 当前值大于阈值时，步长为固定值（缓慢增长，试探是否有进一步加速的空间）
 ![Image text](docs/img/rate_control.png)
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Jerry1014/FundCrawler&type=Date)](https://star-history.com/#Jerry1014/FundCrawler&Date)
