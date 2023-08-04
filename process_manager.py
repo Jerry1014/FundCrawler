@@ -3,6 +3,7 @@
 对爬取过程的管理
 """
 import logging
+import os
 from abc import abstractmethod, ABC
 from collections.abc import Generator
 from datetime import datetime
@@ -144,7 +145,10 @@ class TaskManager:
         self._crawling_data_module = crawling_data_module
         self._save_result_module = save_result_module
 
-        logging.basicConfig(filename='./log/process.text', encoding='utf-8', level=log_level, filemode='w',
+        log_file_path = './log/'
+        if not os.path.exists(log_file_path):
+            os.makedirs(log_file_path)
+        logging.basicConfig(filename=log_file_path + 'process.text', encoding='utf-8', level=log_level, filemode='w',
                             format='%(asctime)s %(message)s')
         logging.info(f"需要爬取的基金总数:{self._need_crawled_fund_module.total}")
 

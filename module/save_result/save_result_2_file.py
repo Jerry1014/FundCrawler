@@ -1,6 +1,7 @@
 """
 将爬取结果 保存到csv文件
 """
+import os.path
 from csv import DictWriter
 from typing import NoReturn
 
@@ -9,11 +10,16 @@ from process_manager import SaveResultModule, FundCrawlingResult
 
 class SaveResult2File(SaveResultModule):
     default_restval = 'None'
+    result_file_path = './result/'
+    result_file_name = 'result.csv'
 
     def __init__(self):
         fieldnames = [header.value for header in FundCrawlingResult.Header]
 
-        self._file = open('./result/result.csv', 'w', newline='', encoding='utf-8')
+        if not os.path.exists(self.result_file_path):
+            os.makedirs(self.result_file_path)
+
+        self._file = open(self.result_file_path + self.result_file_name, 'w', newline='', encoding='utf-8')
         self._writer: DictWriter = DictWriter(self._file, fieldnames=fieldnames, restval=self.default_restval)
 
         self._writer.writeheader()
