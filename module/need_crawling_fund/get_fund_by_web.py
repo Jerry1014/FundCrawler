@@ -43,3 +43,17 @@ class GetNeedCrawledFundByWeb4Test(NeedCrawledFundModule):
         self.total = len(fund_list)
 
         self.task_generator = (NeedCrawledFundModule.NeedCrawledOnceFund(i[1:7], i[10:-1]) for i in fund_list)
+
+
+class GetSpecialNeedCrawledFund(NeedCrawledFundModule):
+    """
+    测试用的 基金任务 提供者
+    """
+
+    def init_generator(self) -> NoReturn:
+        # 基金目录
+        fund_list = ({'code': '007746', 'name': '华安现金润利'}, {'code': '020282', 'name': '益民优势安享混合C'})
+        self.total = len(fund_list)
+
+        self.task_generator = (NeedCrawledFundModule.NeedCrawledOnceFund(
+            code=t['code'], name=t['name']) for t in fund_list)
