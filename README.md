@@ -45,3 +45,7 @@ AsyncHttpRequestDownloader起了一个新进程，在子进程内通过线程池
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=Jerry1014/FundCrawler&type=Date)](https://star-history.com/#Jerry1014/FundCrawler&Date)
+
+## 未来更新计划
+
+- 基金越来越多了，要支持断点续跑
