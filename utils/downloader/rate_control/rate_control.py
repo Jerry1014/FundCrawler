@@ -55,9 +55,9 @@ class RateControl:
         total = sum(self._success_count_ring) + sum(self._fail_count_ring)
         fail_rate = (sum(self._fail_count_ring) / total) if total != 0 else 0.0
 
-        iterations_time = self._number_of_iterations >> 6
+        iterations_time = self._number_of_iterations >> 5
         rate = max(1.0 / iterations_time if iterations_time else 1, 0.001)
-        if fail_rate > 0.0:
+        if max(0.0, fail_rate - 0.1) > 0.0:
             # 减少的速率 随失败率的降低和迭代次数的增加 而降低
             need_cut_number = self._cur_number * (1 - fail_rate)
             self._cur_number = max(0.0, self._cur_number - need_cut_number * rate)
