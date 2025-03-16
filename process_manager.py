@@ -2,7 +2,6 @@
 爬取核心
 对爬取过程的管理
 """
-import logging
 import os
 from abc import abstractmethod, ABC
 from collections.abc import Generator
@@ -137,7 +136,7 @@ class TaskManager:
     """
 
     def __init__(self, need_crawled_fund_module: NeedCrawledFundModule, crawling_data_module: CrawlingDataModule,
-                 save_result_module: SaveResultModule, log_level=logging.DEBUG):
+                 save_result_module: SaveResultModule):
         """
         :param need_crawled_fund_module: 负责给出 基金爬取任务
         :param crawling_data_module: 负责 数据爬取和清洗
@@ -150,9 +149,6 @@ class TaskManager:
         log_file_path = './log/'
         if not os.path.exists(log_file_path):
             os.makedirs(log_file_path)
-        logging.basicConfig(filename=log_file_path + 'process.text', encoding='utf-8', level=log_level, filemode='w',
-                            format='%(asctime)s %(message)s')
-        logging.info(f"需要爬取的基金总数:{self._need_crawled_fund_module.total}")
 
         self._finished_task_count = 0
         self._total_task_count = self._need_crawled_fund_module.total
@@ -193,8 +189,6 @@ class TaskManager:
         从 数据爬取和清洗模块 将结果传递给 数据保存模块
         两部分的任务都是阻塞的（主要会阻塞在 数据爬取和清洗）
         """
-        start_time = datetime.now()
-
         thread1 = Thread(target=self.get_task_and_crawling)
         thread2 = Thread(target=self.get_result_and_save)
         thread3 = Thread(target=self.show_process)
@@ -208,4 +202,3 @@ class TaskManager:
         thread3.join()
 
         cur_time = datetime.now()
-        logging.info(f"基金爬取完成 耗时{(cur_time - start_time).seconds}s")
