@@ -153,10 +153,12 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                     self._result_queue.put(result)
 
                 # 爬取速率控制
+                # todo 首要任务 建立起准确的爬取数据 现在这个数据分片大小并不稳定
+                # 单独出一个线程 每秒清空一下积攒的成功/失败计数
                 success_count = sum(
                     [1 if result.state == Response.State.SUCCESS else 0 for result in need_handle_result_list])
                 number_of_concurrent_tasks = self._rate_control \
-                    .get_cur_number_of_concurrent_tasks(success_count, len(need_handle_result_list) - success_count)
+                    .get_cur_number_of_concurrent_tasks(success_count, len(need_handle_result_list) - success_count, len(future_list))
 
                 # 处理爬取请求
                 while (not self._request_queue.empty() or len(need_retry_task_list) > 0) \

@@ -178,8 +178,10 @@ class TaskManager:
 
     def show_process(self):
         with tqdm(total=self._total_task_count) as pbar:
+            last_count = None
             while not self._all_task_finished:
-                pbar.update(self._finished_task_count)
+                pbar.update(self._finished_task_count - (last_count if last_count else 0))
+                last_count = self._finished_task_count
                 sleep(1)
 
     def run(self) -> NoReturn:
