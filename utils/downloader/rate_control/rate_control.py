@@ -30,7 +30,7 @@ class RateControl:
         self._max_num = cpu_count() * 5.0
 
         # 分析模式下，会记录爬取过程中的 相关数据
-        self._analyse_mode = True
+        self._analyse_mode = False
         self._analyse_mode_start = False
         self._file = None
         self._writer = None
