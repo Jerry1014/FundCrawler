@@ -12,6 +12,8 @@ from threading import Thread
 from time import sleep
 from typing import NoReturn, Optional
 
+from tqdm import tqdm
+
 
 class NeedCrawledFundModule(ABC):
     """
@@ -152,7 +154,8 @@ class TaskManager:
                             format='%(asctime)s %(message)s')
         logging.info(f"需要爬取的基金总数:{self._need_crawled_fund_module.total}")
 
-        self._cur_finished_task_count = 0
+        self._finished_task_count = 0
+        self._total_task_count = self._need_crawled_fund_module.total
         self._all_task_finished = False
 
     def get_task_and_crawling(self):
@@ -173,14 +176,15 @@ class TaskManager:
                 result: FundCrawlingResult = self._crawling_data_module.get_an_result()
                 if result:
                     self._save_result_module.save_result(result)
-                    self._cur_finished_task_count += 1
+                    self._finished_task_count += 1
 
         self._all_task_finished = True
 
     def show_process(self):
-        while not self._all_task_finished:
-            logging.info(f"已爬取完成基金数:{self._cur_finished_task_count}")
-            sleep(5)
+        with tqdm(total=self._total_task_count) as pbar:
+            while not self._all_task_finished:
+                pbar.update(self._finished_task_count)
+                sleep(1)
 
     def run(self) -> NoReturn:
         """
