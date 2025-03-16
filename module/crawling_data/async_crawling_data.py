@@ -109,6 +109,10 @@ class AsyncCrawlingData(CrawlingDataModule):
 
                 strategy = DataCleaningStrategyFactory.get_strategy(date_type)
                 url = strategy.build_url(fund_task.code)
+                # 优化点
+                # 策略怎么解析数据 决定了 数据要怎么爬
+                # 可能是我一次把若干个页面都爬下来 可能是我通过其他方式爬 返回的不是requests封装的Response
+                # 对于上面这种需求，应该在这里根据 具体的策略 来选择 对应的爬取方式（实现）
                 self._downloader.summit(Request(AsyncCrawlingData.Context.UniqueKey(self._context_id, task_id), url))
                 self._running_task_dict[task_id] = AsyncCrawlingData.PageCrawlingTask(date_type, url)
 

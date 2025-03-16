@@ -1,13 +1,18 @@
 """
-选择要买的基金
-整体思路是
-1 风险和收益是正相关的，因此夏普是一个很好的衡量基金性价比的指标
-因此，取近三年夏普排名靠前的基金
-2.1 低风险池子
-在夏普前十的债基里，取收益率靠前的两三个
-2.2 高风险池子
-在夏普前十的除债基外的基金里，取收益率靠前的两三个
+自动挑选基金
+整体思路是 风险和收益是正相关的，我们追求的就是收益/风险比最大化，因此夏普作为最基金的指标
+将基金分为三类
+1 债
+夏普很高，但是风险很低，导致收益也低
+先按夏普排序，拿到n个候选基金，再根据回报排序，最终选择其中的m个基金
+2 长牛
+对于管理超过n年的基金，就不再看夏普，纯纯看长期的回报
+直接根据回报排序，选择n个基金
+3 其他
+首先看夏普，其他看回报，和债互补
+先按夏普排序，拿到n个候选基金，再根据回报排序，最终选择其中的m个基金
 """
+import json
 from csv import DictReader
 from datetime import date, timedelta
 from heapq import heappushpop, heappush
@@ -15,11 +20,24 @@ from typing import NoReturn
 
 from process_manager import FundCrawlingResult
 
+# 债型、其他的基金，根据夏普挑选时，所保留的基金数（参与后续回报率排序）
+debt_shape_remain = 200
+other_shape_remain = 200
+# 长牛基金，保留的基金数
+manager_long_remain = 10
+# 长牛基金，需要基金经理管理超过多长时间（单位：年）
+manager_4_n_years = 10
+# 债型、其他的基金，根据回报率进行排序后，最终保留的基金数
+debt_increase_remain = 5
+other_increase_remain = 10
+
 
 def analyse():
     # 债基的夏普太高了，单独放一个池子里
-    debt_holder = FundFolder(retain_num=20)
-    other_holder = FundFolder(retain_num=10)
+
+    debt_holder = FundFolder(retain_num=debt_shape_remain)
+    other_holder = FundFolder(retain_num=other_shape_remain)
+    manager_long_years_holder = FundFolder(retain_num=manager_long_remain)
 
     with open('../result/result.csv', 'r', newline='', encoding='utf-8') as csvfile:
         # 读取数据
@@ -28,39 +46,48 @@ def analyse():
         today = date.today()
         for row in reader:
             try:
-                # 基金经理至少管理了这个基金n年以上
                 date_of_appointment: date = date.fromisoformat(row[FundCrawlingResult.Header.DATE_OF_APPOINTMENT])
                 delta: timedelta = today - date_of_appointment
-                if delta.days <= 365 * 4:
+                manager_4_more_3_yeas = delta.days > 365 * 3
+                manager_4_long_times = delta.days > 365 * manager_4_n_years
+                three_years_shape: str = row[FundCrawlingResult.Header.SHARPE_THREE_YEARS]
+                three_years_increase = row[FundCrawlingResult.Header.THREE_YEARS_INCREASE]
+
+                # 底线，不考虑基金经理管理低于3年的基金，历史数据没有参考意义
+                if manager_4_more_3_yeas is False or three_years_shape == 'None':
                     continue
 
-                # 不考虑没有三年夏普的基金
-                sharpe: str = row[FundCrawlingResult.Header.SHARPE_THREE_YEARS]
-                if sharpe == 'None':
-                    continue
-
-                # 债基单独放一个篮子里
                 fund_type: str = row[FundCrawlingResult.Header.FUND_TYPE]
+                # 债基 1 夏普 2 收益
                 if '债' in fund_type:
-                    debt_holder.put_fund(float(sharpe), row)
+                    debt_holder.put_fund(float(three_years_shape), row)
+                # 管理了非常长时间的基金 只看收益
+                elif manager_4_long_times and three_years_increase != 'None':
+                    manager_long_years_holder.put_fund(float(three_years_increase[:-1]), row)
+                # 其他 1 夏普 2 收益
                 else:
-                    other_holder.put_fund(float(sharpe), row)
-            except:
-                print(f'基金{row[FundCrawlingResult.Header.FUND_CODE]}分析失败')
+                    other_holder.put_fund(float(three_years_shape), row)
+            except Exception as e:
+                print(f'基金{row[FundCrawlingResult.Header.FUND_CODE]}分析失败', e)
 
-    debt_increase_holder = FundFolder(retain_num=3)
+    # 债基 夏普前十里再找收益前x的
+    debt_increase_holder = FundFolder(retain_num=debt_increase_remain)
     for fund in debt_holder.get_result():
         increase = fund[FundCrawlingResult.Header.THREE_YEARS_INCREASE]
         if increase != 'None':
             debt_increase_holder.put_fund(float(increase[:-1]), fund)
-    print(f'债基收益前三{debt_increase_holder.get_result()}')
+    print(f'债基收益前三\n{json.dumps(debt_increase_holder.get_result(), ensure_ascii=False)}')
 
-    other_increase_holder = FundFolder(retain_num=3)
+    # 管理了非常长时间的基金 只看收益
+    print(f'长牛基收益排名\n{json.dumps(manager_long_years_holder.get_result(), ensure_ascii=False)}')
+
+    # 其他基金前x
+    other_increase_holder = FundFolder(retain_num=other_increase_remain)
     for fund in other_holder.get_result():
         increase = fund[FundCrawlingResult.Header.THREE_YEARS_INCREASE]
         if increase != 'None':
             other_increase_holder.put_fund(float(increase[:-1]), fund)
-    print(f'其他基收益前三{other_increase_holder.get_result()}')
+    print(f'其他基收益前三\n{json.dumps(other_increase_holder.get_result(), ensure_ascii=False)}')
 
 
 class FundFolder:

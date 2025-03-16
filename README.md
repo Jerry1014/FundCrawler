@@ -7,17 +7,18 @@
 ![GitHub license](https://img.shields.io/github/license/tindy2013/subconverter.svg)
 
         购买基金前，请务必在官方网站上确认爬取的数据无误！
-        推荐书籍《解读基金：我的投资观与实践》
+        爬虫仅供学习交流使用，请不要对目标网站造成负担，并在心里默默感谢网站提供的免费数据
+        推荐书籍《解读基金：我的投资观与实践》、《聪明的投资者》、《投资最重要的事》
         推荐网站 晨星中国：www.morningstar.cn
-        2023-04-29对整个代码进行了重写，如有问题，请切换回deprecated分支
+        我是怎么利用基金数据的 1 在本基金任职超过三年，且三年夏普表现优异的经理 2 在本基金任职超过十年，年均回报率表现优异的经理
 
 - 基金类型,资产规模,基金管理人,基金净值,基金经理(最近连续最长任职),基金经理的上任时间,近三年标准差,近三年夏普,近三年涨幅,近五年涨幅
-- 爬取全部数据需要5385s(2023-04-29 总基金数16445)，瓶颈为网站的反爬策略
+- 爬取全部数据需要4930s(2024-05-22 总基金数 18917)，瓶颈为网站的反爬策略
   ![Image text](docs/img/result_2.png)
 
 # 食用方法
 
-- Python3.11 依赖见requirements.txt
+- Python3.12 依赖见requirements.txt
 - 运行run.py 爬取基金数据
 - 杂七杂八
   - 只想爬一点点数据看下效果 test_process_manager.SmokeTestTaskManager.test_run
@@ -46,3 +47,8 @@ AsyncHttpRequestDownloader起了一个新进程，在子进程内通过线程池
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=Jerry1014/FundCrawler&type=Date)](https://star-history.com/#Jerry1014/FundCrawler&Date)
+
+## 未来更新计划
+
+- 继续优化爬取速率，精进爬取窗口的动态变化算法
+- 健壮性。增加数据匹配时的错误发现机制

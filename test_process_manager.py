@@ -4,7 +4,7 @@ from typing import NoReturn, Optional
 from unittest import TestCase
 
 from module.crawling_data.async_crawling_data import AsyncCrawlingData
-from module.need_crawling_fund.get_fund_by_web import GetNeedCrawledFundByWeb4Test
+from module.need_crawling_fund.get_fund_by_web import GetSpecialNeedCrawledFund
 from module.save_result.save_result_2_file import SaveResult2File
 from process_manager import NeedCrawledFundModule, CrawlingDataModule, FundCrawlingResult, SaveResultModule, \
     TaskManager
@@ -69,8 +69,7 @@ class SmokeTestTaskManager(TestCase):
     """
 
     def test_run(self):
-        GetNeedCrawledFundByWeb4Test.test_case_num = 100
-        manager = TaskManager(GetNeedCrawledFundByWeb4Test()
+        manager = TaskManager(GetSpecialNeedCrawledFund()
                               , AsyncCrawlingData()
                               , SaveResult2File())
         manager.run()
