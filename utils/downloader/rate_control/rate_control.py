@@ -14,6 +14,7 @@ class RateControl:
     fail_rate_key = 'fail_rate'
     tasks_num_key = 'tasks_num'
     threshold_key = 'threshold_num'
+    analyse_mode = False
 
     # 初始的并发任务数，爬取多次后可以得到当前网络下的经验值
     init_num = 12
@@ -30,7 +31,6 @@ class RateControl:
         self._max_num = cpu_count() * 5.0
 
         # 分析模式下，会记录爬取过程中的 相关数据
-        self._analyse_mode = False
         self._analyse_mode_start = False
         self._file = None
         self._writer = None
@@ -45,7 +45,7 @@ class RateControl:
         """
         根据当前的成功失败任务个数，决策当前最合适的并发任务数
         """
-        if self._analyse_mode is True and self._analyse_mode_start is False:
+        if self.analyse_mode is True and self._analyse_mode_start is False:
             self.start_analyze()
             self._analyse_mode_start = True
 
@@ -65,7 +65,7 @@ class RateControl:
             # 随着迭代进行 增加的速度逐渐降低
             self._cur_number = min(self._max_num, self._cur_number + rate)
 
-        if self._analyse_mode:
+        if self.analyse_mode:
             self._writer.writerow({RateControl.fail_rate_key: fail_rate, RateControl.tasks_num_key: concurrent_count,
                                    RateControl.threshold_key: self._cur_number})
 
@@ -73,5 +73,5 @@ class RateControl:
         return int(self._cur_number)
 
     def shutdown(self):
-        if self._analyse_mode:
+        if self.analyse_mode:
             self._file.close()
