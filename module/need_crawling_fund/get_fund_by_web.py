@@ -29,7 +29,7 @@ class GetSmallBatchNeedCrawledFund4Test(NeedCrawledFundModule):
     测试用的 基金任务 提供者
     指定case数量，小批量进行爬取
     """
-    test_case_num = 2
+    test_case_num = 10
 
     def init_generator(self) -> NoReturn:
         # 全部（不一定可购） 的开放式基金

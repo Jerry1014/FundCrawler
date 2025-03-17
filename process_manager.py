@@ -146,10 +146,6 @@ class TaskManager:
         self._crawling_data_module = crawling_data_module
         self._save_result_module = save_result_module
 
-        log_file_path = './log/'
-        if not os.path.exists(log_file_path):
-            os.makedirs(log_file_path)
-
         self._finished_task_count = 0
         self._total_task_count = self._need_crawled_fund_module.total
         self._all_task_finished = False
