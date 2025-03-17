@@ -46,6 +46,7 @@ AsyncHttpRequestDownloader起了一个新进程，在子进程内通过线程池
 [![Star History Chart](https://api.star-history.com/svg?repos=Jerry1014/FundCrawler&type=Date)](https://star-history.com/#Jerry1014/FundCrawler&Date)
 
 ## 未来更新计划
-
-- 继续优化爬取速率，精进爬取窗口的动态变化算法
-- 健壮性。增加数据匹配时的错误发现机制
+- 健壮性
+  - 增加数据匹配时的错误发现机制
+  - 增加无数据（None）潜在的规律发现机制（如，某一种特定类型的基金，基金净值展示方式和其他类型的基金不一样）
+  - 有没有数学上的方法，基于一定数量的抽样验证，就能确认整体数据的有效性
