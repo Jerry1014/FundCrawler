@@ -11,18 +11,17 @@ from utils.constants import FundAttrKey
 
 
 class SaveResult2File(SavingResultModule):
-    default_restval = 'None'
-    result_file_path = './result/'
-    result_file_name = 'result.csv'
+    RESULT_FILE_PATH = './result/'
+    RESULT_FILE_NAME = 'result.csv'
 
     def __init__(self):
         fieldnames = [header.value for header in FundAttrKey]
 
-        if not os.path.exists(self.result_file_path):
-            os.makedirs(self.result_file_path)
+        if not os.path.exists(self.RESULT_FILE_PATH):
+            os.makedirs(self.RESULT_FILE_PATH)
 
-        self._file = open(self.result_file_path + self.result_file_name, 'w', newline='', encoding='utf-8')
-        self._writer: DictWriter = DictWriter(self._file, fieldnames=fieldnames, restval=self.default_restval)
+        self._file = open(self.RESULT_FILE_PATH + self.RESULT_FILE_NAME, 'w', newline='', encoding='utf-8')
+        self._writer: DictWriter = DictWriter(self._file, fieldnames=fieldnames, restval='None')
 
         self._writer.writeheader()
 

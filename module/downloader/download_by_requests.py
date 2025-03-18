@@ -5,7 +5,6 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from enum import Enum, auto, unique
 from multiprocessing import Queue, Process, synchronize
 from sys import maxsize
-from time import sleep
 from typing import Optional, NoReturn
 
 from requests import Response as RequestsResponse, RequestException, get
@@ -134,9 +133,6 @@ class GetPageByMultiThreading(Process):
                 request = need_retry_task_list.pop() if len(need_retry_task_list) > 0 else self._request_queue.get()
                 future_list.append(executor.submit(self.get_page, request))
                 number_of_concurrent_tasks -= 1
-
-            # 休眠主线程，避免循环占用过多的cpu时间
-            sleep(0.1)
 
         # 确保数据都写入后，再退出主线程
         # OS pipes are not infinitely long, so the process which queues data could be blocked in the OS during the

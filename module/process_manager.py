@@ -47,6 +47,9 @@ class TaskManager:
         # 当前已经完成的
         self._finished_step_count = None
 
+        # 日志级别
+        logging.basicConfig(level=logging.INFO)
+
     def show_process(self):
         """
         爬取进度提示
@@ -80,8 +83,6 @@ class TaskManager:
         finally:
             # downloader是子进程，一定要shutdown
             self._exit_sign.set()
-            self._http_FundRequest_queue.close()
-            self._http_response_queue.close()
 
             self._save_result_module.exit()
 
@@ -118,13 +119,13 @@ class TaskManager:
 
                 # 没有/不存在等待队列，认为数据已经OK，可以传递给数据挖掘模块
                 fund_context = self._fund_context_dict.pop(fund_code)
-                FundRequest_list = self._data_mining_module.summit_context(fund_context)
+                request_list = self._data_mining_module.summit_context(fund_context)
 
-                if FundRequest_list:
+                if request_list:
                     # 数据挖掘模块提出新的爬取请求
-                    self._http_FundRequest_list.extend(FundRequest_list)
+                    self._http_FundRequest_list.extend(request_list)
                     self._fund_context_dict[fund_context.fund_code] = fund_context
-                    self._fund_waiting_dict[fund_context.fund_code] = [req.page_type for req in FundRequest_list]
+                    self._fund_waiting_dict[fund_context.fund_code] = [req.page_type for req in request_list]
                 else:
                     # 没有新的爬取请求，保存爬取结果
                     self._finished_step_count += 1
