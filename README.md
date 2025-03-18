@@ -22,11 +22,8 @@
 - 安装依赖 pip install -r requirements.txt
 - 运行run.py 爬取基金数据
 - 杂七杂八
-  - 只想爬一点点数据看下效果 test_process_manager.SmokeTestTaskManager.test_run
-  - 爬了很多我不需要的数据，很慢 module.crawling_data.async_crawling_data.AsyncCrawlingData.__init__
-  - 爬取过程中的日志文件 process_manager.TaskManager.\_\_init__
-  - 爬取结果文件 module.save_result.save_result_2_file.SaveResult2File.\_\_init__
-  - 爬取结果分析 (通过堆，取三年夏普最高的前几个基金)utils.result_analyse.analyse
+  - 只想爬一点点数据看下效果 运行test_run.py SmokeTestTaskManager.test_run()
+  - 爬取结果分析，可以参考 utils.result_analyse.analyse
   - 想爬取更多的数据  
 1 看下现有的爬取网页上是否有对应的信息  
 module.crawling_data.data_mining.data_mining_type.PageType
