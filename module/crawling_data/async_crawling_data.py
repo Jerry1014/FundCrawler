@@ -7,7 +7,7 @@ from typing import NoReturn, Optional, Any
 from module.crawling_data.data_mining.data_cleaning_strategy_factory import DataCleaningStrategyFactory
 from module.crawling_data.data_mining.data_mining_type import PageType
 from module.downloader.download_by_requests import AsyncHttpRequestDownloader, Request
-from module.fund_info_bo import FundCrawlingResult, NeedCrawledOnceFund
+from module.fund_info_bo import FundCrawlingResult
 from module.process_manager import CrawlingDataModule
 
 
@@ -29,7 +29,7 @@ class AsyncCrawlingData(CrawlingDataModule):
         self._unfinished_context_dict: dict[int, AsyncCrawlingData.Context] = {}
         self._cur_context_id = 0
 
-    def do_crawling(self, task: NeedCrawledOnceFund) -> NoReturn:
+    def do_crawling(self, task: FundCrawlingResult) -> NoReturn:
         """
         构造爬取上下文，并加入到集合中
         """
@@ -62,16 +62,16 @@ class AsyncCrawlingData(CrawlingDataModule):
             if context.all_task_finished():
                 del self._unfinished_context_dict[unique_key.context_id]
 
-                fund_result = FundCrawlingResult(context.fund_task.code, context.fund_task.name)
+                fund_result = FundCrawlingResult(context.fund_task.fund_code, context.fund_task.fund_simple_name)
                 for task in context.finished_task:
                     if task.response:
                         try:
                             strategy = DataCleaningStrategyFactory.get_strategy(task.page_type)
                             strategy.fill_result(task.response, fund_result)
                         except Exception as e:
-                            logging.error(f"基金{context.fund_task.code} {task.page_type}数据 数据解析失败", exc_info=e)
+                            logging.error(f"基金{context.fund_task.fund_code} {task.page_type}数据 数据解析失败", exc_info=e)
                     else:
-                        logging.error(f"基金{context.fund_task.code} {task.page_type}数据 爬取失败")
+                        logging.error(f"基金{context.fund_task.fund_code} {task.page_type}数据 爬取失败")
 
                 return fund_result
 
@@ -93,7 +93,7 @@ class AsyncCrawlingData(CrawlingDataModule):
         包含若干个需要爬取的页面
         """
 
-        def __init__(self, context_id: int, fund_task: NeedCrawledOnceFund,
+        def __init__(self, context_id: int, fund_task: FundCrawlingResult,
                      downloader: AsyncHttpRequestDownloader, need_data_type_list: list[PageType]):
             self._context_id = context_id
             self._downloader = downloader
@@ -108,7 +108,7 @@ class AsyncCrawlingData(CrawlingDataModule):
                 task_id = self.get_task_id_and_increase()
 
                 strategy = DataCleaningStrategyFactory.get_strategy(date_type)
-                url = strategy.build_url(fund_task.code)
+                url = strategy.build_url(fund_task.fund_code)
                 # 优化点
                 # 策略怎么解析数据 决定了 数据要怎么爬
                 # 可能是我一次把若干个页面都爬下来 可能是我通过其他方式爬 返回的不是requests封装的Response

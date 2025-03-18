@@ -25,7 +25,7 @@ class ManagerStrategy(DataCleaningStrategy):
 
         fund_manager_name = self.fund_manager_name_pattern.search(page_text)
         if fund_manager_name:
-            result.fund_info_dict[FundCrawlingResult.Header.FUND_MANAGER] = fund_manager_name.group(1)
+            result.fund_manager = fund_manager_name.group(1)
         fund_date_of_appointment = self.fund_manager_date_of_appointment_pattern.search(page_text)
         if fund_date_of_appointment:
-            result.fund_info_dict[FundCrawlingResult.Header.DATE_OF_APPOINTMENT] = fund_date_of_appointment.group(1)
+            result.date_of_appointment = fund_date_of_appointment.group(1)

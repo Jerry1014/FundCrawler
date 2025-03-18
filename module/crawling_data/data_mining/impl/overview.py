@@ -28,15 +28,15 @@ class OverviewStrategy(DataCleaningStrategy):
 
         fund_kind_result = self.fund_type_pattern.search(page_text)
         if fund_kind_result:
-            result.fund_info_dict[FundCrawlingResult.Header.FUND_TYPE] = fund_kind_result.group(1)
+            result.fund_type = fund_kind_result.group(1)
         fund_size_result = self.fund_size_pattern.search(page_text)
         if fund_size_result:
             # 1,179.10 亿元
             fund_size = fund_size_result.group(1).replace(',', '')
-            result.fund_info_dict[FundCrawlingResult.Header.FUND_SIZE] = fund_size
+            result.fund_size = fund_size
         fund_company_result = self.fund_company_pattern.search(page_text)
         if fund_company_result:
-            result.fund_info_dict[FundCrawlingResult.Header.FUND_COMPANY] = fund_company_result.group(1)
+            result.fund_company = fund_company_result.group(1)
         fund_value_result = self.fund_value_pattern.search(page_text)
         if fund_value_result:
-            result.fund_info_dict[FundCrawlingResult.Header.FUND_VALUE] = fund_value_result.group(1)
+            result.fund_value = fund_value_result.group(1)

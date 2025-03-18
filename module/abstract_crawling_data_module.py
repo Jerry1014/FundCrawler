@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABC
 from typing import NoReturn, Optional
 
-from module.fund_info_bo import NeedCrawledOnceFund, FundCrawlingResult
+from module.fund_info_bo import FundCrawlingResult
 
 
 class CrawlingDataModule(ABC):
@@ -11,7 +11,7 @@ class CrawlingDataModule(ABC):
     """
 
     @abstractmethod
-    def do_crawling(self, task: NeedCrawledOnceFund) -> NoReturn:
+    def do_crawling(self, task: FundCrawlingResult) -> NoReturn:
         """
         提交任务
         需要有任务堆积时的阻塞, 以便可以将时间片让出来 处理结果

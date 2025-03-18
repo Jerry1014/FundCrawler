@@ -5,6 +5,7 @@
 #### 重要提示
 
 ![GitHub license](https://img.shields.io/github/license/tindy2013/subconverter.svg)
+- 202503 重大代码修改，报错/奇怪bug，尝试切换回release分支使用
 
         购买基金前，请务必在官方网站上确认爬取的数据无误！
         爬虫仅供学习交流使用，请不要对目标网站造成负担，并在心里默默感谢网站提供的免费数据
@@ -49,3 +50,5 @@ AsyncHttpRequestDownloader起了一个新进程，在子进程内通过线程池
   - 有没有数学上的方法，基于一定数量的抽样验证，就能确认整体数据的有效性
 - 代码重构
   - 减少没有必要的过度设计，精简代码量，提高可读性
+  - profiler确认性能有没有问题
+  - 结果区分无数据(NO_DATA)和爬取失败(ERROR)

@@ -28,10 +28,11 @@ class RiseStrategy(DataCleaningStrategy):
         if fund_3_years_increase:
             increase = fund_3_years_increase.group(1)
             increase = increase if increase != '---' else None
-            result.fund_info_dict[FundCrawlingResult.Header.THREE_YEARS_INCREASE] = increase
+            result.three_years_increase = increase
 
         fund_5_years_increase = self.fund_5_years_increase_pattern.search(page_text)
         if fund_5_years_increase:
             increase = fund_5_years_increase.group(1)
             increase = increase if increase != '---' else None
-            result.fund_info_dict[FundCrawlingResult.Header.FIVE_YEARS_INCREASE] = increase
+            result.five_years_increase = increase
+

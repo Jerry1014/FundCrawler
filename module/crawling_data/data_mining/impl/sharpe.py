@@ -26,10 +26,10 @@ class MetricsStrategy(DataCleaningStrategy):
             standard_deviation = fund_standard_deviation.group(3)
             # -- 代表无此数据
             standard_deviation = None if standard_deviation == '--' else standard_deviation
-            result.fund_info_dict[FundCrawlingResult.Header.STANDARD_DEVIATION_THREE_YEARS] = standard_deviation
+            result.standard_deviation_three_years = standard_deviation
         fund_sharpe_ratio = self.fund_sharpe_ratio_pattern.search(page_text)
         if fund_sharpe_ratio:
             sharpe = fund_sharpe_ratio.group(3)
             # -- 代表无此数据
             sharpe = None if sharpe == '--' else sharpe
-            result.fund_info_dict[FundCrawlingResult.Header.SHARPE_THREE_YEARS] = sharpe
+            result.sharpe_three_years = sharpe

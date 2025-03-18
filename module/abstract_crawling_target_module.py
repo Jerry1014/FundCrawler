@@ -1,8 +1,7 @@
 from abc import abstractmethod, ABC
-from collections.abc import Generator
-from typing import NoReturn, Optional
+from typing import List
 
-from module.fund_info_bo import NeedCrawledOnceFund
+from module.fund_info_bo import FundCrawlingResult
 
 
 class CrawlingTargetModule(ABC):
@@ -11,15 +10,9 @@ class CrawlingTargetModule(ABC):
     通过生成器逐个给出 需要爬取的基金
     """
 
-    def __init__(self):
-        self.total = None
-        self.task_generator: Optional[Generator[NeedCrawledOnceFund]] = None
-
-        self.init_generator()
-
     @abstractmethod
-    def init_generator(self) -> NoReturn:
+    def get_fund_list(self) -> List[FundCrawlingResult]:
         """
-        初始化 生成器
+        获取需要爬取的基金列表
         """
         return NotImplemented

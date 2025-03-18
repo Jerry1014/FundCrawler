@@ -7,6 +7,7 @@ from typing import NoReturn
 
 from module.fund_info_bo import FundCrawlingResult
 from module.process_manager import SavingResultModule
+from utils.constants import FundAttrKey
 
 
 class SaveResult2File(SavingResultModule):
@@ -15,7 +16,7 @@ class SaveResult2File(SavingResultModule):
     result_file_name = 'result.csv'
 
     def __init__(self):
-        fieldnames = [header.value for header in FundCrawlingResult.Header]
+        fieldnames = [header.value for header in FundAttrKey]
 
         if not os.path.exists(self.result_file_path):
             os.makedirs(self.result_file_path)
@@ -26,9 +27,8 @@ class SaveResult2File(SavingResultModule):
         self._writer.writeheader()
 
     def save_result(self, result: FundCrawlingResult) -> NoReturn:
-        row = {header.value: value if value else self.default_restval for header, value in
-               result.fund_info_dict.items()}
-        self._writer.writerow(row)
+        self._writer.writerow({header.value: value if value else self.default_restval for header, value in
+                               result.to_row().items()})
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._file.close()
