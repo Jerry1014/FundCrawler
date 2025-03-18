@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABC
 from typing import NoReturn
 
-from module.fund_info_bo import FundCrawlingResult
+from module.fund_context import FundContext
 
 
 class SavingResultModule(ABC):
@@ -10,7 +10,7 @@ class SavingResultModule(ABC):
     """
 
     @abstractmethod
-    def save_result(self, result: FundCrawlingResult) -> NoReturn:
+    def save_result(self, result: FundContext) -> NoReturn:
         """
         爬取结果的保存
         """

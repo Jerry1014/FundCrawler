@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABC
 from typing import NoReturn, Optional
 
-from module.fund_info_bo import FundCrawlingResult
+from module.fund_context import FundContext
 
 
 class CrawlingDataModule(ABC):
@@ -11,7 +11,7 @@ class CrawlingDataModule(ABC):
     """
 
     @abstractmethod
-    def do_crawling(self, task: FundCrawlingResult) -> NoReturn:
+    def do_crawling(self, task: FundContext) -> NoReturn:
         """
         提交任务
         需要有任务堆积时的阻塞, 以便可以将时间片让出来 处理结果
@@ -27,7 +27,7 @@ class CrawlingDataModule(ABC):
         return NotImplemented
 
     @abstractmethod
-    def get_an_result(self) -> Optional[FundCrawlingResult]:
+    def get_an_result(self) -> Optional[FundContext]:
         """
         (阻塞, 有超时)获取一个处理好的结果
         数据爬取尽量保证成功, 实在失败时 爬取数据为None, 所以不期望的异常

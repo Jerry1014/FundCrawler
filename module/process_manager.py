@@ -14,9 +14,8 @@ from tqdm import tqdm
 from module.abstract_crawling_data_module import CrawlingDataModule
 from module.abstract_crawling_target_module import CrawlingTargetModule
 from module.abstract_saving_result_module import SavingResultModule
-from module.downloader.download_by_requests import Request, Response
-from module.downloader.download_by_requests_v2 import GetPageByMultiThreadingV2
-from module.fund_info_bo import FundCrawlingResult
+from module.downloader.download_by_requests_v2 import GetPageByMultiThreadingV2, RequestV2, ResponseV2
+from module.fund_context import FundContext
 
 
 class TaskManager:
@@ -26,11 +25,14 @@ class TaskManager:
 
     def __init__(self, need_crawled_fund_module: CrawlingTargetModule, crawling_data_module: CrawlingDataModule,
                  save_result_module: SavingResultModule):
-        # 事件列表（模块间的协作）
-        self._http_request_queue: Queue[Request] = Queue(cpu_count())
-        self._http_response_queue: Queue[Response] = Queue()
+        # 事件列表等(模块间的协作)
+        self._http_request_queue: Queue[RequestV2] = Queue(cpu_count())
+        self._http_request_list = list()
+        self._http_response_queue: Queue[ResponseV2] = Queue()
         self._exit_sign: Event = Event()
-        self._result_save_queue: List[FundCrawlingResult] = list()
+        self._result_save_queue: List[FundContext] = list()
+        # 某个基金上下文 需要等待的http下载 (完备后才能传递到数据挖掘模块)
+        self.context_waiting_dict = dict()
 
         # 相关模块
         self._need_crawled_fund_module = need_crawled_fund_module
@@ -83,11 +85,23 @@ class TaskManager:
         http请求是异步的，为了提高并发度，这里略微借鉴redis的事件驱动机制（没有严格地实现每个事件的回调处理类）
         优先响应 http请求事件 其次 http返回事件（数据挖掘） 最后 结果保存
         """
-        # todo 拆开成事件驱动
         # 获取任务
         task_list = self._need_crawled_fund_module.get_fund_list()
         self._total_step_count = len(task_list) * 2
         self._finished_step_count = 0
+
+        # # todo 拆开成事件驱动
+        # # 优先响应  其次 http返回事件（数据挖掘） 最后 结果保存
+        # while True:
+        #     # http请求 当res队列也满时,需要先处理返回,避免爆内存
+        #     if (not self._http_request_queue.full() and
+        #             len(self._http_request_list) != 0 and not self._http_response_queue.full()):
+        #         self._http_request_queue.put(self._http_request_list.pop())
+        #
+        #     if not self._http_response_queue.empty():
+        #         cur_res = self._http_response_queue.get()
+        #         cur_res.page_type
+
 
         # 数据爬取和解析
         for task in task_list:
@@ -98,7 +112,7 @@ class TaskManager:
         # 结果保存
         with self._save_result_module:
             while self._crawling_data_module.has_next_result():
-                result: FundCrawlingResult = self._crawling_data_module.get_an_result()
+                result: FundCrawlingContext = self._crawling_data_module.get_an_result()
                 if result:
                     self._save_result_module.save_result(result)
                     self._finished_step_count += 1

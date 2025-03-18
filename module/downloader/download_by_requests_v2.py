@@ -19,8 +19,9 @@ class RequestV2:
     在基础的请求上, 增加了重试次数
     """
 
-    def __init__(self, unique_key: str, url, retry_time: int = maxsize):
-        self.unique_key = unique_key
+    def __init__(self, fund_code: str, page_type: str, url, retry_time: int = maxsize):
+        self.fund_code = fund_code
+        self.page_type = page_type
         self.url = url
 
         if retry_time < 1:
@@ -39,14 +40,15 @@ class ResponseV2:
         FALSE = auto()
 
     def __init__(self, request: RequestV2, state: State, response: Optional[RequestsResponse]):
-        self.unique_key = request.unique_key
+        self.fund_code = request.fund_code
+        self.page_type = request.page_type
         self.url = request.url
         self.remain_retry_time = request.retry_time - 1
         self.response = response
         self.state = state
 
     def build_request(self):
-        return RequestV2(self.unique_key, self.url)
+        return RequestV2(self.fund_code, self.page_type, self.url)
 
 
 class GetPageByMultiThreadingV2(Process):

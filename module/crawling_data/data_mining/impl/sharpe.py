@@ -3,7 +3,7 @@ from string import Template
 from typing import NoReturn
 
 from module.crawling_data.data_mining.data_cleaning_strategy import DataCleaningStrategy
-from module.fund_info_bo import FundCrawlingResult
+from module.fund_context import FundContext
 
 
 class MetricsStrategy(DataCleaningStrategy):
@@ -18,7 +18,7 @@ class MetricsStrategy(DataCleaningStrategy):
     def build_url(self, fund_code: str) -> str:
         return self.url_template.substitute(fund_code=fund_code)
 
-    def fill_result(self, response, result: FundCrawlingResult) -> NoReturn:
+    def fill_result(self, response, result: FundContext) -> NoReturn:
         page_text = response.text
 
         fund_standard_deviation = self.fund_standard_deviation_pattern.search(page_text)

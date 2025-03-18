@@ -5,7 +5,7 @@ from typing import NoReturn
 from requests import Response
 
 from module.crawling_data.data_mining.data_cleaning_strategy_factory import DataCleaningStrategy
-from module.fund_info_bo import FundCrawlingResult
+from module.fund_context import FundContext
 from utils.constants import number_in_eng
 
 
@@ -23,7 +23,7 @@ class OverviewStrategy(DataCleaningStrategy):
     def build_url(self, fund_code: str) -> str:
         return self.url_template.substitute(fund_code=fund_code)
 
-    def fill_result(self, response: Response, result: FundCrawlingResult) -> NoReturn:
+    def fill_result(self, response: Response, result: FundContext) -> NoReturn:
         page_text = response.text
 
         fund_kind_result = self.fund_type_pattern.search(page_text)

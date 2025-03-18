@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABC
 from typing import List
 
-from module.fund_info_bo import FundCrawlingResult
+from module.fund_context import FundContext
 
 
 class CrawlingTargetModule(ABC):
@@ -11,7 +11,7 @@ class CrawlingTargetModule(ABC):
     """
 
     @abstractmethod
-    def get_fund_list(self) -> List[FundCrawlingResult]:
+    def get_fund_list(self) -> List[FundContext]:
         """
         获取需要爬取的基金列表
         """

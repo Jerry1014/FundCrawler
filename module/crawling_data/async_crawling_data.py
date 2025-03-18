@@ -7,7 +7,7 @@ from typing import NoReturn, Optional, Any
 from module.crawling_data.data_mining.data_cleaning_strategy_factory import DataCleaningStrategyFactory
 from module.crawling_data.data_mining.data_mining_type import PageType
 from module.downloader.download_by_requests import AsyncHttpRequestDownloader, Request
-from module.fund_info_bo import FundCrawlingResult
+from module.fund_context import FundContext
 from module.process_manager import CrawlingDataModule
 
 
@@ -29,7 +29,7 @@ class AsyncCrawlingData(CrawlingDataModule):
         self._unfinished_context_dict: dict[int, AsyncCrawlingData.Context] = {}
         self._cur_context_id = 0
 
-    def do_crawling(self, task: FundCrawlingResult) -> NoReturn:
+    def do_crawling(self, task: FundContext) -> NoReturn:
         """
         构造爬取上下文，并加入到集合中
         """
@@ -43,7 +43,7 @@ class AsyncCrawlingData(CrawlingDataModule):
         """
         return not self._shutdown or len(self._unfinished_context_dict) != 0
 
-    def get_an_result(self) -> Optional[FundCrawlingResult]:
+    def get_an_result(self) -> Optional[FundContext]:
         """
         1 在下载器中取回一个结果, 并将结果填充到对应的 context的 pageTask中
         2 当某个context的pageTask全部处理完成时, 走到第三步, 否则重复1 直到某个context被全部处理完
@@ -62,7 +62,7 @@ class AsyncCrawlingData(CrawlingDataModule):
             if context.all_task_finished():
                 del self._unfinished_context_dict[unique_key.context_id]
 
-                fund_result = FundCrawlingResult(context.fund_task.fund_code, context.fund_task.fund_simple_name)
+                fund_result = FundContext(context.fund_task.fund_code, context.fund_task.fund_name)
                 for task in context.finished_task:
                     if task.response:
                         try:
@@ -93,7 +93,7 @@ class AsyncCrawlingData(CrawlingDataModule):
         包含若干个需要爬取的页面
         """
 
-        def __init__(self, context_id: int, fund_task: FundCrawlingResult,
+        def __init__(self, context_id: int, fund_task: FundContext,
                      downloader: AsyncHttpRequestDownloader, need_data_type_list: list[PageType]):
             self._context_id = context_id
             self._downloader = downloader

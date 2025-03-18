@@ -1,23 +1,24 @@
 """
 模块间交互所使用的BO
 """
+from typing import List
 
+from module.downloader.download_by_requests import Response
 from utils.constants import FundAttrKey
 
 
-class FundCrawlingResult:
+class FundContext:
     """
-    基金的最终爬取结果定义
+    基金爬取数据的上下文
     """
 
     def __init__(self, fund_code: str, fund_name: str):
-        self.fund_code = fund_code
-        self.fund_simple_name = fund_name
+        self.fund_code: str = fund_code
+        self.fund_name: str = fund_name
         self.fund_type = None
         self.fund_size = None
         self.fund_company = None
         self.fund_value = None
-        # 兼容带新场景，A+B -> B -> B+C，此时基金经理为时长最长的B，对应的任职时间为 这三段 B连续任职的任职时间
         self.fund_manager = None
         self.date_of_appointment = None
         self.standard_deviation_three_years = None
@@ -25,10 +26,13 @@ class FundCrawlingResult:
         self.three_years_increase = None
         self.five_years_increase = None
 
-    def to_row(self):
+        # 爬取到的网页数据
+        self.http_response_list: List[Response] = list()
+
+    def to_result_row(self):
         return {
             FundAttrKey.FUND_CODE: self.fund_code,
-            FundAttrKey.FUND_SIMPLE_NAME: self.fund_simple_name,
+            FundAttrKey.FUND_SIMPLE_NAME: self.fund_name,
             FundAttrKey.FUND_TYPE: self.fund_type,
             FundAttrKey.FUND_SIZE: self.fund_size,
             FundAttrKey.FUND_COMPANY: self.fund_company,

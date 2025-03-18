@@ -5,7 +5,7 @@ import os.path
 from csv import DictWriter
 from typing import NoReturn
 
-from module.fund_info_bo import FundCrawlingResult
+from module.fund_context import FundContext
 from module.process_manager import SavingResultModule
 from utils.constants import FundAttrKey
 
@@ -26,9 +26,9 @@ class SaveResult2File(SavingResultModule):
 
         self._writer.writeheader()
 
-    def save_result(self, result: FundCrawlingResult) -> NoReturn:
+    def save_result(self, result: FundContext) -> NoReturn:
         self._writer.writerow({header.value: value if value else self.default_restval for header, value in
-                               result.to_row().items()})
+                               result.to_result_row().items()})
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._file.close()
