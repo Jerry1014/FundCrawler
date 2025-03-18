@@ -2,8 +2,8 @@ from unittest import TestCase
 
 from requests import Response
 
-from utils.downloader.async_downloader import BaseRequest
-from utils.downloader.impl.http_request_downloader import AsyncHttpRequestDownloader, Request
+from module.abstract_downloader import BaseRequest
+from module.downloader.download_by_requests import AsyncHttpRequestDownloader, Request
 
 
 class TestDownloader(TestCase):

@@ -4,12 +4,12 @@
 import logging
 from typing import NoReturn, Optional, Any
 
+from module.abstract_downloader import AsyncHttpDownloader, BaseRequest
 from module.crawling_data.data_mining.data_cleaning_strategy_factory import DataCleaningStrategyFactory
 from module.crawling_data.data_mining.data_mining_type import PageType
+from module.downloader.download_by_requests import AsyncHttpRequestDownloader, Request
 from module.fund_info_bo import FundCrawlingResult, NeedCrawledOnceFund
 from module.process_manager import CrawlingDataModule
-from utils.downloader.async_downloader import AsyncHttpDownloader, BaseRequest
-from utils.downloader.impl.http_request_downloader import AsyncHttpRequestDownloader, Request
 
 
 class AsyncCrawlingData(CrawlingDataModule):

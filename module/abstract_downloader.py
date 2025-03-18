@@ -1,5 +1,5 @@
 """
-http下载类 外观
+http下载类
 """
 from abc import ABC, abstractmethod
 from typing import Optional, TypeVar, NoReturn

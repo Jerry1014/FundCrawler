@@ -12,8 +12,8 @@ from typing import Optional, NoReturn
 
 from requests import Response as RequestsResponse, RequestException, get
 
-from utils.downloader.async_downloader import AsyncHttpDownloader, BaseRequest, BaseResponse
-from utils.downloader.rate_control.rate_control import RateControl
+from module.abstract_downloader import BaseResponse, BaseRequest, AsyncHttpDownloader
+from module.downloader.rate_control.rate_control import RateControl
 from utils.fake_ua_getter import singleton_fake_ua
 
 

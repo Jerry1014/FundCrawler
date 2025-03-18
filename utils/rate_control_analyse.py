@@ -2,7 +2,7 @@ from csv import DictReader
 
 from matplotlib import pyplot as plt
 
-from utils.downloader.rate_control.rate_control import RateControl
+from module.downloader.rate_control.rate_control import RateControl
 
 
 def draw_analyse(path='./'):
