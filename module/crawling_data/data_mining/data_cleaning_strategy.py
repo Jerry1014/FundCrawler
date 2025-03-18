@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import NoReturn
 
-from process_manager import FundCrawlingResult
+from module.fund_info_bo import FundCrawlingResult
 
 
 class DataCleaningStrategy(ABC):

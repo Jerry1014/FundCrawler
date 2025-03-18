@@ -6,7 +6,8 @@ from typing import NoReturn, Optional, Any
 
 from module.crawling_data.data_mining.data_cleaning_strategy_factory import DataCleaningStrategyFactory
 from module.crawling_data.data_mining.data_mining_type import PageType
-from process_manager import CrawlingDataModule, FundCrawlingResult, NeedCrawledFundModule
+from module.fund_info_bo import FundCrawlingResult, NeedCrawledOnceFund
+from module.process_manager import CrawlingDataModule
 from utils.downloader.async_downloader import AsyncHttpDownloader, BaseRequest
 from utils.downloader.impl.http_request_downloader import AsyncHttpRequestDownloader, Request
 
@@ -29,7 +30,7 @@ class AsyncCrawlingData(CrawlingDataModule):
         self._unfinished_context_dict: dict[int, AsyncCrawlingData.Context] = {}
         self._cur_context_id = 0
 
-    def do_crawling(self, task: NeedCrawledFundModule.NeedCrawledOnceFund) -> NoReturn:
+    def do_crawling(self, task: NeedCrawledOnceFund) -> NoReturn:
         """
         构造爬取上下文，并加入到集合中
         """
@@ -93,7 +94,7 @@ class AsyncCrawlingData(CrawlingDataModule):
         包含若干个需要爬取的页面
         """
 
-        def __init__(self, context_id: int, fund_task: NeedCrawledFundModule.NeedCrawledOnceFund,
+        def __init__(self, context_id: int, fund_task: NeedCrawledOnceFund,
                      downloader: AsyncHttpDownloader, need_data_type_list: list[PageType]):
             self._context_id = context_id
             self._downloader = downloader

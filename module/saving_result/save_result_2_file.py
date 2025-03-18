@@ -5,10 +5,11 @@ import os.path
 from csv import DictWriter
 from typing import NoReturn
 
-from process_manager import SaveResultModule, FundCrawlingResult
+from module.fund_info_bo import FundCrawlingResult
+from module.process_manager import SavingResultModule
 
 
-class SaveResult2File(SaveResultModule):
+class SaveResult2File(SavingResultModule):
     default_restval = 'None'
     result_file_path = './result/'
     result_file_name = 'result.csv'

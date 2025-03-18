@@ -18,7 +18,7 @@ from datetime import date, timedelta
 from heapq import heappushpop, heappush
 from typing import NoReturn
 
-from process_manager import FundCrawlingResult
+from module.fund_info_bo import FundCrawlingResult
 
 # 债型、其他的基金，根据夏普挑选时，所保留的基金数（参与后续回报率排序）
 debt_shape_remain = 200

@@ -5,8 +5,8 @@ from typing import NoReturn
 from requests import Response
 
 from module.crawling_data.data_mining.data_cleaning_strategy_factory import DataCleaningStrategy
-from module.crawling_data.data_mining.impl.constants import number_in_eng
-from process_manager import FundCrawlingResult
+from module.fund_info_bo import FundCrawlingResult
+from utils.constants import number_in_eng
 
 
 class OverviewStrategy(DataCleaningStrategy):

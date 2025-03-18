@@ -5,7 +5,7 @@ from typing import NoReturn
 from requests import Response
 
 from module.crawling_data.data_mining.data_cleaning_strategy import DataCleaningStrategy
-from process_manager import FundCrawlingResult
+from module.fund_info_bo import FundCrawlingResult
 
 
 class ManagerStrategy(DataCleaningStrategy):

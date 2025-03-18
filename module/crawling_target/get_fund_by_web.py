@@ -6,11 +6,12 @@ from typing import NoReturn
 
 import requests
 
-from process_manager import NeedCrawledFundModule
+from module.fund_info_bo import NeedCrawledOnceFund
+from module.process_manager import CrawlingTargetModule
 from utils.fake_ua_getter import singleton_fake_ua
 
 
-class GetNeedCrawledFundByWeb(NeedCrawledFundModule):
+class GetFundByWeb(CrawlingTargetModule):
 
     def init_generator(self) -> NoReturn:
         # 全部（不一定可购） 的开放式基金
@@ -21,10 +22,10 @@ class GetNeedCrawledFundByWeb(NeedCrawledFundModule):
         fund_list = re.findall(r'"[0-9]{6}",".+?"', page.text)
         self.total = len(fund_list)
 
-        self.task_generator = (NeedCrawledFundModule.NeedCrawledOnceFund(i[1:7], i[10:-1]) for i in fund_list)
+        self.task_generator = (NeedCrawledOnceFund(i[1:7], i[10:-1]) for i in fund_list)
 
 
-class GetSmallBatchNeedCrawledFund4Test(NeedCrawledFundModule):
+class GetSmallBatchNeedCrawledFund4Test(CrawlingTargetModule):
     """
     测试用的 基金任务 提供者
     指定case数量，小批量进行爬取
@@ -40,10 +41,10 @@ class GetSmallBatchNeedCrawledFund4Test(NeedCrawledFundModule):
         fund_list = re.findall(r'"[0-9]{6}",".+?"', page.text)
         self.total = len(fund_list)
 
-        self.task_generator = (NeedCrawledFundModule.NeedCrawledOnceFund(i[1:7], i[10:-1]) for i in fund_list)
+        self.task_generator = (NeedCrawledOnceFund(i[1:7], i[10:-1]) for i in fund_list)
 
 
-class GetSpecialNeedCrawledFund(NeedCrawledFundModule):
+class GetSpecialNeedCrawledFund(CrawlingTargetModule):
     """
     测试用的 基金任务 提供者
     """
@@ -53,5 +54,4 @@ class GetSpecialNeedCrawledFund(NeedCrawledFundModule):
         fund_list = ({'code': '007746', 'name': '华安现金润利'}, {'code': '020282', 'name': '益民优势安享混合C'})
         self.total = len(fund_list)
 
-        self.task_generator = (NeedCrawledFundModule.NeedCrawledOnceFund(
-            code=t['code'], name=t['name']) for t in fund_list)
+        self.task_generator = (NeedCrawledOnceFund(code=t['code'], name=t['name']) for t in fund_list)
