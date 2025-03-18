@@ -1,7 +1,7 @@
 """
 模块间交互所使用的BO
 """
-from module.downloader.download_by_requests_v2 import ResponseV2
+from module.downloader.download_by_requests import FundResponse
 from utils.constants import FundAttrKey, PageType
 
 
@@ -25,7 +25,7 @@ class FundContext:
         self.five_years_increase = None
 
         # 爬取到的网页数据
-        self.http_response_dict: dict[PageType, ResponseV2] = dict()
+        self.http_response_dict: dict[PageType, FundResponse] = dict()
 
     def to_result_row(self):
         return {

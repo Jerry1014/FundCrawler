@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABC
 from typing import NoReturn
 
-from module.downloader.download_by_requests_v2 import ResponseV2
+from module.downloader.download_by_requests import FundResponse
 from module.fund_context import FundContext
 
 
@@ -16,5 +16,5 @@ class DataCleaningStrategy(ABC):
         return NotImplemented
 
     @abstractmethod
-    def fill_result(self, response: ResponseV2, context: FundContext) -> NoReturn:
+    def fill_result(self, fund_response: FundResponse, context: FundContext) -> NoReturn:
         return NotImplemented

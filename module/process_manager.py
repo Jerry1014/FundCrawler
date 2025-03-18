@@ -14,7 +14,7 @@ from tqdm import tqdm
 from module.abstract_crawling_target_module import CrawlingTargetModule
 from module.abstract_data_mining_module import DataMiningModule
 from module.abstract_saving_result_module import SavingResultModule
-from module.downloader.download_by_requests_v2 import GetPageByMultiThreadingV2, RequestV2, ResponseV2
+from module.downloader.download_by_requests import FundRequest, FundResponse, GetPageByMultiThreading
 from module.fund_context import FundContext
 from utils.constants import PageType
 
@@ -27,9 +27,9 @@ class TaskManager:
     def __init__(self, need_crawled_fund_module: CrawlingTargetModule, data_mining_module: DataMiningModule,
                  save_result_module: SavingResultModule):
         # 事件列表等(模块间的协作)
-        self._http_request_queue: Queue[RequestV2] = Queue(cpu_count())
-        self._http_request_list = list()
-        self._http_response_queue: Queue[ResponseV2] = Queue()
+        self._http_FundRequest_queue: Queue[FundRequest] = Queue(cpu_count())
+        self._http_FundRequest_list = list()
+        self._http_response_queue: Queue[FundResponse] = Queue()
         self._exit_sign: Event = Event()
         self._result_save_queue: List[FundContext] = list()
         self._fund_context_dict: dict[str, FundContext] = dict()
@@ -39,8 +39,8 @@ class TaskManager:
         self._need_crawled_fund_module = need_crawled_fund_module
         self._data_mining_module = data_mining_module
         self._save_result_module = save_result_module
-        self._downloader = GetPageByMultiThreadingV2(self._http_request_queue, self._http_response_queue,
-                                                     self._exit_sign)
+        self._downloader = GetPageByMultiThreading(self._http_FundRequest_queue, self._http_response_queue,
+                                                   self._exit_sign)
 
         # 总共需要的步骤(当前一个基金只算一步)
         self._total_step_count = None
@@ -80,7 +80,7 @@ class TaskManager:
         finally:
             # downloader是子进程，一定要shutdown
             self._exit_sign.set()
-            self._http_request_queue.close()
+            self._http_FundRequest_queue.close()
             self._http_response_queue.close()
 
             self._save_result_module.exit()
@@ -98,9 +98,9 @@ class TaskManager:
 
         while self._finished_step_count < self._total_step_count:
             # 提交http请求
-            if (not self._http_request_queue.full() and
-                    len(self._http_request_list) != 0 and not self._http_response_queue.full()):
-                self._http_request_queue.put(self._http_request_list.pop())
+            if (not self._http_FundRequest_queue.full() and
+                    len(self._http_FundRequest_list) != 0 and not self._http_response_queue.full()):
+                self._http_FundRequest_queue.put(self._http_FundRequest_list.pop())
                 continue
 
             # 处理http结果
@@ -118,13 +118,13 @@ class TaskManager:
 
                 # 没有/不存在等待队列，认为数据已经OK，可以传递给数据挖掘模块
                 fund_context = self._fund_context_dict.pop(fund_code)
-                request_list = self._data_mining_module.summit_context(fund_context)
+                FundRequest_list = self._data_mining_module.summit_context(fund_context)
 
-                if request_list:
+                if FundRequest_list:
                     # 数据挖掘模块提出新的爬取请求
-                    self._http_request_list.extend(request_list)
+                    self._http_FundRequest_list.extend(FundRequest_list)
                     self._fund_context_dict[fund_context.fund_code] = fund_context
-                    self._fund_waiting_dict[fund_context.fund_code] = [req.page_type for req in request_list]
+                    self._fund_waiting_dict[fund_context.fund_code] = [req.page_type for req in FundRequest_list]
                 else:
                     # 没有新的爬取请求，保存爬取结果
                     self._finished_step_count += 1

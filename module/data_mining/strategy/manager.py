@@ -3,7 +3,7 @@ from string import Template
 from typing import NoReturn
 
 from module.data_mining.strategy.data_mining_strategy_factory import DataCleaningStrategy
-from module.downloader.download_by_requests_v2 import ResponseV2
+from module.downloader.download_by_requests import FundResponse
 from module.fund_context import FundContext
 
 
@@ -19,8 +19,8 @@ class ManagerStrategy(DataCleaningStrategy):
     def build_url(self, context: FundContext) -> str:
         return self.url_template.substitute(fund_code=context.fund_code)
 
-    def fill_result(self, response: ResponseV2, result: FundContext) -> NoReturn:
-        page_text = response.response.text
+    def fill_result(self, fund_response: FundResponse, result: FundContext) -> NoReturn:
+        page_text = fund_response.response.text
 
         fund_manager_name = self.fund_manager_name_pattern.search(page_text)
         if fund_manager_name:
