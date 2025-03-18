@@ -1,3 +1,4 @@
+import logging
 from unittest import TestCase
 
 from module.crawling_target.get_small_batch_need_crawled_fund_4_test import GetSmallBatchNeedCrawledFund4Test
@@ -12,6 +13,9 @@ class SmokeTestTaskManager(TestCase):
     """
 
     def test_run(self):
+        # 日志级别
+        logging.basicConfig(level=logging.INFO)
+
         TaskManager(GetSmallBatchNeedCrawledFund4Test()
                     , DataMining()
                     , SaveResult2File()).run()

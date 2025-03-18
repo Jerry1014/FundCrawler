@@ -47,9 +47,6 @@ class TaskManager:
         # 当前已经完成的
         self._finished_step_count = None
 
-        # 日志级别
-        logging.basicConfig(level=logging.INFO)
-
     def show_process(self):
         """
         爬取进度提示

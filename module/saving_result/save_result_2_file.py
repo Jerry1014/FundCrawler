@@ -21,12 +21,12 @@ class SaveResult2File(SavingResultModule):
             os.makedirs(self.RESULT_FILE_PATH)
 
         self._file = open(self.RESULT_FILE_PATH + self.RESULT_FILE_NAME, 'w', newline='', encoding='utf-8')
-        self._writer: DictWriter = DictWriter(self._file, fieldnames=fieldnames, restval='None')
+        self._writer: DictWriter = DictWriter(self._file, fieldnames=fieldnames)
 
         self._writer.writeheader()
 
     def save_result(self, result: FundContext) -> NoReturn:
-        self._writer.writerow({header.value: value if value else self.default_restval for header, value in
+        self._writer.writerow({header.value: value if value else 'None' for header, value in
                                result.to_result_row().items()})
 
     def exit(self):
