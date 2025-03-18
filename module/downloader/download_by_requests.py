@@ -1,6 +1,7 @@
 """
 通过requests进行http下载
 """
+from abc import ABC
 from concurrent.futures import Future, ThreadPoolExecutor
 from enum import Enum, auto, unique
 from multiprocessing import Queue, Process, Event, synchronize
@@ -12,25 +13,32 @@ from typing import Optional, NoReturn
 
 from requests import Response as RequestsResponse, RequestException, get
 
-from module.abstract_downloader import BaseResponse, BaseRequest, AsyncHttpDownloader
 from module.downloader.rate_control.rate_control import RateControl
 from utils.fake_ua_getter import singleton_fake_ua
 
 
-class Request(BaseRequest):
+class Request:
     """
     在基础的请求上, 增加了重试次数
     """
 
-    def __init__(self, unique_key: BaseRequest.UniqueKey, url, retry_time: int = maxsize):
-        super().__init__(unique_key, url)
+    # todo 不需要专门的类，str足够
+    class UniqueKey(ABC):
+        """
+        下载唯一键, 用于确认某个请求是谁发起的, 业务实现
+        """
+        pass
+
+    def __init__(self, unique_key: UniqueKey, url, retry_time: int = maxsize):
+        self.unique_key = unique_key
+        self.url = url
+
         if retry_time < 1:
             raise AttributeError
-
         self.retry_time = retry_time
 
 
-class Response(BaseResponse):
+class Response:
     """
     在基础的返回上, 增加了请求状态(用于重试)
     """
@@ -41,11 +49,12 @@ class Response(BaseResponse):
         FALSE = auto()
 
     def __init__(self, request: Request, state: State, response: Optional[RequestsResponse]):
-        super().__init__(request, response)
+        self.request = request
+        self.response = response
         self.state = state
 
 
-class AsyncHttpRequestDownloader(AsyncHttpDownloader):
+class AsyncHttpRequestDownloader:
     """
     通过request进行http下载的实现
     新起一个进程 以避免和主进程间的竞争，通过队列进行通信
@@ -155,7 +164,8 @@ class AsyncHttpRequestDownloader(AsyncHttpDownloader):
                 success_count = sum(
                     [1 if result.state == Response.State.SUCCESS else 0 for result in need_handle_result_list])
                 number_of_concurrent_tasks = self._rate_control \
-                    .get_cur_number_of_concurrent_tasks(success_count, len(need_handle_result_list) - success_count, len(future_list))
+                    .get_cur_number_of_concurrent_tasks(success_count, len(need_handle_result_list) - success_count,
+                                                        len(future_list))
 
                 # 处理爬取请求
                 while (not self._request_queue.empty() or len(need_retry_task_list) > 0) \

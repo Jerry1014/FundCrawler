@@ -12,7 +12,6 @@ class SmokeTestTaskManager(TestCase):
     """
 
     def test_run(self):
-        manager = TaskManager(GetSmallBatchNeedCrawledFund4Test()
-                              , AsyncCrawlingData()
-                              , SaveResult2File())
-        manager.run()
+        TaskManager(GetSmallBatchNeedCrawledFund4Test()
+                    , AsyncCrawlingData()
+                    , SaveResult2File()).run()

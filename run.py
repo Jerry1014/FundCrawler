@@ -9,7 +9,6 @@ from module.process_manager import TaskManager
 from module.saving_result.save_result_2_file import SaveResult2File
 
 if __name__ == '__main__':
-    manager = TaskManager(GetFundByWeb()
-                          , AsyncCrawlingData()
-                          , SaveResult2File())
-    manager.run()
+    TaskManager(GetFundByWeb()
+                , AsyncCrawlingData()
+                , SaveResult2File()).run()

@@ -4,7 +4,6 @@
 import logging
 from typing import NoReturn, Optional, Any
 
-from module.abstract_downloader import AsyncHttpDownloader, BaseRequest
 from module.crawling_data.data_mining.data_cleaning_strategy_factory import DataCleaningStrategyFactory
 from module.crawling_data.data_mining.data_mining_type import PageType
 from module.downloader.download_by_requests import AsyncHttpRequestDownloader, Request
@@ -95,7 +94,7 @@ class AsyncCrawlingData(CrawlingDataModule):
         """
 
         def __init__(self, context_id: int, fund_task: NeedCrawledOnceFund,
-                     downloader: AsyncHttpDownloader, need_data_type_list: list[PageType]):
+                     downloader: AsyncHttpRequestDownloader, need_data_type_list: list[PageType]):
             self._context_id = context_id
             self._downloader = downloader
             self.fund_task = fund_task
@@ -141,7 +140,7 @@ class AsyncCrawlingData(CrawlingDataModule):
 
             self.finished_task.append(task)
 
-        class UniqueKey(BaseRequest.UniqueKey):
+        class UniqueKey(Request.UniqueKey):
             def __init__(self, context_id: int, task_id: int):
                 self.context_id = context_id
                 self.task_id = task_id
