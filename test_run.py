@@ -1,9 +1,10 @@
+import logging
 from unittest import TestCase
 
-from module.crawling_data.async_crawling_data import AsyncCrawlingData
-from module.need_crawling_fund.get_fund_by_web import GetSmallBatchNeedCrawledFund4Test
-from module.save_result.save_result_2_file import SaveResult2File
-from process_manager import TaskManager
+from module.crawling_target.get_small_batch_need_crawled_fund_4_test import GetSmallBatchNeedCrawledFund4Test
+from module.data_mining.data_mining import DataMining
+from module.process_manager import TaskManager
+from module.saving_result.save_result_2_file import SaveResult2File
 
 
 class SmokeTestTaskManager(TestCase):
@@ -12,7 +13,9 @@ class SmokeTestTaskManager(TestCase):
     """
 
     def test_run(self):
-        manager = TaskManager(GetSmallBatchNeedCrawledFund4Test()
-                              , AsyncCrawlingData()
-                              , SaveResult2File())
-        manager.run()
+        # 日志级别
+        logging.basicConfig(level=logging.INFO)
+
+        TaskManager(GetSmallBatchNeedCrawledFund4Test()
+                    , DataMining()
+                    , SaveResult2File()).run()

@@ -18,7 +18,7 @@ from datetime import date, timedelta
 from heapq import heappushpop, heappush
 from typing import NoReturn
 
-from process_manager import FundCrawlingResult
+from utils.constants import FundAttrKey
 
 # 债型、其他的基金，根据夏普挑选时，所保留的基金数（参与后续回报率排序）
 debt_shape_remain = 200
@@ -46,18 +46,18 @@ def analyse():
         today = date.today()
         for row in reader:
             try:
-                date_of_appointment: date = date.fromisoformat(row[FundCrawlingResult.Header.DATE_OF_APPOINTMENT])
+                date_of_appointment: date = date.fromisoformat(row[FundAttrKey.DATE_OF_APPOINTMENT])
                 delta: timedelta = today - date_of_appointment
                 manager_4_more_3_yeas = delta.days > 365 * 3
                 manager_4_long_times = delta.days > 365 * manager_4_n_years
-                three_years_shape: str = row[FundCrawlingResult.Header.SHARPE_THREE_YEARS]
-                three_years_increase = row[FundCrawlingResult.Header.THREE_YEARS_INCREASE]
+                three_years_shape: str = row[FundAttrKey.SHARPE_THREE_YEARS]
+                three_years_increase = row[FundAttrKey.THREE_YEARS_INCREASE]
 
                 # 底线，不考虑基金经理管理低于3年的基金，历史数据没有参考意义
                 if manager_4_more_3_yeas is False or three_years_shape == 'None':
                     continue
 
-                fund_type: str = row[FundCrawlingResult.Header.FUND_TYPE]
+                fund_type: str = row[FundAttrKey.FUND_TYPE]
                 # 债基 1 夏普 2 收益
                 if '债' in fund_type:
                     debt_holder.put_fund(float(three_years_shape), row)
@@ -68,12 +68,12 @@ def analyse():
                 else:
                     other_holder.put_fund(float(three_years_shape), row)
             except Exception as e:
-                print(f'基金{row[FundCrawlingResult.Header.FUND_CODE]}分析失败', e)
+                print(f'基金{row[FundAttrKey.FUND_CODE]}分析失败', e)
 
     # 债基 夏普前十里再找收益前x的
     debt_increase_holder = FundFolder(retain_num=debt_increase_remain)
     for fund in debt_holder.get_result():
-        increase = fund[FundCrawlingResult.Header.THREE_YEARS_INCREASE]
+        increase = fund[FundAttrKey.THREE_YEARS_INCREASE]
         if increase != 'None':
             debt_increase_holder.put_fund(float(increase[:-1]), fund)
     print(f'债基收益前三\n{json.dumps(debt_increase_holder.get_result(), ensure_ascii=False)}')
@@ -84,7 +84,7 @@ def analyse():
     # 其他基金前x
     other_increase_holder = FundFolder(retain_num=other_increase_remain)
     for fund in other_holder.get_result():
-        increase = fund[FundCrawlingResult.Header.THREE_YEARS_INCREASE]
+        increase = fund[FundAttrKey.THREE_YEARS_INCREASE]
         if increase != 'None':
             other_increase_holder.put_fund(float(increase[:-1]), fund)
     print(f'其他基收益前三\n{json.dumps(other_increase_holder.get_result(), ensure_ascii=False)}')

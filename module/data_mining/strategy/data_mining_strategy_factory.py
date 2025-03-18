@@ -2,12 +2,12 @@
 数据清洗策略
 """
 
-from module.crawling_data.data_mining.data_cleaning_strategy import DataCleaningStrategy
-from module.crawling_data.data_mining.data_mining_type import PageType
-from module.crawling_data.data_mining.impl.increase import RiseStrategy
-from module.crawling_data.data_mining.impl.manager import ManagerStrategy
-from module.crawling_data.data_mining.impl.overview import OverviewStrategy
-from module.crawling_data.data_mining.impl.sharpe import MetricsStrategy
+from module.data_mining.strategy.data_mining_strategy import DataCleaningStrategy
+from module.data_mining.strategy.increase import RiseStrategy
+from module.data_mining.strategy.manager import ManagerStrategy
+from module.data_mining.strategy.overview import OverviewStrategy
+from module.data_mining.strategy.sharpe import MetricsStrategy
+from utils.constants import PageType
 
 
 class DataCleaningStrategyFactory:
