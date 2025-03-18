@@ -2,9 +2,8 @@ import re
 from string import Template
 from typing import NoReturn
 
-from requests import Response
-
-from module.crawling_data.data_mining.data_cleaning_strategy_factory import DataCleaningStrategy
+from module.data_mining.strategy.data_mining_strategy_factory import DataCleaningStrategy
+from module.downloader.download_by_requests_v2 import ResponseV2
 from module.fund_context import FundContext
 from utils.constants import number_in_eng
 
@@ -18,11 +17,11 @@ class RiseStrategy(DataCleaningStrategy):
     fund_3_years_increase_pattern = re.compile(fr'近3年[\s\S]*?({number_in_eng}%|---)')
     fund_5_years_increase_pattern = re.compile(fr'近5年[\s\S]*?({number_in_eng}%|---)')
 
-    def build_url(self, fund_code: str) -> str:
-        return self.url_template.substitute(fund_code=fund_code)
+    def build_url(self, context: FundContext) -> str:
+        return self.url_template.substitute(fund_code=context.fund_code)
 
-    def fill_result(self, response: Response, result: FundContext) -> NoReturn:
-        page_text = response.text
+    def fill_result(self, response: ResponseV2, result: FundContext) -> NoReturn:
+        page_text = response.response.text
 
         fund_3_years_increase = self.fund_3_years_increase_pattern.search(page_text)
         if fund_3_years_increase:

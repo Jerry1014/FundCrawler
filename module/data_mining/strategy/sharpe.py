@@ -2,7 +2,8 @@ import re
 from string import Template
 from typing import NoReturn
 
-from module.crawling_data.data_mining.data_cleaning_strategy import DataCleaningStrategy
+from module.data_mining.strategy.data_mining_strategy_factory import DataCleaningStrategy
+from module.downloader.download_by_requests_v2 import ResponseV2
 from module.fund_context import FundContext
 
 
@@ -15,11 +16,11 @@ class MetricsStrategy(DataCleaningStrategy):
     fund_standard_deviation_pattern = re.compile(r'标准差.+?\'>(.+?)<.+?\'>(.+?)<.+?\'>(.+?)<')
     fund_sharpe_ratio_pattern = re.compile(r'夏普比率.+?\'>(.+?)<.+?\'>(.+?)<.+?\'>(.+?)<')
 
-    def build_url(self, fund_code: str) -> str:
-        return self.url_template.substitute(fund_code=fund_code)
+    def build_url(self, context: FundContext) -> str:
+        return self.url_template.substitute(fund_code=context.fund_code)
 
-    def fill_result(self, response, result: FundContext) -> NoReturn:
-        page_text = response.text
+    def fill_result(self, response: ResponseV2, result: FundContext) -> NoReturn:
+        page_text = response.response.text
 
         fund_standard_deviation = self.fund_standard_deviation_pattern.search(page_text)
         if fund_standard_deviation:

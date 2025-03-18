@@ -1,7 +1,7 @@
 """
 一些通用的正则表达式
 """
-from enum import unique, StrEnum
+from enum import unique, StrEnum, Enum, auto
 
 # 带千分号的 数字表达形式 -10,000.12
 number_in_eng = r'-?(\d+?(,\d+)*?(\.\d+)?)'
@@ -25,3 +25,18 @@ class FundAttrKey(StrEnum):
     SHARPE_THREE_YEARS = '近三年夏普',
     THREE_YEARS_INCREASE = '近三年涨幅',
     FIVE_YEARS_INCREASE = '近五年涨幅'
+
+
+@unique
+class PageType(Enum):
+    """
+    页面的爬取和解析 枚举
+    """
+    # 基金概况 https://fundf10.eastmoney.com/jbgk_910009.html
+    OVERVIEW = auto()
+    # 基金经理 https://fundf10.eastmoney.com/jjjl_910009.html
+    MANAGER = auto()
+    # 特色数据 https://fundf10.eastmoney.com/tsdata_910009.html
+    METRICS = auto()
+    # 阶段涨幅 https://fundf10.eastmoney.com/jdzf_006624.html
+    INCREASE = auto()

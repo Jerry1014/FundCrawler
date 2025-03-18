@@ -11,6 +11,7 @@ from typing import Optional, NoReturn
 from requests import Response as RequestsResponse, RequestException, get
 
 from module.downloader.rate_control.rate_control import RateControl
+from utils.constants import PageType
 from utils.fake_ua_getter import singleton_fake_ua
 
 
@@ -19,7 +20,7 @@ class RequestV2:
     在基础的请求上, 增加了重试次数
     """
 
-    def __init__(self, fund_code: str, page_type: str, url, retry_time: int = maxsize):
+    def __init__(self, fund_code: str, page_type: PageType, url, retry_time: int = maxsize):
         self.fund_code = fund_code
         self.page_type = page_type
         self.url = url

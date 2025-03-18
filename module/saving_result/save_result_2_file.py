@@ -30,5 +30,5 @@ class SaveResult2File(SavingResultModule):
         self._writer.writerow({header.value: value if value else self.default_restval for header, value in
                                result.to_result_row().items()})
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def exit(self):
         self._file.close()

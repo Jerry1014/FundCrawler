@@ -1,10 +1,8 @@
 """
 模块间交互所使用的BO
 """
-from typing import List
-
-from module.downloader.download_by_requests import Response
-from utils.constants import FundAttrKey
+from module.downloader.download_by_requests_v2 import ResponseV2
+from utils.constants import FundAttrKey, PageType
 
 
 class FundContext:
@@ -27,7 +25,7 @@ class FundContext:
         self.five_years_increase = None
 
         # 爬取到的网页数据
-        self.http_response_list: List[Response] = list()
+        self.http_response_dict: dict[PageType, ResponseV2] = dict()
 
     def to_result_row(self):
         return {
