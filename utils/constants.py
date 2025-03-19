@@ -40,3 +40,7 @@ class PageType(Enum):
     METRICS = auto()
     # 阶段涨幅 https://fundf10.eastmoney.com/jdzf_006624.html
     INCREASE = auto()
+
+# 最终爬取结果文件的占位，用于区分是真的木有数据，还是爬取可能失败/遗漏
+NO_DATA = 'NO_DATA'
+DATA_ERROR = 'DATA_ERROR'

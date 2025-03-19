@@ -7,7 +7,7 @@ from typing import NoReturn
 
 from module.fund_context import FundContext
 from module.process_manager import SavingResultModule
-from utils.constants import FundAttrKey
+from utils.constants import FundAttrKey, DATA_ERROR
 
 
 class SaveResult2File(SavingResultModule):
@@ -26,7 +26,7 @@ class SaveResult2File(SavingResultModule):
         self._writer.writeheader()
 
     def save_result(self, result: FundContext) -> NoReturn:
-        self._writer.writerow({header.value: value if value else 'None' for header, value in
+        self._writer.writerow({header.value: value if value else DATA_ERROR for header, value in
                                result.to_result_row().items()})
 
     def exit(self):
