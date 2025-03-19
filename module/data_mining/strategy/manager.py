@@ -19,12 +19,12 @@ class ManagerStrategy(DataCleaningStrategy):
     def build_url(self, context: FundContext) -> str:
         return self.url_template.substitute(fund_code=context.fund_code)
 
-    def fill_result(self, fund_response: FundResponse, result: FundContext) -> NoReturn:
+    def fill_result(self, fund_response: FundResponse, context: FundContext) -> NoReturn:
         page_text = fund_response.response.text
 
         fund_manager_name = self.fund_manager_name_pattern.search(page_text)
         if fund_manager_name:
-            result.fund_manager = fund_manager_name.group(1)
+            context.fund_manager = fund_manager_name.group(1)
         fund_date_of_appointment = self.fund_manager_date_of_appointment_pattern.search(page_text)
         if fund_date_of_appointment:
-            result.date_of_appointment = fund_date_of_appointment.group(1)
+            context.date_of_appointment = fund_date_of_appointment.group(1)
