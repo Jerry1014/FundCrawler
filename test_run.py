@@ -16,6 +16,9 @@ class SmokeTestTaskManager(TestCase):
         # 日志级别
         logging.basicConfig(level=logging.INFO)
 
+        # 测试批次大小
+        GetSmallBatchNeedCrawledFund4Test.TEST_CASE_NUM = 1000
+
         TaskManager(GetSmallBatchNeedCrawledFund4Test()
                     , DataMining()
                     , SaveResult2File()).run()

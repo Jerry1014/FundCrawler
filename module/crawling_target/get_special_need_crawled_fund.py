@@ -11,6 +11,6 @@ class GetSpecialNeedCrawledFund(CrawlingTargetModule):
 
     def get_fund_list(self) -> List[FundContext]:
         # 基金目录
-        fund_list = ({'code': '007746', 'name': '华安现金润利'}, {'code': '020282', 'name': '益民优势安享混合C'})
+        fund_list = ({'code': '023713', 'name': '国联安主题驱动混合C'}, {'code': '023178', 'name': '安信价值精选股票C'})
 
         return [FundContext(t['code'], t['name']) for t in fund_list]

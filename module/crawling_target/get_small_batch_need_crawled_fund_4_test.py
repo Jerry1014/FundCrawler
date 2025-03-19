@@ -13,7 +13,7 @@ class GetSmallBatchNeedCrawledFund4Test(CrawlingTargetModule):
     测试用的 基金任务 提供者
     指定case数量，小批量进行爬取
     """
-    TEST_CASE_NUM = 10
+    TEST_CASE_NUM: int = 10
 
     def get_fund_list(self) -> List[FundContext]:
         # 全部（不一定可购） 的开放式基金
