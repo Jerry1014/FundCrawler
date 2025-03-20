@@ -38,8 +38,8 @@ class DataMining
 note bottom: 负责http返回的解析(清洗基金数据)
 DataMiningModule ^-down- DataMining
 class DataCleaningStrategyFactory
-DataCleaningStrategyFactory .up.> DataMining
-DataCleaningStrategy .up.> DataCleaningStrategyFactory
+DataMining .down.> DataCleaningStrategyFactory
+DataCleaningStrategyFactory .down.> DataCleaningStrategy
 interface DataCleaningStrategy
 note bottom: 页面解析策略(给出页面url和对应的解析结果)
 class RiseStrategy
