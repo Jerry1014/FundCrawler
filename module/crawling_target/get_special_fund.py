@@ -4,7 +4,7 @@ from module.fund_context import FundContext
 from module.process_manager import CrawlingTargetModule
 
 
-class GetSpecialNeedCrawledFund(CrawlingTargetModule):
+class GetSpecialFund(CrawlingTargetModule):
     """
     测试用的 基金任务 提供者
     """

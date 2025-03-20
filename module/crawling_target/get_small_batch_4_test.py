@@ -8,7 +8,7 @@ from module.process_manager import CrawlingTargetModule
 from utils.fake_ua_getter import singleton_fake_ua
 
 
-class GetSmallBatchNeedCrawledFund4Test(CrawlingTargetModule):
+class GetSmallBatch4Test(CrawlingTargetModule):
     """
     测试用的 基金任务 提供者
     指定case数量，小批量进行爬取

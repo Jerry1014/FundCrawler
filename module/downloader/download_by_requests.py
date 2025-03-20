@@ -1,17 +1,25 @@
 """
 通过requests进行http下载
 """
+import logging
+import multiprocessing
 from concurrent.futures import Future, ThreadPoolExecutor
 from enum import Enum, auto, unique
-from multiprocessing import Queue, Process, synchronize
+from multiprocessing import Queue, Process, Event
 from sys import maxsize
-from typing import Optional, NoReturn
+from typing import Optional
 
 from requests import Response as RequestsResponse, RequestException, get
 
 from module.downloader.rate_control.rate_control import RateControl
-from utils.constants import PageType
+from utils.constants import PageType, log_format
 from utils.fake_ua_getter import singleton_fake_ua
+
+# 日志配置
+logger: logging.Logger = multiprocessing.get_logger()
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter(log_format))
+logger.addHandler(handler)
 
 
 class FundRequest:
@@ -57,7 +65,7 @@ class GetPageByMultiThreading(Process):
     内部维护了一个线程池 来进行请求的爬取
     """
 
-    def __init__(self, request_queue: Queue, result_queue: Queue, exit_sign: synchronize.Event):
+    def __init__(self, request_queue: Queue, result_queue: Queue, exit_sign: Event, log_level: int):
         super().__init__()
         # 和父进程之间的通信
         self._request_queue = request_queue
@@ -66,6 +74,8 @@ class GetPageByMultiThreading(Process):
 
         # 爬取速率控制
         self._rate_control = RateControl()
+
+        logger.setLevel(log_level)
 
     @staticmethod
     def get_page(request: FundRequest) -> FundResponse:
@@ -82,7 +92,7 @@ class GetPageByMultiThreading(Process):
         except (RequestException, AttributeError):
             return FundResponse(request, FundResponse.State.FALSE, None)
 
-    def run(self) -> NoReturn:
+    def run(self) -> None:
         """
         爬取主流程
         """
@@ -90,6 +100,7 @@ class GetPageByMultiThreading(Process):
         future_list: list[Future] = []
         need_retry_task_list: list[FundRequest] = list()
 
+        logger.info("子进程开启循环")
         while True:
             # 爬取结束
             if self._exit_sign.is_set() and self._request_queue.empty() and not future_list \
@@ -134,7 +145,9 @@ class GetPageByMultiThreading(Process):
                 future_list.append(executor.submit(self.get_page, request))
                 number_of_concurrent_tasks -= 1
 
+        logger.info("子进程退出循环")
         # 确保数据都写入后，再退出主线程
         # OS pipes are not infinitely long, so the process which queues data could be blocked in the OS during the
         # put() operation until some other process uses get() to retrieve data from the queue
         self._result_queue.join_thread()
+        logger.info("子进程完全退出")

@@ -1,5 +1,4 @@
 from abc import abstractmethod, ABC
-from typing import NoReturn
 
 from module.fund_context import FundContext
 
@@ -10,11 +9,14 @@ class SavingResultModule(ABC):
     """
 
     @abstractmethod
-    def save_result(self, result: FundContext) -> NoReturn:
+    def save_result(self, result: FundContext) -> None:
         """
         爬取结果的保存
         """
-        return NotImplemented
+        pass
 
     def exit(self):
+        """
+        对于运行中止时需要后处理的场景
+        """
         pass

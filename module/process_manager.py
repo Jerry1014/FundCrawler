@@ -7,7 +7,6 @@ from queue import Empty
 from threading import Thread
 from time import sleep
 from typing import List
-from typing import NoReturn
 
 from tqdm import tqdm
 
@@ -40,21 +39,21 @@ class TaskManager:
         self._data_mining_module = data_mining_module
         self._save_result_module = save_result_module
         self._downloader = GetPageByMultiThreading(self._http_request_queue, self._http_response_queue,
-                                                   self._exit_sign)
+                                                   self._exit_sign, logging.root.level)
 
         # 总共需要的步骤(当前一个基金只算一步)
-        self._total_step_count = None
+        self._total_step_count: int | None = None
         # 当前已经完成的
-        self._finished_step_count = None
+        self._finished_step_count: int | None = None
 
     def show_process(self):
         """
         爬取进度提示
         """
         logging.info("开始获取需要爬取的基金任务")
-        while self._total_step_count is None:
+        while self._total_step_count is None or self._finished_step_count is None:
             # 等待任务开始
-            sleep(1)
+            sleep(0.1)
 
         logging.info("开始爬取基金数据")
         with tqdm(total=self._total_step_count) as pbar:
@@ -65,7 +64,7 @@ class TaskManager:
                 last_finished_task_num = cur_finished_task_num
                 sleep(1)
 
-    def run(self) -> NoReturn:
+    def run(self) -> None:
         try:
             # 独立的爬取进程（避免GIL）
             self._downloader.start()
@@ -75,19 +74,26 @@ class TaskManager:
 
             # 爬取主流程
             self.do_run()
-        except:
-            logging.exception("报错啦，完蛋啦")
+        except Exception as e:
+            logging.exception(f"报错啦，完蛋啦 {e}")
         finally:
-            # downloader是子进程，一定要shutdown
-            self._exit_sign.set()
-
+            # 结果保存模块的退出
             self._save_result_module.exit()
+
+            # downloader子进程的退出
+            self._exit_sign.set()
+            sleep(1)
+            if self._downloader.is_alive():
+                self._downloader.terminate()
 
     def do_run(self):
         """
         http请求是异步的，为了提高并发度，这里略微借鉴redis的事件驱动机制（没有严格地实现每个事件的回调处理类）
         优先响应 http请求事件 其次 http返回事件（数据挖掘） 最后 结果保存
         """
+        # fixme
+        # raise Exception("111")
+
         # 获取任务
         fund_context_list = self._need_crawled_fund_module.get_fund_list()
         self._fund_context_dict = {fund.fund_code: fund for fund in fund_context_list}
@@ -111,13 +117,13 @@ class TaskManager:
 
                 if first_meet_fund_code:
                     fund_context = self._fund_context_dict[first_meet_fund_code]
-                    request_list = self._data_mining_module.summit_context(fund_context)
+                    page_req_list = self._data_mining_module.summit_context(fund_context)
 
-                    if request_list:
+                    if page_req_list:
                         # 数据挖掘模块提出新的爬取请求
-                        for req in request_list:
-                            self._http_request_queue.put(req)
-                        self._fund_waiting_dict[fund_context.fund_code] = [req.page_type for req in request_list]
+                        for page_req in page_req_list:
+                            self._http_request_queue.put(FundRequest(fund_context.fund_code, page_req[0], page_req[1]))
+                        self._fund_waiting_dict[fund_context.fund_code] = [page_req[0] for page_req in page_req_list]
                     else:
                         # 没有新的爬取请求，保存爬取结果
                         self._fund_context_dict.pop(first_meet_fund_code)
