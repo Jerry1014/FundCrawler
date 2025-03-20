@@ -39,7 +39,7 @@ class TaskManager:
         self._data_mining_module = data_mining_module
         self._save_result_module = save_result_module
         self._downloader = GetPageOnSubProcess(self._http_request_queue, self._http_response_queue,
-                                                   self._exit_sign, logging.root.level)
+                                               self._exit_sign, logging.root.level)
 
         # 总共需要的步骤(当前一个基金只算一步)
         self._total_step_count: Optional[int] = None
@@ -51,14 +51,14 @@ class TaskManager:
         爬取进度提示
         """
         logging.info("开始获取需要爬取的基金任务")
-        while self._total_step_count is None or self._finished_step_count is None:
+        while not self._exit_sign.is_set() and (self._total_step_count is None or self._finished_step_count is None):
             # 等待任务开始
             sleep(0.1)
 
         logging.info("开始爬取基金数据")
         with tqdm(total=self._total_step_count) as pbar:
             last_finished_task_num = None
-            while self._finished_step_count < self._total_step_count:
+            while not self._exit_sign.is_set() and self._finished_step_count < self._total_step_count:
                 cur_finished_task_num = self._finished_step_count
                 pbar.update(cur_finished_task_num - (last_finished_task_num if last_finished_task_num else 0))
                 last_finished_task_num = cur_finished_task_num
@@ -77,14 +77,18 @@ class TaskManager:
         except Exception as e:
             logging.exception(f"报错啦，完蛋啦 {e}")
         finally:
+            self._exit_sign.set()
+
             # 结果保存模块的退出
             self._save_result_module.exit()
 
             # downloader子进程的退出
-            self._exit_sign.set()
-            sleep(1)
             if self._downloader.is_alive():
                 self._downloader.terminate()
+            self._http_request_queue.close()
+            self._http_response_queue.close()
+
+        logging.info('主进程退出')
 
     def do_run(self) -> None:
         # 获取任务

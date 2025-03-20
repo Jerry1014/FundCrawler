@@ -107,7 +107,6 @@ class GetPageOnSubProcess(Process):
             if self._exit_sign.is_set() and self._request_queue.empty():
                 self._executor.shutdown()
                 self._rate_control.exit()
-                self._result_queue.close()
                 break
 
             # 速率控制
