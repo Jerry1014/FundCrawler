@@ -123,7 +123,7 @@ class GetPageByMultiThreading(Process):
             for result in need_handle_result_list:
                 if result.state == FundResponse.State.FALSE and result.remain_retry_time > 0:
                     # 失败重试
-                    need_retry_task_list.append(result.build_request())
+                    self._request_queue.put(result.build_request())
                     continue
                 self._result_queue.put(result)
 
@@ -140,7 +140,7 @@ class GetPageByMultiThreading(Process):
             while (not self._request_queue.empty() or len(need_retry_task_list) > 0) \
                     and number_of_concurrent_tasks > len(future_list):
                 # 优先处理需要重试的任务
-                request = need_retry_task_list.pop() if len(need_retry_task_list) > 0 else self._request_queue.get()
+                request = self._request_queue.get()
                 future_list.append(executor.submit(self.get_page, request))
                 number_of_concurrent_tasks -= 1
 

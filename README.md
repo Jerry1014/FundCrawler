@@ -23,21 +23,22 @@
 - 安装依赖 pip install -r requirements.txt
 - 运行run.py 爬取基金数据
 - 杂七杂八
-  - 只想爬一点点数据看下效果 运行test_run.py SmokeTestTaskManager.test_run()
-  - 爬取结果分析，可以参考 utils.result_analyse.analyse
-  - 想爬取更多的数据  
-1 看下现有的爬取网页上是否有对应的信息  
-module.crawling_data.data_mining.data_mining_type.PageType
-有的话，直接在对应的策略上，通过正则或其他的方式将信息提取出来  
-没有的话，新增一个策略，爬取新的网页，以及进行对应的清洗
+  - 只想爬一点点数据看下效果 运行test_run.py
+  - 爬取结果分析，参考 utils/result_analyse.py
+  - 需要更多的数据  
+    现在爬取涉及到的页面有你想要的数据吗 utils.constants.PageType  
+    1 有 找到对应的策略类，增加对应数据的解析逻辑  
+    2 没有 新增一个策略，实现需要爬取的url和对应的页面解析逻辑
 
 # 技术相关
 ![Image text](docs/img/overview.png)
-- 因为数据清洗和 http下载分别是计算密集和IO密集的，为了避免GIL和频繁的线程切换影响效率。
-AsyncHttpRequestDownloader起了一个新进程，在子进程内通过线程池进行http的爬取，通过队列来交换爬取任务和结果，通过事件来感知爬取结束
-- 目前的爬取瓶颈是网站的反爬策略，可以通过utils.downloader.rate_control.rate_control_analyse.draw_analyse来分析当前网络环境下
-所能支持的最高并发任务数，爬虫本身也会尝试寻找一个合适的并发数（并发的变化率随迭代数的增加而降低）
-![Image text](docs/img/rate_control.png)
+
+- 爬虫的瓶颈在于网站的反爬策略，需要尽可能的打满http请求
+  - 1 为了避免GIL和频繁的线程切换影响效率，http下载模块是单独的子进程，通过管道通信，并在主流程中优先处理http请求的提交
+  - 2 module.downloader.rate_control.rate_control.RateControl  
+    单独设置一个速率控制类，尝试寻找一个最合适的并发数  
+    失败惩罚 成功奖励 并发数的变化率随迭代数的增加而降低
+    ![Image text](docs/img/rate_control.png)
 
 ## Star History
 
@@ -46,6 +47,3 @@ AsyncHttpRequestDownloader起了一个新进程，在子进程内通过线程池
 ## 未来更新计划
 - 健壮性
   - 有没有数学上的方法，基于一定数量的抽样验证，就能确认整体数据的有效性
-- 代码重构
-  - 下载模块（包括速率控制模块）
-  - 代码风格优化，代码各种检查注解

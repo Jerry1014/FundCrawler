@@ -9,7 +9,7 @@ from module.process_manager import SavingResultModule
 from utils.constants import FundAttrKey, DATA_ERROR
 
 
-class SaveResult2File(SavingResultModule):
+class SaveResult2CSV(SavingResultModule):
     RESULT_FILE_PATH = './result/'
     RESULT_FILE_NAME = 'result.csv'
 

@@ -87,13 +87,6 @@ class TaskManager:
                 self._downloader.terminate()
 
     def do_run(self) -> None:
-        """
-        http请求是异步的，为了提高并发度，这里略微借鉴redis的事件驱动机制（没有严格地实现每个事件的回调处理类）
-        优先响应 http请求事件 其次 http返回事件（数据挖掘） 最后 结果保存
-        """
-        # fixme
-        # raise Exception("111")
-
         # 获取任务
         fund_context_list = self._need_crawled_fund_module.get_fund_list()
         self._fund_context_dict = {fund.fund_code: fund for fund in fund_context_list}
@@ -101,40 +94,38 @@ class TaskManager:
         self._finished_step_count = 0
 
         while self._finished_step_count < self._total_step_count:
-            # http的解析和数据的保存
-            # 所有的req请求都由解析模块提出，因为判断一下当时请求队列是否打满
-            if self._http_request_queue.qsize() < self.MAX_REQUEST_SIZE:
-                first_meet_fund_code = None
-                for fund_code in self._fund_context_dict.keys():
-                    # 这里要注意req的顺序和context的遍历顺序，避免堆积大量处于中间状态的任务
-                    # 寻找第一个waiting队列已经处理完毕的context
-                    if fund_code in self._fund_waiting_dict and len(self._fund_waiting_dict[fund_code]) > 0:
-                        continue
-                    elif fund_code in self._fund_waiting_dict and len(self._fund_waiting_dict[fund_code]) == 0:
-                        self._fund_waiting_dict.pop(fund_code)
-                    first_meet_fund_code = fund_code
-                    break
+            # http请求发起和解析
+            first_meet_fund_code = None
+            for fund_code in self._fund_context_dict.keys():
+                # 这里要注意req的顺序和context的遍历顺序，避免堆积大量处于中间状态的任务
+                # 寻找第一个waiting队列已经处理完毕的context
+                if fund_code in self._fund_waiting_dict and len(self._fund_waiting_dict[fund_code]) > 0:
+                    continue
+                elif fund_code in self._fund_waiting_dict and len(self._fund_waiting_dict[fund_code]) == 0:
+                    self._fund_waiting_dict.pop(fund_code)
+                first_meet_fund_code = fund_code
+                break
 
-                if first_meet_fund_code:
-                    fund_context = self._fund_context_dict[first_meet_fund_code]
-                    page_req_list = self._data_mining_module.summit_context(fund_context)
+            if first_meet_fund_code:
+                fund_context = self._fund_context_dict[first_meet_fund_code]
+                page_req_list = self._data_mining_module.summit_context(fund_context)
 
-                    if page_req_list:
-                        # 数据挖掘模块提出新的爬取请求
-                        for page_req in page_req_list:
-                            self._http_request_queue.put(FundRequest(fund_context.fund_code, page_req[0], page_req[1]))
-                        self._fund_waiting_dict[fund_context.fund_code] = [page_req[0] for page_req in page_req_list]
-                    else:
-                        # 没有新的爬取请求，保存爬取结果
-                        self._fund_context_dict.pop(first_meet_fund_code)
-                        self._finished_step_count += 1
-                        self._save_result_module.save_result(fund_context)
+                if page_req_list:
+                    # 数据挖掘模块提出新的爬取请求
+                    for page_req in page_req_list:
+                        self._http_request_queue.put(FundRequest(fund_context.fund_code, page_req[0], page_req[1]))
+                    self._fund_waiting_dict[fund_context.fund_code] = [page_req[0] for page_req in page_req_list]
+                else:
+                    # 没有新的爬取请求，保存爬取结果
+                    self._fund_context_dict.pop(first_meet_fund_code)
+                    self._finished_step_count += 1
+                    self._save_result_module.save_result(fund_context)
 
             # 处理http请求结果
-            # 请求队列已满的时候，这里直接阻塞等待结果，避免忙等待
-            block = self._http_request_queue.qsize() > self.MAX_REQUEST_SIZE
+            # 上一步处理了一圈，发现没有事情可以干的时候，可以block等待返回，避免忙等待
+            block = first_meet_fund_code is None
             try:
-                cur_res = self._http_response_queue.get(block=block)
+                cur_res = self._http_response_queue.get(block=block, timeout=1)
                 self._fund_waiting_dict[cur_res.fund_code].remove(cur_res.page_type)
                 self._fund_context_dict[cur_res.fund_code].http_response_dict[cur_res.page_type] = cur_res
             except Empty:
