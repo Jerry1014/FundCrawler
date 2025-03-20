@@ -5,9 +5,10 @@ import logging
 import multiprocessing
 from concurrent.futures import Future, ThreadPoolExecutor
 from multiprocessing import Queue, Process, Event
+from os import cpu_count
 from queue import Empty
 from sys import maxsize
-from typing import Optional
+from typing import Optional, List
 
 from requests import RequestException, get, Response
 
@@ -61,6 +62,7 @@ class GetPageOnSubProcess(Process):
         # 爬取速率控制
         self._rate_control: Optional[RateControl] = None
         self._executor: Optional[ThreadPoolExecutor] = None
+        self._request_result_list: List[bool] = list()
 
         logger.setLevel(log_level)
 
@@ -71,12 +73,12 @@ class GetPageOnSubProcess(Process):
         """
         header = {"User-Agent": singleton_fake_ua.get_random_ua()}
         try:
-            page = get(request.url, headers=header, timeout=1)
+            page = get(request.url, headers=header, timeout=2)
             if page.status_code != 200 or not page.text:
                 # 反爬虫策略之 给你返回空白的 200结果
                 raise AttributeError
             return FundResponse(request, page)
-        except (RequestException, AttributeError):
+        except (RequestException, AttributeError) as e:
             return FundResponse(request, None)
 
     def future_callback(self, future: Future[FundResponse]):
@@ -87,31 +89,38 @@ class GetPageOnSubProcess(Process):
         if result.response is None and result.remain_retry_time > 0:
             # 失败重试
             self._request_queue.put(result.build_request())
+            self._request_result_list.append(False)
         else:
             self._result_queue.put(result)
+            self._request_result_list.append(True)
 
     def run(self) -> None:
         """
         爬取主流程
         """
         logger.info("子进程开启循环")
-        self._executor = ThreadPoolExecutor()
-        self._rate_control = RateControl(self._executor._max_workers)
+        self._executor = ThreadPoolExecutor((cpu_count() or 1) * 5)
+        self._rate_control = RateControl(float(self._executor._max_workers))
 
         while True:
             # 爬取结束
             if self._exit_sign.is_set() and self._request_queue.empty():
                 self._executor.shutdown()
-                self._rate_control.shutdown()
+                self._rate_control.exit()
                 self._result_queue.close()
                 break
 
             # 速率控制
-            cur_rate = 100
+            # 一个稍微巧妙的设计 list的append方法是线程安全的，因此各个请求线程可以直接将结果加入列表
+            # clear线程不安全，但是无所谓，毕竟我们关注的是某一段时间内的 成功失败率
+            if self._request_result_list:
+                self._rate_control.record(sum(self._request_result_list), len(self._request_result_list)
+                                          , self._executor._work_queue.qsize())
+                self._request_result_list.clear()
+            cur_rate = int(self._rate_control.get_cur_rate())
 
             # 处理爬取请求
             while not self._request_queue.empty() and cur_rate > self._executor._work_queue.qsize():
-                # 优先处理需要重试的任务
                 try:
                     request = self._request_queue.get(timeout=1)
                     future = self._executor.submit(self.get_page, request)
