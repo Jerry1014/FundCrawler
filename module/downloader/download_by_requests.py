@@ -7,9 +7,8 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from enum import Enum, auto, unique
 from multiprocessing import Queue, Process, Event
 from sys import maxsize
-from typing import Optional
 
-from requests import Response as RequestsResponse, RequestException, get
+from requests import RequestException, get, Response
 
 from module.downloader.rate_control.rate_control import RateControl
 from utils.constants import PageType, log_format
@@ -47,7 +46,7 @@ class FundResponse:
         SUCCESS = auto()
         FALSE = auto()
 
-    def __init__(self, request: FundRequest, state: State, response: Optional[RequestsResponse]):
+    def __init__(self, request: FundRequest, state: State, response: Response):
         self.fund_code = request.fund_code
         self.page_type = request.page_type
         self.url = request.url
@@ -90,7 +89,7 @@ class GetPageByMultiThreading(Process):
                 raise AttributeError
             return FundResponse(request, FundResponse.State.SUCCESS, page)
         except (RequestException, AttributeError):
-            return FundResponse(request, FundResponse.State.FALSE, None)
+            return FundResponse(request, FundResponse.State.FALSE, Response())
 
     def run(self) -> None:
         """

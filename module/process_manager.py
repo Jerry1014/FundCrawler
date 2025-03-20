@@ -6,7 +6,7 @@ from multiprocessing import Queue, Event
 from queue import Empty
 from threading import Thread
 from time import sleep
-from typing import List
+from typing import List, Optional
 
 from tqdm import tqdm
 
@@ -42,11 +42,11 @@ class TaskManager:
                                                    self._exit_sign, logging.root.level)
 
         # 总共需要的步骤(当前一个基金只算一步)
-        self._total_step_count: int | None = None
+        self._total_step_count: Optional[int] = None
         # 当前已经完成的
-        self._finished_step_count: int | None = None
+        self._finished_step_count: Optional[int] = None
 
-    def show_process(self):
+    def show_process(self) -> None:
         """
         爬取进度提示
         """
@@ -86,7 +86,7 @@ class TaskManager:
             if self._downloader.is_alive():
                 self._downloader.terminate()
 
-    def do_run(self):
+    def do_run(self) -> None:
         """
         http请求是异步的，为了提高并发度，这里略微借鉴redis的事件驱动机制（没有严格地实现每个事件的回调处理类）
         优先响应 http请求事件 其次 http返回事件（数据挖掘） 最后 结果保存

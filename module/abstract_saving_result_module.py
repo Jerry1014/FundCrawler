@@ -15,7 +15,7 @@ class SavingResultModule(ABC):
         """
         pass
 
-    def exit(self):
+    def exit(self) -> None:
         """
         对于运行中止时需要后处理的场景
         """

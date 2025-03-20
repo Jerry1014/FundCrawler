@@ -1,6 +1,5 @@
 import re
 from string import Template
-from typing import NoReturn
 
 from module.data_mining.strategy.data_mining_strategy_factory import DataCleaningStrategy
 from module.downloader.download_by_requests import FundResponse
@@ -20,7 +19,7 @@ class MetricsStrategy(DataCleaningStrategy):
     def build_url(self, context: FundContext) -> str:
         return self.url_template.substitute(fund_code=context.fund_code)
 
-    def fill_result(self, fund_response: FundResponse, context: FundContext) -> NoReturn:
+    def fill_result(self, fund_response: FundResponse, context: FundContext) -> None:
         page_text = fund_response.response.text
 
         fund_standard_deviation = self.fund_standard_deviation_pattern.search(page_text)

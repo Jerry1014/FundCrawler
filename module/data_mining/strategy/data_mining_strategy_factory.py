@@ -27,4 +27,4 @@ class DataCleaningStrategyFactory:
         """
         获取对应页面数据的清洗策略
         """
-        return cls._strategy_dict.get(page_type)
+        return cls._strategy_dict[page_type]
