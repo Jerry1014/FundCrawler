@@ -13,7 +13,7 @@ from tqdm import tqdm
 from module.abstract_crawling_target_module import CrawlingTargetModule
 from module.abstract_data_mining_module import DataMiningModule
 from module.abstract_saving_result_module import SavingResultModule
-from module.downloader.download_by_requests import FundRequest, FundResponse, GetPageByMultiThreading
+from module.downloader.download_by_requests import FundRequest, FundResponse, GetPageOnSubProcess
 from module.fund_context import FundContext
 from utils.constants import PageType
 
@@ -38,7 +38,7 @@ class TaskManager:
         self._need_crawled_fund_module = need_crawled_fund_module
         self._data_mining_module = data_mining_module
         self._save_result_module = save_result_module
-        self._downloader = GetPageByMultiThreading(self._http_request_queue, self._http_response_queue,
+        self._downloader = GetPageOnSubProcess(self._http_request_queue, self._http_response_queue,
                                                    self._exit_sign, logging.root.level)
 
         # 总共需要的步骤(当前一个基金只算一步)
