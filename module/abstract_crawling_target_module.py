@@ -15,4 +15,4 @@ class CrawlingTargetModule(ABC):
         """
         获取需要爬取的基金列表
         """
-        return NotImplemented
+        pass

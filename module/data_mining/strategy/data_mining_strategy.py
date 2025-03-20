@@ -1,5 +1,4 @@
 from abc import abstractmethod, ABC
-from typing import NoReturn
 
 from module.downloader.download_by_requests import FundResponse
 from module.fund_context import FundContext
@@ -13,8 +12,8 @@ class DataCleaningStrategy(ABC):
 
     @abstractmethod
     def build_url(self, context: FundContext) -> str:
-        return NotImplemented
+        pass
 
     @abstractmethod
-    def fill_result(self, fund_response: FundResponse, context: FundContext) -> NoReturn:
-        return NotImplemented
+    def fill_result(self, fund_response: FundResponse, context: FundContext) -> None:
+        pass

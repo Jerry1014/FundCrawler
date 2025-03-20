@@ -1,77 +1,99 @@
 """
 爬取速率控制
 """
+import time
 from csv import DictWriter
-from os import cpu_count
+from typing import Optional, TextIO
 
 
 class RateControl:
     """
-    速率控制
-    根据当前请求的失败率 决策当前的爬取速率
+    爬取速率控制
     """
-    record_file = 'analyse.csv'
-    fail_rate_key = 'fail_rate'
-    tasks_num_key = 'tasks_num'
-    threshold_key = 'threshold_num'
+    RECORD_FILE = 'analyse.csv'
+    FAIL_RATE = 'fail_rate'
+    WORK_COUNT = 'work_count'
+    RATE_CONTROL = 'rate_control'
+
+    refresh_interval_s = 1
     analyse_mode = False
 
-    # 初始的并发任务数，爬取多次后可以得到当前网络下的经验值
-    init_num = 12
+    def __init__(self, max_rate: float):
+        # 请求的成功失败计数
+        self._total_success_count: int = 0
+        self._total_fail_count: int = 0
+        self._cur_work_count: int = 0
 
-    def __init__(self):
-        # 记录环，记录最近circle_count次的成功失败次数
-        self._circle_count = 100
-        self._success_count_ring = [0] * self._circle_count
-        self._fail_count_ring = [0] * self._circle_count
-        self._number_of_iterations = 1
+        # 每一个时间间隔后刷新的 当前成功失败计数
+        self._success_count: int = 0
+        self._fail_count: int = 0
+        self._last_success_count: int = 0
+        self._last_fail_count: int = 0
+        self._last_time_stamp: float = 0
+        self._number_of_iterations: int = 0
 
-        # 当前认为的最适合并发任务数 float
-        self._cur_number = 1.0
-        self._max_num = cpu_count() * 5.0
+        # 当前间隔的并发速度 最大限制速度
+        self._cur_rate: float = max_rate / 2
+        self._max_rate: float = max_rate
 
         # 分析模式下，会记录爬取过程中的 相关数据
-        self._analyse_mode_start = False
-        self._file = None
-        self._writer = None
+        self._file: Optional[TextIO] = None
+        self._writer: Optional[DictWriter] = None
 
-    def start_analyze(self):
-        self._file = open(RateControl.record_file, 'w', newline='', encoding='utf-8')
-        field_names = [RateControl.fail_rate_key, RateControl.tasks_num_key, RateControl.threshold_key]
-        self._writer: DictWriter = DictWriter(self._file, fieldnames=field_names)
-        self._writer.writeheader()
+        if self.analyse_mode:
+            self._file = open(RateControl.RECORD_FILE, 'w', newline='', encoding='utf-8')
+            field_names = [RateControl.FAIL_RATE, RateControl.WORK_COUNT, RateControl.RATE_CONTROL]
+            self._writer = DictWriter(self._file, fieldnames=field_names)
+            self._writer.writeheader()
 
-    def get_cur_number_of_concurrent_tasks(self, success_count: int, fail_count: int, concurrent_count: int) -> int:
+    def get_cur_rate(self) -> int:
+        return int(self._cur_rate)
+
+    def record(self, success_count: int, cur_count: int, cur_work_count: int) -> None:
+        """
+        记录当前的成功/失败率
+        """
+        self._total_success_count += success_count
+        self._total_fail_count += (cur_count - success_count)
+        self._cur_work_count: int = cur_work_count
+
+        cur_time = time.time()
+        if cur_time - self._last_time_stamp > self.refresh_interval_s:
+            self._last_time_stamp = cur_time
+            self.cal_rate()
+
+    def cal_rate(self) -> None:
         """
         根据当前的成功失败任务个数，决策当前最合适的并发任务数
         """
-        if self.analyse_mode is True and self._analyse_mode_start is False:
-            self.start_analyze()
-            self._analyse_mode_start = True
+        # 更新当前的成功失败计数（注意线程安全问题）
+        last_success_count = self._last_success_count
+        last_fail_count = self._last_fail_count
+        cur_success_count = self._total_success_count
+        cur_fail_count = self._total_fail_count
+        self._success_count = cur_success_count - last_success_count
+        self._fail_count = cur_fail_count - last_fail_count
+        self._last_success_count = cur_success_count
+        self._last_fail_count = cur_fail_count
+        self._number_of_iterations += 1
 
-        self._success_count_ring[self._number_of_iterations % self._circle_count] = success_count
-        self._fail_count_ring[self._number_of_iterations % self._circle_count] = fail_count
-
-        total = sum(self._success_count_ring) + sum(self._fail_count_ring)
-        fail_rate = (sum(self._fail_count_ring) / total) if total != 0 else 0.0
-
-        iterations_time = self._number_of_iterations >> 5
-        rate = max(1.0 / iterations_time if iterations_time else 1, 0.001)
-        if max(0.0, fail_rate - 0.1) > 0.0:
-            # 减少的速率 随失败率的降低和迭代次数的增加 而降低
-            need_cut_number = self._cur_number * (1 - fail_rate)
-            self._cur_number = max(0.0, self._cur_number - need_cut_number * rate)
+        # 计算当前的并发度
+        # change_rate [11, 1]
+        change_rate = (1100 - self._number_of_iterations) / 100 if self._number_of_iterations < 1000 else 1
+        total_count = self._success_count + self._fail_count
+        fail_rate = (self._fail_count / total_count) if total_count else 1.0
+        if fail_rate > 0.0:
+            self._cur_rate = max(1.0, self._cur_rate - fail_rate * change_rate)
         else:
             # 随着迭代进行 增加的速度逐渐降低
-            self._cur_number = min(self._max_num, self._cur_number + rate)
+            self._cur_rate = min(self._max_rate, self._cur_rate + change_rate)
 
+        # 分析数据
         if self.analyse_mode:
-            self._writer.writerow({RateControl.fail_rate_key: fail_rate, RateControl.tasks_num_key: concurrent_count,
-                                   RateControl.threshold_key: self._cur_number})
+            self._writer.writerow(
+                {RateControl.FAIL_RATE: fail_rate, RateControl.WORK_COUNT: self._cur_work_count,
+                 RateControl.RATE_CONTROL: self._cur_rate})
 
-        self._number_of_iterations += 1
-        return int(self._cur_number)
-
-    def shutdown(self):
+    def exit(self):
         if self.analyse_mode:
             self._file.close()

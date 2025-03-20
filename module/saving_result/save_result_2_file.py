@@ -3,14 +3,13 @@
 """
 import os.path
 from csv import DictWriter
-from typing import NoReturn
 
 from module.fund_context import FundContext
 from module.process_manager import SavingResultModule
 from utils.constants import FundAttrKey, DATA_ERROR
 
 
-class SaveResult2File(SavingResultModule):
+class SaveResult2CSV(SavingResultModule):
     RESULT_FILE_PATH = './result/'
     RESULT_FILE_NAME = 'result.csv'
 
@@ -25,7 +24,7 @@ class SaveResult2File(SavingResultModule):
 
         self._writer.writeheader()
 
-    def save_result(self, result: FundContext) -> NoReturn:
+    def save_result(self, result: FundContext) -> None:
         self._writer.writerow({header.value: value if value else DATA_ERROR for header, value in
                                result.to_result_row().items()})
 

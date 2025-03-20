@@ -1,6 +1,5 @@
 import re
 from string import Template
-from typing import NoReturn
 
 from module.data_mining.strategy.data_mining_strategy_factory import DataCleaningStrategy
 from module.downloader.download_by_requests import FundResponse
@@ -22,8 +21,12 @@ class OverviewStrategy(DataCleaningStrategy):
     def build_url(self, context: FundContext) -> str:
         return self.url_template.substitute(fund_code=context.fund_code)
 
-    def fill_result(self, fund_response: FundResponse, context: FundContext) -> NoReturn:
-        page_text = fund_response.response.text
+    def fill_result(self, fund_response: FundResponse, context: FundContext) -> None:
+        response = fund_response.response
+        if response is None:
+            return
+
+        page_text = response.text
 
         fund_kind_result = self.fund_type_pattern.search(page_text)
         if fund_kind_result:
