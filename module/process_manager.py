@@ -126,13 +126,20 @@ class TaskManager:
                     self._save_result_module.save_result(fund_context)
 
             # 处理http请求结果
-            # 上一步处理了一圈，发现没有事情可以干的时候，可以block等待返回，避免忙等待
-            block = first_meet_fund_code is None
-            try:
-                cur_res = self._http_response_queue.get(block=block, timeout=1)
-                self._fund_waiting_dict[cur_res.fund_code].remove(cur_res.page_type)
-                self._fund_context_dict[cur_res.fund_code].http_response_dict[cur_res.page_type] = cur_res
-            except Empty:
-                pass
+            counter = 0
+            while True:
+                counter += 1
+                # 请求队列太满时，优先等待和处理下结果
+                if counter > 1 and self._http_request_queue.qsize() < self.MAX_REQUEST_SIZE:
+                    break
+
+                try:
+                    # 上一步处理了一圈，发现没有事情可以干的时候，可以block等待返回，避免忙等待
+                    block = first_meet_fund_code is None or self._http_request_queue.qsize() >= self.MAX_REQUEST_SIZE
+                    cur_res = self._http_response_queue.get(block=block, timeout=1)
+                    self._fund_waiting_dict[cur_res.fund_code].remove(cur_res.page_type)
+                    self._fund_context_dict[cur_res.fund_code].http_response_dict[cur_res.page_type] = cur_res
+                except Empty:
+                    pass
 
         logging.info("爬取结束")
