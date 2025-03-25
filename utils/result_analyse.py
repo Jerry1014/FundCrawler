@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from heapq import heappushpop, heappush
 from typing import List
 
-from utils.constants import FundAttrKey, NO_DATA
+from constants import FundAttrKey, NO_DATA
 
 """
 挑选基金
