@@ -33,12 +33,18 @@
 # 技术相关
 ![Image text](docs/img/overview.png)
 
-- 爬虫的瓶颈在于网站的反爬策略，需要尽可能的打满http请求
-  - 1 为了避免GIL和频繁的线程切换影响效率，http下载模块是单独的子进程，通过管道通信，并在主流程中优先处理http请求的提交
-  - 2 module.downloader.rate_control.rate_control.RateControl  
-    单独设置一个速率控制类，尝试寻找一个最合适的并发数  
-    失败惩罚 成功奖励 并发数的变化率随迭代数的增加而降低
-    ![Image text](docs/img/rate_control.png)
+- (结合profile分析)爬虫的瓶颈在于网站的反爬策略
+  - 爬取1000个基金，总耗时约35s
+  - 获取要爬取的1000个基金目录 get_small_batch_4_test.py:18(get_fund_list) 调用1次 耗时0.9813s
+  - http数据解析模块 data_mining.py:12(summit_context) 调用2000次 耗时1.544s
+  - 基金结果保存 save_result_2_file.py:27(save_result) 调用1000次 耗时0.03239s
+  - 其余时间都花在了等待http返回上，因此需要尽可能得打满http请求
+    - 1 为了避免GIL和频繁的线程切换影响效率，http下载模块是单独的子进程，通过管道通信，并在主流程中优先处理http请求的提交
+    - 2 主流程的循环中，需要尽量避免出现http请求队列为空的情况
+    - 3 module.downloader.rate_control.rate_control.RateControl  
+      单独设置一个速率控制类，尝试寻找一个最合适的并发数  
+      失败惩罚 成功奖励 并发数的变化率随迭代数的增加而降低
+      ![Image text](docs/img/rate_control.png)
 
 ## Star History
 
