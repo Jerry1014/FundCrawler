@@ -75,18 +75,31 @@ class TaskManager:
             # 爬取主流程
             self.do_run()
         except Exception as e:
-            logging.exception(f"报错啦，完蛋啦 {e}")
+            logging.exception(f"报错啦，主进程完蛋啦 {e}")
         finally:
             self._exit_sign.set()
-
-            # 结果保存模块的退出
             self._save_result_module.exit()
 
             # downloader子进程的退出
-            if self._downloader.is_alive():
-                self._downloader.terminate()
+            while self._exit_sign.is_set():
+                sleep(0.1)
+
+            # 主进程必须将队列清理干净，否则子进程不会结束(主动结束进程情况下，队列中可能存在未完成的任务也)
+            logging.info(f'队列情况{self._http_request_queue.qsize()} and {self._http_response_queue.qsize()}')
+            while True:
+                try:
+                    self._http_request_queue.get(timeout=0.1)
+                except Empty:
+                    break
             self._http_request_queue.close()
+            while True:
+                try:
+                    self._http_response_queue.get(timeout=0.1)
+                except Empty:
+                    break
             self._http_response_queue.close()
+
+            self._downloader.join()
 
         logging.info('主进程退出')
 

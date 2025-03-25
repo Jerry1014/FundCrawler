@@ -98,15 +98,32 @@ class GetPageOnSubProcess(Process):
         """
         爬取主流程
         """
-        logger.info("子进程开启循环")
         self._executor = ThreadPoolExecutor((cpu_count() or 1) * 5)
         self._rate_control = RateControl(float(self._executor._max_workers))
 
+        try:
+            logger.info("子进程开启循环")
+            self.do_run()
+        except Exception as e:
+            logging.exception(f"报错啦，子进程完蛋啦 {e}")
+        finally:
+            logger.info("子进程退出循环")
+            self._executor.shutdown()
+            self._rate_control.exit()
+            self._request_queue.close()
+            self._result_queue.close()
+            self._exit_sign.clear()
+            # By default, if a process is not the creator of the queue 
+            # then on exit it will attempt to join the queue’s background thread. 
+            # 说人话就是，主进程必须将队列清理干净，否则子进程不会结束
+            self._request_queue.join_thread()
+            self._result_queue.join_thread()
+            logger.info("子进程退出")
+
+    def do_run(self):
         while True:
             # 爬取结束
             if self._exit_sign.is_set() and self._request_queue.empty():
-                self._executor.shutdown()
-                self._rate_control.exit()
                 break
 
             # 速率控制
@@ -119,17 +136,12 @@ class GetPageOnSubProcess(Process):
             cur_rate = int(self._rate_control.get_cur_rate())
 
             # 处理爬取请求
-            while not self._request_queue.empty() and cur_rate > self._executor._work_queue.qsize():
+            counter = 0
+            while counter < 100 and not self._request_queue.empty() and cur_rate > self._executor._work_queue.qsize():
+                counter += 1
                 try:
                     request = self._request_queue.get(timeout=1)
                     future = self._executor.submit(self.get_page, request)
                     future.add_done_callback(self.future_callback)
                 except Empty:
                     pass
-
-        logger.info("子进程退出循环")
-        # 确保数据都写入后，再退出主线程
-        # OS pipes are not infinitely long, so the process which queues data could be blocked in the OS during the
-        # put() operation until some other process uses get() to retrieve data from the queue
-        self._result_queue.join_thread()
-        logger.info("子进程完全退出")
