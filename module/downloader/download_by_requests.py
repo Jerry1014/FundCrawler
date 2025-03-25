@@ -125,7 +125,7 @@ class GetPageOnSubProcess(Process):
                     future = self._executor.submit(self.get_page, request)
                     future.add_done_callback(self.future_callback)
                 except Empty:
-                    break
+                    pass
 
         logger.info("子进程退出循环")
         # 确保数据都写入后，再退出主线程
