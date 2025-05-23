@@ -2,7 +2,6 @@
 负责统领和协调数据爬取的流程
 """
 import logging
-from multiprocessing import Queue, Event
 from queue import Empty
 from threading import Thread
 from time import sleep
@@ -13,7 +12,7 @@ from tqdm import tqdm
 from module.abstract_crawling_target_module import CrawlingTargetModule
 from module.abstract_data_mining_module import DataMiningModule
 from module.abstract_saving_result_module import SavingResultModule
-from module.downloader.download_by_requests import FundRequest, FundResponse, GetPageOnSubProcess
+from module.downloader.download_by_requests import FundRequest, GetPageOnSubProcess
 from module.fund_context import FundContext
 from utils.constants import PageType
 
@@ -22,15 +21,10 @@ class TaskManager:
     """
     爬取的核心流程
     """
-    # 请求队列最大的堆积任务数量
-    MAX_REQUEST_SIZE = 20
 
     def __init__(self, need_crawled_fund_module: CrawlingTargetModule, data_mining_module: DataMiningModule,
                  save_result_module: SavingResultModule):
         # 事件列表等(模块间的协作)
-        self._http_request_queue: Queue[FundRequest] = Queue()
-        self._http_response_queue: Queue[FundResponse] = Queue()
-        self._exit_sign: Event = Event()
         self._fund_context_dict: dict[str, FundContext] = dict()
         self._fund_waiting_dict: dict[str, List[PageType]] = dict()
 
@@ -38,27 +32,28 @@ class TaskManager:
         self._need_crawled_fund_module = need_crawled_fund_module
         self._data_mining_module = data_mining_module
         self._save_result_module = save_result_module
-        self._downloader = GetPageOnSubProcess(self._http_request_queue, self._http_response_queue,
-                                               self._exit_sign, logging.root.level)
+        self._downloader = GetPageOnSubProcess(logging.root.level)
 
         # 总共需要的步骤(当前一个基金只算一步)
         self._total_step_count: Optional[int] = None
         # 当前已经完成的
         self._finished_step_count: Optional[int] = None
 
+        self._exit_sign: bool = False
+
     def show_process(self) -> None:
         """
         爬取进度提示
         """
         logging.info("开始获取需要爬取的基金任务")
-        while not self._exit_sign.is_set() and (self._total_step_count is None or self._finished_step_count is None):
+        while not self._exit_sign and (self._total_step_count is None or self._finished_step_count is None):
             # 等待任务开始
             sleep(0.1)
 
         logging.info("开始爬取基金数据")
         with tqdm(total=self._total_step_count) as pbar:
             last_finished_task_num = None
-            while not self._exit_sign.is_set() and self._finished_step_count < self._total_step_count:
+            while not self._exit_sign and self._finished_step_count < self._total_step_count:
                 cur_finished_task_num = self._finished_step_count
                 pbar.update(cur_finished_task_num - (last_finished_task_num if last_finished_task_num else 0))
                 last_finished_task_num = cur_finished_task_num
@@ -77,29 +72,10 @@ class TaskManager:
         except Exception as e:
             logging.exception(f"报错啦，主进程完蛋啦 {e}")
         finally:
-            self._exit_sign.set()
+            self._exit_sign = True
+            self._downloader.close_downloader()
             self._save_result_module.exit()
-
-            # downloader子进程的退出
-            while self._exit_sign.is_set():
-                sleep(0.1)
-
-            # 主进程必须将队列清理干净，否则子进程不会结束(主动结束进程情况下，队列中可能存在未完成的任务也)
-            logging.info(f'队列情况{self._http_request_queue.qsize()} and {self._http_response_queue.qsize()}')
-            while True:
-                try:
-                    self._http_request_queue.get(timeout=0.1)
-                except Empty:
-                    break
-            self._http_request_queue.close()
-            while True:
-                try:
-                    self._http_response_queue.get(timeout=0.1)
-                except Empty:
-                    break
-            self._http_response_queue.close()
-
-            self._downloader.join()
+            self._downloader.join_downloader()
 
         logging.info('主进程退出')
 
@@ -128,9 +104,9 @@ class TaskManager:
                 page_req_list = self._data_mining_module.summit_context(fund_context)
 
                 if page_req_list:
-                    # 数据挖掘模块提出新的爬取请求
+                    # 数据挖掘模块提出新爬取请求
                     for page_req in page_req_list:
-                        self._http_request_queue.put(FundRequest(fund_context.fund_code, page_req[0], page_req[1]))
+                        self._downloader.apply(FundRequest(fund_context.fund_code, page_req[0], page_req[1]))
                     self._fund_waiting_dict[fund_context.fund_code] = [page_req[0] for page_req in page_req_list]
                 else:
                     # 没有新的爬取请求，保存爬取结果
@@ -143,13 +119,13 @@ class TaskManager:
             while True:
                 counter += 1
                 # 请求队列太满时，优先等待和处理下结果
-                if counter > 1 and self._http_request_queue.qsize() < self.MAX_REQUEST_SIZE:
+                if counter > 1 and not self._downloader.if_downloader_busy():
                     break
 
                 try:
                     # 上一步处理了一圈，发现没有事情可以干的时候，可以block等待返回，避免忙等待
-                    block = first_meet_fund_code is None or self._http_request_queue.qsize() >= self.MAX_REQUEST_SIZE
-                    cur_res = self._http_response_queue.get(block=block, timeout=1)
+                    block = first_meet_fund_code is None or self._downloader.if_downloader_busy()
+                    cur_res = self._downloader.get_result(block)
                     self._fund_waiting_dict[cur_res.fund_code].remove(cur_res.page_type)
                     self._fund_context_dict[cur_res.fund_code].http_response_dict[cur_res.page_type] = cur_res
                 except Empty:
