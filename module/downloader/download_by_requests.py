@@ -8,6 +8,7 @@ from multiprocessing import Queue, Process, Event
 from os import cpu_count
 from queue import Empty
 from sys import maxsize
+from time import sleep
 from typing import Optional, List
 
 from requests import RequestException, get, Response
@@ -52,12 +53,15 @@ class GetPageOnSubProcess(Process):
     多线程http下载(单独进程)
     """
 
-    def __init__(self, request_queue: Queue, result_queue: Queue, exit_sign: Event, log_level: int):
+    def __init__(self, log_level: int):
         super().__init__()
-        # 和父进程之间的通信
-        self._request_queue = request_queue
-        self._result_queue = result_queue
-        self._exit_sign = exit_sign
+        # 父子进程间的通信
+        self._request_queue: Queue[FundRequest] = Queue()
+        self._result_queue: Queue[FundResponse] = Queue()
+        self._exit_sign: Event = Event()
+
+        # 请求队列最大的堆积任务数量
+        self.max_request_size = 20
 
         # 爬取速率控制
         self._rate_control: Optional[RateControl] = None
@@ -65,6 +69,44 @@ class GetPageOnSubProcess(Process):
         self._request_result_list: List[bool] = list()
 
         logger.setLevel(log_level)
+
+    def apply(self, request: FundRequest):
+        if self._exit_sign.is_set():
+            raise Exception()
+        self._request_queue.put(request)
+
+    def get_result(self, block: bool = True) -> Optional[FundResponse]:
+        return self._result_queue.get(block=block, timeout=1)
+
+    def if_downloader_busy(self) -> bool:
+        return self._result_queue.qsize() >= self.max_request_size
+
+    def close_downloader(self):
+        self._exit_sign.set()
+
+    def join_downloader(self):
+        # downloader子进程的退出
+        while self._exit_sign.is_set():
+            sleep(0.1)
+
+        # 主进程必须将队列清理干净，否则子进程不会结束(主动结束进程情况下，队列中可能存在未完成的任务也)
+        logging.info(f'队列情况{self._request_queue.qsize()} and {self._result_queue.qsize()}')
+        while True:
+            try:
+                self._request_queue.get(timeout=0.1)
+            except Empty:
+                break
+        self._request_queue.close()
+        while True:
+            try:
+                self._result_queue.get(timeout=0.1)
+            except Empty:
+                break
+        self._result_queue.close()
+
+        # 等待子进程退出
+        self.join()
+        logger.info("子进程完全退出")
 
     @staticmethod
     def get_page(request: FundRequest) -> FundResponse:
@@ -75,7 +117,7 @@ class GetPageOnSubProcess(Process):
         try:
             page = get(request.url, headers=header, timeout=2)
             if page.status_code != 200 or not page.text:
-                # 反爬虫策略之 给你返回空白的 200结果
+                # 反爬虫策略之 给你返回空白的 200
                 raise AttributeError
             return FundResponse(request, page)
         except (RequestException, AttributeError) as e:
@@ -118,7 +160,6 @@ class GetPageOnSubProcess(Process):
             # 说人话就是，主进程必须将队列清理干净，否则子进程不会结束
             self._request_queue.join_thread()
             self._result_queue.join_thread()
-            logger.info("子进程退出")
 
     def do_run(self):
         while True:
