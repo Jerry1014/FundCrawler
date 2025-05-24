@@ -26,7 +26,7 @@ class DataMining(DataMiningModule):
                     url = DataCleaningStrategyFactory.get_strategy(page_type).build_url(context)
                     url_list.append((page_type, url))
                 except NoNeedException:
-                    logging.warn(f'基金{context.fund_code}类型{page_type}不满足爬取前提 已跳过')
+                    logging.info(f'基金{context.fund_code}类型{page_type}不满足爬取前提 已跳过')
                 except Exception as e:
                     logging.error(f'基金{context.fund_code}类型{page_type} url构建失败', e)
 
