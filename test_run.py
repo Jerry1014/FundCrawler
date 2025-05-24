@@ -4,7 +4,7 @@ from module.crawling_target.get_small_batch_4_test import GetSmallBatch4Test
 from module.data_mining.data_mining import DataMining
 from module.process_manager import TaskManager
 from module.saving_result.save_result_2_file import SaveResult2CSV
-from utils.constants import log_format
+from utils.constants import log_format, PageType
 
 """
 冒烟测试, 小批量爬取基金信息, 主要用于验证数据的爬取和清洗逻辑
@@ -17,5 +17,5 @@ if __name__ == '__main__':
     GetSmallBatch4Test.TEST_CASE_NUM = 10
 
     TaskManager(GetSmallBatch4Test()
-                , DataMining()
+                , DataMining([PageType.OVERVIEW, PageType.MANAGER, PageType.MORNINGSTAR, PageType.RETURN])
                 , SaveResult2CSV()).run()

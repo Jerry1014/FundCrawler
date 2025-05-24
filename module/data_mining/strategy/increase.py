@@ -1,5 +1,6 @@
 import re
 from string import Template
+from typing import Optional
 
 from module.data_mining.strategy.data_mining_strategy_factory import DataCleaningStrategy
 from module.downloader.download_by_requests import FundResponse
@@ -16,7 +17,7 @@ class RiseStrategy(DataCleaningStrategy):
     fund_3_years_increase_pattern = re.compile(fr'近3年[\s\S]*?({number_in_eng}%|---)')
     fund_5_years_increase_pattern = re.compile(fr'近5年[\s\S]*?({number_in_eng}%|---)')
 
-    def build_url(self, context: FundContext) -> str:
+    def build_url(self, context: FundContext) -> Optional[str]:
         return self.url_template.substitute(fund_code=context.fund_code)
 
     def fill_result(self, fund_response: FundResponse, context: FundContext) -> None:

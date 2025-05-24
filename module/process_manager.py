@@ -105,9 +105,16 @@ class TaskManager:
 
                 if page_req_list:
                     # 数据挖掘模块提出新爬取请求
+                    fund_wait_list = list()
                     for page_req in page_req_list:
+                        # 特殊请求，代表需要等待其他的解析结果才能爬取，不必处理
+                        if page_req[1] is None:
+                            continue
                         self._downloader.apply(FundRequest(fund_context.fund_code, page_req[0], page_req[1]))
-                    self._fund_waiting_dict[fund_context.fund_code] = [page_req[0] for page_req in page_req_list]
+                        fund_wait_list.append(page_req[0])
+
+                    if fund_wait_list:
+                        self._fund_waiting_dict[fund_context.fund_code] = fund_wait_list
                 else:
                     # 没有新爬取请求，保存爬取结果
                     self._fund_context_dict.pop(first_meet_fund_code)

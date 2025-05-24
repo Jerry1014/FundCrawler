@@ -1,5 +1,6 @@
 import re
 from string import Template
+from typing import Optional
 
 from module.data_mining.strategy.data_mining_strategy_factory import DataCleaningStrategy
 from module.downloader.download_by_requests import FundResponse
@@ -22,7 +23,7 @@ class OverviewStrategy(DataCleaningStrategy):
     custody_fee_rate_pattern = re.compile(fr'托管费率</th><td>(({number_in_eng})%|---)')
     sales_service_fee_rate_pattern = re.compile(fr'销售服务费率</th><td>(({number_in_eng})%|---)')
     
-    def build_url(self, context: FundContext) -> str:
+    def build_url(self, context: FundContext) -> Optional[str]:
         return self.url_template.substitute(fund_code=context.fund_code)
 
     def fill_result(self, fund_response: FundResponse, context: FundContext) -> None:

@@ -15,6 +15,8 @@ class FundContext:
     def __init__(self, fund_code: str, fund_name: str):
         self.fund_code: str = fund_code
         self.fund_name: str = fund_name
+        # 晨星的基金标识
+        self.morningstar_class_id: Optional[str] = None
         self.fund_type: Optional[str] = None
         self.fund_size: Optional[str] = None
         self.fund_company: Optional[str] = None
@@ -28,6 +30,8 @@ class FundContext:
         self.management_fee_rate: Optional[str] = None
         self.custody_fee_rate: Optional[str] = None
         self.sales_service_fee_rate: Optional[str] = None
+        self.five_year_annualized_return: Optional[str] = None
+        self.ten_year_annualized_return: Optional[str] = None
 
         # 爬取到的网页数据
         self.http_response_dict: dict[PageType, FundResponse] = dict()
@@ -36,17 +40,16 @@ class FundContext:
         return {
             FundAttrKey.FUND_CODE: self.fund_code,
             FundAttrKey.FUND_SIMPLE_NAME: self.fund_name,
+            FundAttrKey.MORNINGSTAR_FUND_ID: self.morningstar_class_id,
             FundAttrKey.FUND_TYPE: self.fund_type,
             FundAttrKey.FUND_SIZE: self.fund_size,
             FundAttrKey.FUND_COMPANY: self.fund_company,
             FundAttrKey.FUND_VALUE: self.fund_value,
             FundAttrKey.FUND_MANAGER: self.fund_manager,
             FundAttrKey.DATE_OF_APPOINTMENT: self.date_of_appointment,
-            FundAttrKey.STANDARD_DEVIATION_THREE_YEARS: self.standard_deviation_three_years,
-            FundAttrKey.SHARPE_THREE_YEARS: self.sharpe_three_years,
-            FundAttrKey.THREE_YEARS_INCREASE: self.three_years_increase,
-            FundAttrKey.FIVE_YEARS_INCREASE: self.five_years_increase,
             FundAttrKey.MANAGEMENT_FEE_RATE: self.management_fee_rate,
             FundAttrKey.CUSTODY_FEE_RATE: self.custody_fee_rate,
             FundAttrKey.SALES_SERVICE_FEE_RATE: self.sales_service_fee_rate,
+            FundAttrKey.FIVE_YEAR_ANNUALIZED_RETURN: self.five_year_annualized_return,
+            FundAttrKey.TEN_YEAR_ANNUALIZED_RETURN: self.ten_year_annualized_return,
         }

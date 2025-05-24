@@ -3,8 +3,10 @@
 """
 
 from module.data_mining.strategy.data_mining_strategy import DataCleaningStrategy
+from module.data_mining.strategy.fund_return import ReturnStrategy
 from module.data_mining.strategy.increase import RiseStrategy
 from module.data_mining.strategy.manager import ManagerStrategy
+from module.data_mining.strategy.morningstar import MorningstarStrategy
 from module.data_mining.strategy.overview import OverviewStrategy
 from module.data_mining.strategy.sharpe import MetricsStrategy
 from utils.constants import PageType
@@ -19,7 +21,9 @@ class DataCleaningStrategyFactory:
         PageType.OVERVIEW: OverviewStrategy(),
         PageType.MANAGER: ManagerStrategy(),
         PageType.METRICS: MetricsStrategy(),
-        PageType.INCREASE: RiseStrategy()
+        PageType.INCREASE: RiseStrategy(),
+        PageType.RETURN: ReturnStrategy(),
+        PageType.MORNINGSTAR: MorningstarStrategy(),
     }
 
     @classmethod

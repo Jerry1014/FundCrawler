@@ -14,6 +14,7 @@ class FundAttrKey(StrEnum):
     """
     FUND_CODE = '基金代码',
     FUND_SIMPLE_NAME = '基金简称',
+    MORNINGSTAR_FUND_ID = '(晨星)基金代码',
     FUND_TYPE = '基金类型',
     FUND_SIZE = '资产规模(亿)',
     FUND_COMPANY = '基金管理人',
@@ -29,6 +30,9 @@ class FundAttrKey(StrEnum):
     CUSTODY_FEE_RATE = '托管费率(每年)',
     SALES_SERVICE_FEE_RATE = '销售服务费率(每年)',
 
+    FIVE_YEAR_ANNUALIZED_RETURN = "五年回报（年化）",
+    TEN_YEAR_ANNUALIZED_RETURN = "十年回报（年化）",
+
 
 @unique
 class PageType(Enum):
@@ -43,6 +47,10 @@ class PageType(Enum):
     METRICS = auto()
     # 阶段涨幅 https://fundf10.eastmoney.com/jdzf_006624.html
     INCREASE = auto()
+    # 晨星基本信息 https://www.morningstar.cn/handler/fundsearch.ashx
+    MORNINGSTAR = auto()
+    # 基金回报 https://www.morningstar.cn/handler/quicktake.ashx?command=return&fcid=0P00019IIB
+    RETURN = auto()
 
 
 # 最终爬取结果文件的占位，用于区分是真的木有数据，还是爬取可能失败/遗漏

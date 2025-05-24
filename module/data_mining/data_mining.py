@@ -1,3 +1,4 @@
+import logging
 from typing import List, Optional
 
 from module.abstract_data_mining_module import DataMiningModule
@@ -17,7 +18,10 @@ class DataMining(DataMiningModule):
                 DataCleaningStrategyFactory.get_strategy(page_type) \
                     .fill_result(context.http_response_dict[page_type], context)
             else:
-                url = DataCleaningStrategyFactory.get_strategy(page_type).build_url(context)
-                url_list.append((page_type, url))
+                try:
+                    url = DataCleaningStrategyFactory.get_strategy(page_type).build_url(context)
+                    url_list.append((page_type, url))
+                except:
+                    logging.error(f'基金{context.fund_code}类型{page_type}爬取失败')
 
         return url_list if url_list else None

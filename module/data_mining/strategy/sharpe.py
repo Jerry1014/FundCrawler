@@ -1,5 +1,6 @@
 import re
 from string import Template
+from typing import Optional
 
 from module.data_mining.strategy.data_mining_strategy_factory import DataCleaningStrategy
 from module.downloader.download_by_requests import FundResponse
@@ -16,7 +17,7 @@ class MetricsStrategy(DataCleaningStrategy):
     fund_standard_deviation_pattern = re.compile(r'标准差.+?\'>(.+?)<.+?\'>(.+?)<.+?\'>(.+?)<')
     fund_sharpe_ratio_pattern = re.compile(r'夏普比率.+?\'>(.+?)<.+?\'>(.+?)<.+?\'>(.+?)<')
 
-    def build_url(self, context: FundContext) -> str:
+    def build_url(self, context: FundContext) -> Optional[str]:
         return self.url_template.substitute(fund_code=context.fund_code)
 
     def fill_result(self, fund_response: FundResponse, context: FundContext) -> None:
