@@ -5,6 +5,13 @@ from module.downloader.download_by_requests import FundResponse
 from module.fund_context import FundContext
 
 
+class NoNeedException(Exception):
+    """
+    不满足爬取前提，啥也不用爬
+    """
+    pass
+
+
 class DataCleaningStrategy(ABC):
     """
     数据清洗策略

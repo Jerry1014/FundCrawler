@@ -48,7 +48,7 @@ class PageType(Enum):
     OVERVIEW = auto()
     # 基金经理 https://fundf10.eastmoney.com/jjjl_910009.html
     MANAGER = auto()
-    # 晨星基本信息 https://www.morningstar.cn/handler/fundsearch.ashx
+    # 晨星基本信息 https://www.morningstar.cn/handler/fundsearch.ashx?q=006922&limit=1
     MORNINGSTAR = auto()
     # 基金回报 https://www.morningstar.cn/handler/quicktake.ashx?command=return&fcid=0P00019IIB
     RETURN = auto()

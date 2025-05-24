@@ -22,5 +22,8 @@ class MorningstarStrategy(DataCleaningStrategy):
         if response is None:
             return
 
-        return_json = json.loads(response.text)[0]
-        context.morningstar_fund_id = return_json['FundClassId'] if return_json['FundClassId'] else NO_DATA
+        return_json = json.loads(response.text)
+        if return_json:
+            context.morningstar_fund_id = return_json[0]['FundClassId'] if return_json[0]['FundClassId'] else NO_DATA
+        else:
+            context.morningstar_fund_id = NO_DATA

@@ -2,7 +2,7 @@ import json
 from string import Template
 from typing import Optional
 
-from module.data_mining.strategy.data_mining_strategy import DataCleaningStrategy
+from module.data_mining.strategy.data_mining_strategy import DataCleaningStrategy, NoNeedException
 from module.downloader.download_by_requests import FundResponse
 from module.fund_context import FundContext
 from utils.constants import NO_DATA
@@ -21,7 +21,14 @@ class RiskStrategy(DataCleaningStrategy):
         if not context.morningstar_fund_id:
             return None
         if context.morningstar_fund_id == NO_DATA:
-            raise Exception()
+            context.standard_deviation_five_years = NO_DATA
+            context.standard_deviation_ten_years = NO_DATA
+            context.sharp_rate_five_years = NO_DATA
+            context.sharp_rate_ten_years = NO_DATA
+            context.alpha_to_ind = NO_DATA
+            context.beta_to_ind = NO_DATA
+            context.r_squared_to_ind = NO_DATA
+            raise NoNeedException()
         return self.url_template.substitute(morningstar_fund_id=context.morningstar_fund_id)
 
     def fill_result(self, fund_response: FundResponse, context: FundContext) -> None:
