@@ -29,4 +29,5 @@ class SaveResult2CSV(SavingResultModule):
                                result.to_result_row().items()})
 
     def exit(self):
+        self._file.flush()
         self._file.close()

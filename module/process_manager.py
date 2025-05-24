@@ -57,7 +57,7 @@ class TaskManager:
                 cur_finished_task_num = self._finished_step_count
                 pbar.update(cur_finished_task_num - (last_finished_task_num if last_finished_task_num else 0))
                 last_finished_task_num = cur_finished_task_num
-                sleep(1)
+                sleep(0.1)
 
     def run(self) -> None:
         try:
@@ -109,26 +109,22 @@ class TaskManager:
                         self._downloader.apply(FundRequest(fund_context.fund_code, page_req[0], page_req[1]))
                     self._fund_waiting_dict[fund_context.fund_code] = [page_req[0] for page_req in page_req_list]
                 else:
-                    # 没有新的爬取请求，保存爬取结果
+                    # 没有新爬取请求，保存爬取结果
                     self._fund_context_dict.pop(first_meet_fund_code)
                     self._finished_step_count += 1
                     self._save_result_module.save_result(fund_context)
 
-            # 处理http请求结果
-            counter = 0
             while True:
-                counter += 1
-                # 请求队列太满时，优先等待和处理下结果
-                if counter > 1 and not self._downloader.if_downloader_busy():
-                    break
-
                 try:
                     # 上一步处理了一圈，发现没有事情可以干的时候，可以block等待返回，避免忙等待
-                    block = first_meet_fund_code is None or self._downloader.if_downloader_busy()
+                    block = first_meet_fund_code is None and self._downloader.if_downloader_busy()
                     cur_res = self._downloader.get_result(block)
                     self._fund_waiting_dict[cur_res.fund_code].remove(cur_res.page_type)
                     self._fund_context_dict[cur_res.fund_code].http_response_dict[cur_res.page_type] = cur_res
                 except Empty:
-                    pass
+                    break
+
+                if not self._downloader.if_downloader_busy() or first_meet_fund_code is not None:
+                    break
 
         logging.info("爬取结束")

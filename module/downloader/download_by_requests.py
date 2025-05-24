@@ -9,7 +9,8 @@ from os import cpu_count
 from queue import Empty
 from sys import maxsize
 from time import sleep
-from typing import Optional, List
+from typing import Optional, List, Dict
+from urllib.parse import urlparse
 
 from requests import RequestException, get, Response
 
@@ -29,6 +30,7 @@ class FundRequest:
         self.fund_code = fund_code
         self.page_type = page_type
         self.url = url
+        self.domain = urlparse(url).netloc
 
         if retry_time < 1:
             raise AttributeError
@@ -40,6 +42,7 @@ class FundResponse:
         self.fund_code = request.fund_code
         self.page_type = request.page_type
         self.url = request.url
+        self.domain = urlparse(request.url).netloc
         self.remain_retry_time = request.retry_time - 1
         # 特别地，当下载失败时 res为None
         self.response = response
@@ -52,6 +55,7 @@ class GetPageOnSubProcess(Process):
     """
     多线程http下载(单独进程)
     """
+    MAX_WORKER = (cpu_count() or 1) * 5
 
     def __init__(self, log_level: int):
         super().__init__()
@@ -64,9 +68,7 @@ class GetPageOnSubProcess(Process):
         self.max_request_size = 20
 
         # 爬取速率控制
-        self._rate_control: Optional[RateControl] = None
-        self._executor: Optional[ThreadPoolExecutor] = None
-        self._request_result_list: List[bool] = list()
+        self._request_result_dict: Dict[str, List[bool]] = dict()
 
         logger.setLevel(log_level)
 
@@ -79,17 +81,18 @@ class GetPageOnSubProcess(Process):
         return self._result_queue.get(block=block, timeout=1)
 
     def if_downloader_busy(self) -> bool:
-        return self._result_queue.qsize() >= self.max_request_size
+        return self._request_queue.qsize() >= self.MAX_WORKER
 
     def close_downloader(self):
         self._exit_sign.set()
 
     def join_downloader(self):
-        # downloader子进程的退出
         while self._exit_sign.is_set():
             sleep(0.1)
 
-        # 主进程必须将队列清理干净，否则子进程不会结束(主动结束进程情况下，队列中可能存在未完成的任务也)
+        # By default, if a process is not the creator of the queue
+        # then on exit it will attempt to join the queue’s background thread.
+        # 说人话就是，主进程必须将队列清理干净，否则子进程不会结束
         logging.info(f'队列情况{self._request_queue.qsize()} and {self._result_queue.qsize()}')
         while True:
             try:
@@ -103,6 +106,8 @@ class GetPageOnSubProcess(Process):
             except Empty:
                 break
         self._result_queue.close()
+        self._request_queue.join_thread()
+        self._result_queue.join_thread()
 
         # 等待子进程退出
         self.join()
@@ -131,37 +136,38 @@ class GetPageOnSubProcess(Process):
         if result.response is None and result.remain_retry_time > 0:
             # 失败重试
             self._request_queue.put(result.build_request())
-            self._request_result_list.append(False)
+            if result.domain in self._request_result_dict:
+                self._request_result_dict[result.domain].append(False)
+            else:
+                self._request_result_dict[result.domain] = [False]
         else:
             self._result_queue.put(result)
-            self._request_result_list.append(True)
+            if result.domain in self._request_result_dict:
+                self._request_result_dict[result.domain].append(True)
+            else:
+                self._request_result_dict[result.domain] = [True]
 
     def run(self) -> None:
         """
         爬取主流程
         """
-        self._executor = ThreadPoolExecutor((cpu_count() or 1) * 5)
-        self._rate_control = RateControl(float(self._executor._max_workers))
+        executor_dict: Dict[str, ThreadPoolExecutor] = dict()
+        rate_control_dict: Dict[str, RateControl] = dict()
 
         try:
             logger.info("子进程开启循环")
-            self.do_run()
+            self.do_run(executor_dict, rate_control_dict)
         except Exception as e:
             logging.exception(f"报错啦，子进程完蛋啦 {e}")
         finally:
             logger.info("子进程退出循环")
-            self._executor.shutdown()
-            self._rate_control.exit()
-            self._request_queue.close()
-            self._result_queue.close()
+            for executor in executor_dict.values():
+                executor.shutdown()
+            for rc in rate_control_dict.values():
+                rc.exit()
             self._exit_sign.clear()
-            # By default, if a process is not the creator of the queue 
-            # then on exit it will attempt to join the queue’s background thread. 
-            # 说人话就是，主进程必须将队列清理干净，否则子进程不会结束
-            self._request_queue.join_thread()
-            self._result_queue.join_thread()
 
-    def do_run(self):
+    def do_run(self, executor_dict: Dict[str, ThreadPoolExecutor], rate_control_dict: Dict[str, RateControl]):
         while True:
             # 爬取结束
             if self._exit_sign.is_set() and self._request_queue.empty():
@@ -170,19 +176,30 @@ class GetPageOnSubProcess(Process):
             # 速率控制
             # 一个稍微巧妙的设计 list的append方法是线程安全的，因此各个请求线程可以直接将结果加入列表
             # clear线程不安全，但是无所谓，毕竟我们关注的是某一段时间内的 成功失败率
-            if self._request_result_list:
-                self._rate_control.record(sum(self._request_result_list), len(self._request_result_list)
-                                          , self._executor._work_queue.qsize())
-                self._request_result_list.clear()
-            cur_rate = int(self._rate_control.get_cur_rate())
+            for domain, result_list in self._request_result_dict.items():
+                rate_control_dict[domain].record(sum(result_list), len(result_list)
+                                                 , executor_dict[domain]._work_queue.qsize())
+                result_list.clear()
 
             # 处理爬取请求
             counter = 0
-            while counter < 100 and not self._request_queue.empty() and cur_rate > self._executor._work_queue.qsize():
+            while counter < 100 and not self._request_queue.empty():
                 counter += 1
+
                 try:
                     request = self._request_queue.get(timeout=1)
-                    future = self._executor.submit(self.get_page, request)
-                    future.add_done_callback(self.future_callback)
+
+                    if request.domain not in executor_dict:
+                        executor_dict[request.domain] = ThreadPoolExecutor(max_workers=self.MAX_WORKER)
+                    if request.domain not in rate_control_dict:
+                        rate_control_dict[request.domain] = RateControl(request.domain, float(self.MAX_WORKER))
+
+                    domain_executor = executor_dict[request.domain]
+                    cur_rate = rate_control_dict[request.domain].get_cur_rate()
+                    if cur_rate > domain_executor._work_queue.qsize():
+                        future = domain_executor.submit(self.get_page, request)
+                        future.add_done_callback(self.future_callback)
+                    else:
+                        self._request_queue.put(request)
                 except Empty:
                     pass
