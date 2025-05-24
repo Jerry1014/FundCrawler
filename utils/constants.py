@@ -22,10 +22,10 @@ class FundAttrKey(StrEnum):
     # 兼容带新场景，A+B -> B -> B+C，此时基金经理为时长最长的B，对应的任职时间为 这三段 B连续任职的任职时间
     FUND_MANAGER = '基金经理(最近连续最长任职)',
     DATE_OF_APPOINTMENT = '基金经理的上任时间',
+
     STANDARD_DEVIATION_THREE_YEARS = '近三年标准差',
     SHARPE_THREE_YEARS = '近三年夏普',
-    THREE_YEARS_INCREASE = '近三年涨幅',
-    FIVE_YEARS_INCREASE = '近五年涨幅',
+
     MANAGEMENT_FEE_RATE = '管理费率(每年)',
     CUSTODY_FEE_RATE = '托管费率(每年)',
     SALES_SERVICE_FEE_RATE = '销售服务费率(每年)',
@@ -45,8 +45,6 @@ class PageType(Enum):
     MANAGER = auto()
     # 特色数据 https://fundf10.eastmoney.com/tsdata_910009.html
     METRICS = auto()
-    # 阶段涨幅 https://fundf10.eastmoney.com/jdzf_006624.html
-    INCREASE = auto()
     # 晨星基本信息 https://www.morningstar.cn/handler/fundsearch.ashx
     MORNINGSTAR = auto()
     # 基金回报 https://www.morningstar.cn/handler/quicktake.ashx?command=return&fcid=0P00019IIB

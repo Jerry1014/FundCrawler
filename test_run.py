@@ -14,7 +14,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format=log_format)
 
     # 测试批次大小
-    GetSmallBatch4Test.TEST_CASE_NUM = 10
+    GetSmallBatch4Test.TEST_CASE_NUM = 3
 
     TaskManager(GetSmallBatch4Test()
                 , DataMining([PageType.OVERVIEW, PageType.MANAGER, PageType.MORNINGSTAR, PageType.RETURN])

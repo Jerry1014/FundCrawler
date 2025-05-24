@@ -25,8 +25,6 @@ class FundContext:
         self.date_of_appointment: Optional[str] = None
         self.standard_deviation_three_years: Optional[str] = None
         self.sharpe_three_years: Optional[str] = None
-        self.three_years_increase: Optional[str] = None
-        self.five_years_increase: Optional[str] = None
         self.management_fee_rate: Optional[str] = None
         self.custody_fee_rate: Optional[str] = None
         self.sales_service_fee_rate: Optional[str] = None

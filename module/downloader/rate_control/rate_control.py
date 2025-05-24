@@ -15,7 +15,7 @@ class RateControl:
     WORK_COUNT = 'work_count'
     RATE_CONTROL = 'rate_control'
 
-    refresh_interval_s = 1
+    refresh_interval_s = 0.5
     analyse_mode = False
 
     def __init__(self, domain, max_rate: float):
