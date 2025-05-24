@@ -5,7 +5,7 @@ from typing import Optional
 from module.data_mining.strategy.data_mining_strategy_factory import DataCleaningStrategy
 from module.downloader.download_by_requests import FundResponse
 from module.fund_context import FundContext
-from utils.constants import number_in_eng, NO_DATA
+from utils.constants import number_in_eng, NO_DATA, DATA_IGNORE
 
 
 class OverviewStrategy(DataCleaningStrategy):
@@ -19,10 +19,10 @@ class OverviewStrategy(DataCleaningStrategy):
     fund_company_pattern = re.compile(r'基金管理人</th><td><a.*?">(.+?)</a></td><th>基金托管人')
     fund_value_pattern = re.compile(fr'单位净值.*?：[\s\S]*?({number_in_eng})\s')
 
-    management_fee_rate_pattern = re.compile(fr'管理费率</th><td>(({number_in_eng})%|---)')
+    management_fee_rate_pattern = re.compile(fr'管理费率</th><td>(({number_in_eng})%|---|<a)')
     custody_fee_rate_pattern = re.compile(fr'托管费率</th><td>(({number_in_eng})%|---)')
     sales_service_fee_rate_pattern = re.compile(fr'销售服务费率</th><td>(({number_in_eng})%|---)')
-    
+
     def build_url(self, context: FundContext) -> Optional[str]:
         return self.url_template.substitute(fund_code=context.fund_code)
 
@@ -53,8 +53,12 @@ class OverviewStrategy(DataCleaningStrategy):
 
         management_fee_rate_result = self.management_fee_rate_pattern.search(page_text)
         if management_fee_rate_result:
-            context.management_fee_rate = management_fee_rate_result.group(1) \
-                if management_fee_rate_result.group(1) != '---' else NO_DATA
+            fee_rate = management_fee_rate_result.group(1)
+            if fee_rate == '<a':
+                # 特殊逻辑，部分费用过于复杂，直接是一个跳转链接
+                context.management_fee_rate = DATA_IGNORE
+            else:
+                context.management_fee_rate = fee_rate if fee_rate != '---' else NO_DATA
 
         custody_fee_rate_result = self.custody_fee_rate_pattern.search(page_text)
         if custody_fee_rate_result:

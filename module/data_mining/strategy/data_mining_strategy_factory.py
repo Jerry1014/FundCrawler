@@ -7,7 +7,7 @@ from module.data_mining.strategy.fund_return import ReturnStrategy
 from module.data_mining.strategy.manager import ManagerStrategy
 from module.data_mining.strategy.morningstar import MorningstarStrategy
 from module.data_mining.strategy.overview import OverviewStrategy
-from module.data_mining.strategy.sharpe import MetricsStrategy
+from module.data_mining.strategy.risk import RiskStrategy
 from utils.constants import PageType
 
 
@@ -19,9 +19,9 @@ class DataCleaningStrategyFactory:
     _strategy_dict: dict[PageType, DataCleaningStrategy] = {
         PageType.OVERVIEW: OverviewStrategy(),
         PageType.MANAGER: ManagerStrategy(),
-        PageType.METRICS: MetricsStrategy(),
-        PageType.RETURN: ReturnStrategy(),
         PageType.MORNINGSTAR: MorningstarStrategy(),
+        PageType.RETURN: ReturnStrategy(),
+        PageType.RISK: RiskStrategy(),
     }
 
     @classmethod
