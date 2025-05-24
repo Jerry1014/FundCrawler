@@ -99,6 +99,7 @@ class TaskManager:
                 first_meet_fund_code = fund_code
                 break
 
+            has_new_req = False
             if first_meet_fund_code:
                 fund_context = self._fund_context_dict[first_meet_fund_code]
                 page_req_list = self._data_mining_module.summit_context(fund_context)
@@ -115,6 +116,7 @@ class TaskManager:
 
                     if fund_wait_list:
                         self._fund_waiting_dict[fund_context.fund_code] = fund_wait_list
+                        has_new_req = True
                 else:
                     # 没有新爬取请求，保存爬取结果
                     self._fund_context_dict.pop(first_meet_fund_code)
@@ -124,14 +126,16 @@ class TaskManager:
             while True:
                 try:
                     # 上一步处理了一圈，发现没有事情可以干的时候，可以block等待返回，避免忙等待
-                    block = first_meet_fund_code is None and self._downloader.if_downloader_busy()
+                    block = first_meet_fund_code is None
                     cur_res = self._downloader.get_result(block)
                     self._fund_waiting_dict[cur_res.fund_code].remove(cur_res.page_type)
                     self._fund_context_dict[cur_res.fund_code].http_response_dict[cur_res.page_type] = cur_res
                 except Empty:
-                    break
+                    pass
 
-                if not self._downloader.if_downloader_busy() or first_meet_fund_code is not None:
+                # 下载器不忙的时候 优先发起请求
+                # 没有新请求时 优先保存文件
+                if not self._downloader.if_downloader_busy() or not has_new_req:
                     break
 
         logging.info("爬取结束")
