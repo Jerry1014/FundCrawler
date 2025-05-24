@@ -19,7 +19,7 @@ class DataMining(DataMiningModule):
                 try:
                     DataCleaningStrategyFactory.get_strategy(page_type).fill_result(response, context)
                 except Exception as e:
-                    logging.error(f'基金{context.fund_code}类型{page_type}分析失败 {response.response.json()}', e)
+                    logging.error(f'基金{context.fund_code}类型{page_type}分析失败 {response.response.text}', e)
             else:
                 try:
                     url = DataCleaningStrategyFactory.get_strategy(page_type).build_url(context)

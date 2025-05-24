@@ -33,7 +33,7 @@ class FundRequest:
         self.domain = urlparse(url).netloc
 
         if retry_time < 1:
-            raise AttributeError
+            raise Exception()
         self.retry_time = retry_time
 
 

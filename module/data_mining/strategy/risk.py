@@ -26,7 +26,7 @@ class RiskStrategy(DataCleaningStrategy):
 
     def fill_result(self, fund_response: FundResponse, context: FundContext) -> None:
         response = fund_response.response
-        if response is None:
+        if response is None or response.text == 'null':
             return
 
         return_json_list = json.loads(response.text)
