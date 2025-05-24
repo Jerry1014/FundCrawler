@@ -24,7 +24,10 @@ class FundAttrKey(StrEnum):
     STANDARD_DEVIATION_THREE_YEARS = '近三年标准差',
     SHARPE_THREE_YEARS = '近三年夏普',
     THREE_YEARS_INCREASE = '近三年涨幅',
-    FIVE_YEARS_INCREASE = '近五年涨幅'
+    FIVE_YEARS_INCREASE = '近五年涨幅',
+    MANAGEMENT_FEE_RATE = '管理费率(每年)',
+    CUSTODY_FEE_RATE = '托管费率(每年)',
+    SALES_SERVICE_FEE_RATE = '销售服务费率(每年)',
 
 
 @unique

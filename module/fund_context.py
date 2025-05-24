@@ -25,6 +25,9 @@ class FundContext:
         self.sharpe_three_years: Optional[str] = None
         self.three_years_increase: Optional[str] = None
         self.five_years_increase: Optional[str] = None
+        self.management_fee_rate: Optional[str] = None
+        self.custody_fee_rate: Optional[str] = None
+        self.sales_service_fee_rate: Optional[str] = None
 
         # 爬取到的网页数据
         self.http_response_dict: dict[PageType, FundResponse] = dict()
@@ -43,4 +46,7 @@ class FundContext:
             FundAttrKey.SHARPE_THREE_YEARS: self.sharpe_three_years,
             FundAttrKey.THREE_YEARS_INCREASE: self.three_years_increase,
             FundAttrKey.FIVE_YEARS_INCREASE: self.five_years_increase,
+            FundAttrKey.MANAGEMENT_FEE_RATE: self.management_fee_rate,
+            FundAttrKey.CUSTODY_FEE_RATE: self.custody_fee_rate,
+            FundAttrKey.SALES_SERVICE_FEE_RATE: self.sales_service_fee_rate,
         }

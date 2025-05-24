@@ -16,7 +16,7 @@ class RateControl:
     RATE_CONTROL = 'rate_control'
 
     refresh_interval_s = 1
-    analyse_mode = True
+    analyse_mode = False
 
     def __init__(self, domain, max_rate: float):
         self._domain = domain

@@ -18,6 +18,10 @@ class OverviewStrategy(DataCleaningStrategy):
     fund_company_pattern = re.compile(r'基金管理人</th><td><a.*?">(.+?)</a></td><th>基金托管人')
     fund_value_pattern = re.compile(fr'单位净值.*?：[\s\S]*?({number_in_eng})\s')
 
+    management_fee_rate_pattern = re.compile(fr'管理费率</th><td>(({number_in_eng})%|---)')
+    custody_fee_rate_pattern = re.compile(fr'托管费率</th><td>(({number_in_eng})%|---)')
+    sales_service_fee_rate_pattern = re.compile(fr'销售服务费率</th><td>(({number_in_eng})%|---)')
+    
     def build_url(self, context: FundContext) -> str:
         return self.url_template.substitute(fund_code=context.fund_code)
 
@@ -45,3 +49,18 @@ class OverviewStrategy(DataCleaningStrategy):
         fund_value_result = self.fund_value_pattern.search(page_text)
         if fund_value_result:
             context.fund_value = fund_value_result.group(1)
+
+        management_fee_rate_result = self.management_fee_rate_pattern.search(page_text)
+        if management_fee_rate_result:
+            context.management_fee_rate = management_fee_rate_result.group(1) \
+                if management_fee_rate_result.group(1) != '---' else NO_DATA
+
+        custody_fee_rate_result = self.custody_fee_rate_pattern.search(page_text)
+        if custody_fee_rate_result:
+            context.custody_fee_rate = custody_fee_rate_result.group(1) \
+                if custody_fee_rate_result.group(1) != '---' else NO_DATA
+
+        sales_service_fee_rate_result = self.sales_service_fee_rate_pattern.search(page_text)
+        if sales_service_fee_rate_result:
+            context.sales_service_fee_rate = sales_service_fee_rate_result.group(1) \
+                if sales_service_fee_rate_result.group(1) != '---' else NO_DATA
