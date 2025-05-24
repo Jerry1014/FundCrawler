@@ -1,7 +1,15 @@
 from abc import abstractmethod, ABC
+from typing import Optional
 
 from module.downloader.download_by_requests import FundResponse
 from module.fund_context import FundContext
+
+
+class NoNeedException(Exception):
+    """
+    不满足爬取前提，啥也不用爬
+    """
+    pass
 
 
 class DataCleaningStrategy(ABC):
@@ -11,7 +19,10 @@ class DataCleaningStrategy(ABC):
     """
 
     @abstractmethod
-    def build_url(self, context: FundContext) -> str:
+    def build_url(self, context: FundContext) -> Optional[str]:
+        """
+        @return: 需要爬取的url，特殊地，返回None代表需要等待其他策略的爬取结果，暂时无法给出爬取url
+        """
         pass
 
     @abstractmethod

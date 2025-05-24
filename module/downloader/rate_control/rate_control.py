@@ -15,10 +15,12 @@ class RateControl:
     WORK_COUNT = 'work_count'
     RATE_CONTROL = 'rate_control'
 
-    refresh_interval_s = 1
+    refresh_interval_s = 0.5
     analyse_mode = False
 
-    def __init__(self, max_rate: float):
+    def __init__(self, domain, max_rate: float):
+        self._domain = domain
+
         # 请求的成功失败计数
         self._total_success_count: int = 0
         self._total_fail_count: int = 0
@@ -41,7 +43,7 @@ class RateControl:
         self._writer: Optional[DictWriter] = None
 
         if self.analyse_mode:
-            self._file = open(RateControl.RECORD_FILE, 'w', newline='', encoding='utf-8')
+            self._file = open(self._domain + '-' + RateControl.RECORD_FILE, 'w', newline='', encoding='utf-8')
             field_names = [RateControl.FAIL_RATE, RateControl.WORK_COUNT, RateControl.RATE_CONTROL]
             self._writer = DictWriter(self._file, fieldnames=field_names)
             self._writer.writeheader()
@@ -96,4 +98,5 @@ class RateControl:
 
     def exit(self):
         if self.analyse_mode:
+            self._file.flush()
             self._file.close()

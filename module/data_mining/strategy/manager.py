@@ -1,5 +1,6 @@
 import re
 from string import Template
+from typing import Optional
 
 from module.data_mining.strategy.data_mining_strategy_factory import DataCleaningStrategy
 from module.downloader.download_by_requests import FundResponse
@@ -15,7 +16,7 @@ class ManagerStrategy(DataCleaningStrategy):
     fund_manager_name_pattern = re.compile(r'现任基金经理简介[\s\S]+?姓名：[\s\S]+?<a.+?>(.+?)</a>')
     fund_manager_date_of_appointment_pattern = re.compile(r'现任基金经理简介[\s\S]+?上任日期：[\s\S]+?>(.+?)</p>')
 
-    def build_url(self, context: FundContext) -> str:
+    def build_url(self, context: FundContext) -> Optional[str]:
         return self.url_template.substitute(fund_code=context.fund_code)
 
     def fill_result(self, fund_response: FundResponse, context: FundContext) -> None:
