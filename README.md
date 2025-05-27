@@ -29,6 +29,7 @@
 - Python3.13
 - 安装依赖 pip install -r requirements.txt
 - 爬取基金数据
+  - 结果保存在 result/result.csv
   - 运行test_run.py 爬一点点数据看下效果
   - 运行run.py 爬取完整数据
 - 爬取结果分析，参考 utils/result_analyse.py
