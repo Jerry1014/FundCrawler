@@ -34,7 +34,13 @@ class RiskStrategy(DataCleaningStrategy):
     def fill_result(self, fund_response: FundResponse, context: FundContext) -> None:
         response = fund_response.response
         if response is None or response.text == 'null':
-            return
+            context.standard_deviation_five_years = NO_DATA
+            context.standard_deviation_ten_years = NO_DATA
+            context.sharp_rate_five_years = NO_DATA
+            context.sharp_rate_ten_years = NO_DATA
+            context.alpha_to_ind = NO_DATA
+            context.beta_to_ind = NO_DATA
+            context.r_squared_to_ind = NO_DATA
 
         return_json_list = json.loads(response.text)
         for fund_risk in return_json_list['RiskAssessment']:
