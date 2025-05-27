@@ -3,7 +3,7 @@ from csv import DictReader
 from datetime import date
 
 from constants import FundAttrKey, NO_DATA, DATA_IGNORE
-from utils.TopKHolder import TopKHolder
+from utils.top_k_holder import TopKHolder
 
 
 def analyse(fund_filter, tenure_day_filter):
