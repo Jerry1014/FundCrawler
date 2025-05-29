@@ -42,18 +42,21 @@ DataMining .down.> DataCleaningStrategyFactory
 DataCleaningStrategyFactory .down.> DataCleaningStrategy
 interface DataCleaningStrategy
 note bottom: 页面解析策略(给出页面url和对应的解析结果)
-class RiseStrategy
-note bottom: 阶段涨幅页面的解析
+class MorningstarStrategy
+note bottom: 晨星特有代码的解析
 class ManagerStrategy
 note bottom: 基金经理页面的解析
 class OverviewStrategy
 note bottom: 基金概况页面的解析
-class MetricsStrategy
-note bottom: 特色数据页面的解析
-DataCleaningStrategy ^-down- RiseStrategy
+class RiskStrategy
+note bottom: 风险相关数据的解析
+class ReturnStrategy
+note bottom: 回报相关数据的解析
+DataCleaningStrategy ^-down- MorningstarStrategy
 DataCleaningStrategy ^-down- ManagerStrategy
 DataCleaningStrategy ^-down- OverviewStrategy
-DataCleaningStrategy ^-down- MetricsStrategy
+DataCleaningStrategy ^-down- RiskStrategy
+DataCleaningStrategy ^-down- ReturnStrategy
 
 class SaveResult2CSV
 note bottom: 将结果保存为csv文件

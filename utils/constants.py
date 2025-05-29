@@ -27,8 +27,8 @@ class FundAttrKey(StrEnum):
     FUND_MANAGER = '基金经理(最近连续最长任职)',
     DATE_OF_APPOINTMENT = '基金经理的上任时间',
 
-    ANNUALIZED_RETURN_FIVE_YEAR = "五年回报（年化）",
-    ANNUALIZED_RETURN_TEN_YEAR = "十年回报（年化）",
+    ANNUALIZED_RETURN_FIVE_YEAR = "五年回报(年化)",
+    ANNUALIZED_RETURN_TEN_YEAR = "十年回报(年化)",
 
     STANDARD_DEVIATION_FIVE_YEARS = '标准差(五年%)',
     STANDARD_DEVIATION_TEN_YEARS = '标准差(十年%)',

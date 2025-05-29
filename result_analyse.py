@@ -2,12 +2,24 @@ import json
 from csv import DictReader
 from datetime import date
 
-from constants import FundAttrKey, NO_DATA, DATA_IGNORE
+from module.saving_result.save_result_2_file import SaveResult2CSV
+from utils.constants import FundAttrKey, NO_DATA, DATA_IGNORE
 from utils.top_k_holder import TopKHolder
 
 
 def analyse(fund_filter, tenure_day_filter):
-    with open('../result/result.csv', 'r', newline='', encoding='utf-8') as csvfile:
+    """
+    @param fund_filter: 基金的基本筛选条件，如本次只考虑纯债基金等
+    @param tenure_day_filter: 基金经理在本基金的任职时间
+    
+    (个人)对基金经理的评价核心是 时间 风险 回报
+    对于时间 最短的评价周期是五年(基金经理在本基金的任职时间) 最好是十年
+    对于风险 并不追求波动最低，而是追求 收益/风险的性价比，也就是夏普系数
+    对于回报 好的经理需要有好的超额回报，要不然我为什么不直接买指数呢，也就是阿尔法系数
+    
+    """
+    with open(SaveResult2CSV.RESULT_FILE_PATH + SaveResult2CSV.RESULT_FILE_NAME, 'r', newline='',
+              encoding='utf-8') as csvfile:
         reader: DictReader = DictReader(csvfile)
 
         # 筛选基金类型
