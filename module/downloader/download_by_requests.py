@@ -27,10 +27,10 @@ logger.addHandler(handler)
 
 class FundRequest:
     def __init__(self, fund_code: str, page_type: PageType, url, retry_time: int = maxsize):
-        self.fund_code = fund_code
-        self.page_type = page_type
-        self.url = url
-        self.domain = urlparse(url).netloc
+        self.fund_code: str = fund_code
+        self.page_type: PageType = page_type
+        self.url: str = url
+        self.domain: str = urlparse(url).netloc
 
         if retry_time < 1:
             raise Exception()
@@ -39,13 +39,13 @@ class FundRequest:
 
 class FundResponse:
     def __init__(self, request: FundRequest, response: Optional[Response]):
-        self.fund_code = request.fund_code
-        self.page_type = request.page_type
-        self.url = request.url
-        self.domain = urlparse(request.url).netloc
-        self.remain_retry_time = request.retry_time - 1
+        self.fund_code: str = request.fund_code
+        self.page_type: PageType = request.page_type
+        self.url: str = request.url
+        self.domain: str = urlparse(request.url).netloc
+        self.remain_retry_time: int = request.retry_time - 1
         # 特别地，当下载失败时 res为None
-        self.response = response
+        self.response: Optional[Response] = response
 
     def build_request(self):
         return FundRequest(self.fund_code, self.page_type, self.url)
