@@ -99,16 +99,19 @@ def get_annual_fee(row):
 if __name__ == '__main__':
     print('⬇️ 纯债基金分析 ⬇️')
     analyse(lambda fund_name, fund_type, fund_size: '债券型' in fund_type and '纯债' in fund_name
-                                                    and fund_size is not None and fund_size > 10,
+                                                    and fund_size is not None and fund_size > 10
+                                                    and ('C' not in fund_name and 'Y' not in fund_name),
             lambda tenure_days: tenure_days > 7 * 365)
     print('⬆️ 纯债基金分析 ⬆️')
     print('⬇️ 国内货币基金分析 ⬇️')
     analyse(lambda fund_name, fund_type, fund_size: (('指数型' in fund_type and '海外股票' not in fund_type)
                                                      or ('混合型' in fund_type and '偏债' not in fund_type))
-                                                    and fund_size is not None and fund_size > 10,
+                                                    and fund_size is not None and fund_size > 10
+                                                    and ('C' not in fund_name and 'Y' not in fund_name),
             lambda tenure_days: tenure_days > 10 * 365)
     print('⬆️ 国内货币基金分析 ⬆️')
     print('⬇️ 全部基金比较 ⬇️')
-    analyse(lambda fund_name, fund_type, fund_size: fund_size is not None and fund_size > 10,
+    analyse(lambda fund_name, fund_type, fund_size: fund_size is not None and fund_size > 10
+                                                    and ('C' not in fund_name and 'Y' not in fund_name),
             lambda tenure_days: tenure_days > 5 * 365)
     print('⬆️ 全部基金比较 ⬆️')
