@@ -41,6 +41,7 @@ class RiskStrategy(DataCleaningStrategy):
             context.alpha_to_ind = NO_DATA
             context.beta_to_ind = NO_DATA
             context.r_squared_to_ind = NO_DATA
+            return 
 
         return_json_list = json.loads(response.text)
         for fund_risk in return_json_list['RiskAssessment']:
