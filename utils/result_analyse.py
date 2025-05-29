@@ -33,7 +33,7 @@ def analyse(fund_filter, tenure_day_filter):
             meet_tenure_fund_list.append(row)
         print(f'符合时间要求的基金数量为{len(meet_tenure_fund_list)}')
 
-        # 选择夏普排名前10%的基金
+        # 1.1 选择夏普排名前10%的基金
         fund_top_holder: TopKHolder = TopKHolder(lambda cur_row: float(cur_row[FundAttrKey.SHARP_RATE_TEN_YEARS]),
                                                  len(meet_tenure_fund_list) // 10)
         for row in meet_tenure_fund_list:
@@ -43,7 +43,7 @@ def analyse(fund_filter, tenure_day_filter):
                 fund_top_holder.put(row)
         top_sharp_fund_list = fund_top_holder.cur_k()
 
-        # 根据阿尔法系数选择排名前三的基金
+        # 1.2 根据阿尔法系数选择排名前三的基金
         alpha_holder = TopKHolder(
             lambda cur_row: float(row[FundAttrKey.ALPHA_TO_IND]) - get_annual_fee(cur_row), 3)
         for row in top_sharp_fund_list:
@@ -53,18 +53,19 @@ def analyse(fund_filter, tenure_day_filter):
         alpha_fund_list = alpha_holder.cur_k()
         print(f'根据阿尔法选择的基金是\n{json.dumps(alpha_fund_list, ensure_ascii=False)}')
 
-        # 根据最终的年化回报选择排名前三的基金
+        # 2.1 根据最终的年化回报选择排名前三的基金
         return_holder = TopKHolder(
             lambda cur_row: float(row[FundAttrKey.ANNUALIZED_RETURN_TEN_YEAR]) - get_annual_fee(cur_row), 3)
-        for row in top_sharp_fund_list:
+        for row in meet_tenure_fund_list:
             if (row[FundAttrKey.ANNUALIZED_RETURN_TEN_YEAR] != NO_DATA
                     and row[FundAttrKey.MANAGEMENT_FEE_RATE] != DATA_IGNORE):
                 return_holder.put(row)
         return_fund_list = return_holder.cur_k()
 
-        # 回报很好 但是阿尔法不高
+        # 买基金其实还是很在意回报 需要对回报很好 但是夏普+阿尔法不高的基金进行归因
         # 1 基金类型不纯 本次分析掺和了不同的类型
-        # 2 也可以借此看下 挣钱的赛道是什么 可能是个不错的长坡
+        # 2 风险很高
+        # 3 赛道特殊 如美股 阿尔法很弱但是胜在贝塔
         return_without_alpha_fund_list = list()
         alpha_fund_set = {row[FundAttrKey.FUND_SIMPLE_NAME] for row in alpha_fund_list}
         for row in return_fund_list:
