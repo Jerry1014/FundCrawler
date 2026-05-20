@@ -1,16 +1,12 @@
-"""
-模块间交互所使用的BO
-"""
+"""基金数据载体 —— 模块间交互的数据对象"""
+
 from typing import Optional
 
-from module.downloader.download_by_requests import FundResponse
-from utils.constants import FundAttrKey, PageType
+from utils.constants import FundAttrKey
 
 
 class FundContext:
-    """
-    基金爬取数据的上下文
-    """
+    """基金爬取数据的上下文"""
 
     def __init__(self, fund_code: str, fund_name: str):
         self.fund_code: str = fund_code
@@ -35,9 +31,6 @@ class FundContext:
         self.alpha_to_ind: Optional[str] = None
         self.beta_to_ind: Optional[str] = None
         self.r_squared_to_ind: Optional[str] = None
-
-        # 爬取到的网页数据
-        self.http_response_dict: dict[PageType, FundResponse] = dict()
 
     def to_result_row(self) -> dict[FundAttrKey, Optional[str]]:
         return {

@@ -1,19 +1,19 @@
-"""
-标准的爬取流程
-爬取所有的基金信息，并将结果保证到文件中
-"""
+"""FundCrawler V2 — 入口"""
+
+import asyncio
 import logging
 
-from module.crawling_target.get_fund_by_web import GetFundByWeb
-from module.data_mining.data_mining import DataMining
-from module.process_manager import TaskManager
-from module.saving_result.save_result_2_file import SaveResult2CSV
+from crawler.engine import run
+from crawler.target_loader import SmallBatchLoader
 from utils.constants import log_format
 
 if __name__ == '__main__':
-    # 日志级别
     logging.basicConfig(level=logging.WARN, format=log_format)
 
-    TaskManager(GetFundByWeb()
-                , DataMining()
-                , SaveResult2CSV()).run()
+    # 测试模式：爬取少量基金
+    loader = SmallBatchLoader(limit=10)
+    # 全量模式：WebTargetLoader()
+    # 断点续传：RetryTargetLoader(WebTargetLoader())
+    # 指定基金：StaticTargetLoader([("000001", "测试")])
+
+    asyncio.run(run(loader, initial_rate=10, max_rate=50))
