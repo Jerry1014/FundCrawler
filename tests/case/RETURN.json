@@ -1,0 +1,192 @@
+{
+  "CurrentReturn": {
+    "EffectiveDate": "2026-05-18",
+    "Return": [
+      {
+        "Name": "一个月回报",
+        "Return": "0.34848",
+        "ReturnToInd": "-5.70352",
+        "ReturnToCat": "-6.53192",
+        "ReturnRank": "",
+        "ReturnCatSize": "",
+        "ReturnBenchmark": "",
+        "ReturnCategory": ""
+      },
+      {
+        "Name": "三个月回报",
+        "Return": "18.74496",
+        "ReturnToInd": "8.96604",
+        "ReturnToCat": "5.04435",
+        "ReturnRank": "",
+        "ReturnCatSize": "",
+        "ReturnBenchmark": "",
+        "ReturnCategory": ""
+      },
+      {
+        "Name": "六个月回报",
+        "Return": "15.28954",
+        "ReturnToInd": "-0.10908",
+        "ReturnToCat": "-7.65439",
+        "ReturnRank": "",
+        "ReturnCatSize": "",
+        "ReturnBenchmark": "",
+        "ReturnCategory": ""
+      },
+      {
+        "Name": "今年以来回报",
+        "Return": "15.82721",
+        "ReturnToInd": "3.77838",
+        "ReturnToCat": "-2.01207",
+        "ReturnRank": "",
+        "ReturnCatSize": "",
+        "ReturnBenchmark": "",
+        "ReturnCategory": ""
+      },
+      {
+        "Name": "一年回报",
+        "Return": "80.55341",
+        "ReturnToInd": "34.79979",
+        "ReturnToCat": "13.70137",
+        "ReturnRank": "",
+        "ReturnCatSize": "",
+        "ReturnBenchmark": "",
+        "ReturnCategory": ""
+      },
+      {
+        "Name": "二年回报（年化）",
+        "Return": "41.99783",
+        "ReturnToInd": "18.34966",
+        "ReturnToCat": "7.89569",
+        "ReturnRank": "",
+        "ReturnCatSize": "",
+        "ReturnBenchmark": "",
+        "ReturnCategory": ""
+      },
+      {
+        "Name": "三年回报（年化）",
+        "Return": "20.50256",
+        "ReturnToInd": "11.33552",
+        "ReturnToCat": "4.81168",
+        "ReturnRank": "",
+        "ReturnCatSize": "",
+        "ReturnBenchmark": "",
+        "ReturnCategory": ""
+      },
+      {
+        "Name": "五年回报（年化）",
+        "Return": "7.34828",
+        "ReturnToInd": "9.83505",
+        "ReturnToCat": "3.35061",
+        "ReturnRank": "",
+        "ReturnCatSize": "",
+        "ReturnBenchmark": "",
+        "ReturnCategory": ""
+      },
+      {
+        "Name": "十年回报（年化）",
+        "Return": "11.63323",
+        "ReturnToInd": "6.44983",
+        "ReturnToCat": "1.82375",
+        "ReturnRank": "",
+        "ReturnCatSize": "",
+        "ReturnBenchmark": "",
+        "ReturnCategory": ""
+      }
+    ]
+  },
+  "MonthEndReturn": {
+    "EffectiveDate": "2026-04-30",
+    "Return": [
+      {
+        "Name": "一个月回报",
+        "Return": "22.23385",
+        "ReturnToInd": "",
+        "ReturnToCat": "",
+        "ReturnRank": "",
+        "ReturnCatSize": "",
+        "ReturnBenchmark": "",
+        "ReturnCategory": ""
+      },
+      {
+        "Name": "三个月回报",
+        "Return": "27.66119",
+        "ReturnToInd": "",
+        "ReturnToCat": "",
+        "ReturnRank": "",
+        "ReturnCatSize": "",
+        "ReturnBenchmark": "",
+        "ReturnCategory": ""
+      },
+      {
+        "Name": "六个月回报",
+        "Return": "22.91654",
+        "ReturnToInd": "",
+        "ReturnToCat": "",
+        "ReturnRank": "",
+        "ReturnCatSize": "",
+        "ReturnBenchmark": "",
+        "ReturnCategory": ""
+      },
+      {
+        "Name": "今年以来回报",
+        "Return": "22.52244",
+        "ReturnToInd": "",
+        "ReturnToCat": "",
+        "ReturnRank": "",
+        "ReturnCatSize": "",
+        "ReturnBenchmark": "",
+        "ReturnCategory": ""
+      },
+      {
+        "Name": "一年回报",
+        "Return": "99.54901",
+        "ReturnToInd": "",
+        "ReturnToCat": "",
+        "ReturnRank": "82",
+        "ReturnCatSize": "656",
+        "ReturnBenchmark": "",
+        "ReturnCategory": ""
+      },
+      {
+        "Name": "二年回报（年化）",
+        "Return": "48.42039",
+        "ReturnToInd": "",
+        "ReturnToCat": "",
+        "ReturnRank": "62",
+        "ReturnCatSize": "558",
+        "ReturnBenchmark": "",
+        "ReturnCategory": ""
+      },
+      {
+        "Name": "三年回报（年化）",
+        "Return": "21.82302",
+        "ReturnToInd": "",
+        "ReturnToCat": "",
+        "ReturnRank": "47",
+        "ReturnCatSize": "462",
+        "ReturnBenchmark": "",
+        "ReturnCategory": ""
+      },
+      {
+        "Name": "五年回报（年化）",
+        "Return": "8.08273",
+        "ReturnToInd": "",
+        "ReturnToCat": "",
+        "ReturnRank": "37",
+        "ReturnCatSize": "293",
+        "ReturnBenchmark": "",
+        "ReturnCategory": ""
+      },
+      {
+        "Name": "十年回报（年化）",
+        "Return": "11.70971",
+        "ReturnToInd": "",
+        "ReturnToCat": "",
+        "ReturnRank": "28",
+        "ReturnCatSize": "97",
+        "ReturnBenchmark": "",
+        "ReturnCategory": ""
+      }
+    ]
+  }
+}

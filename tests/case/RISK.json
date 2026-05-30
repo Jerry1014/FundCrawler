@@ -1,0 +1,76 @@
+{
+  "FundClassId": null,
+  "EffectiveDate": "2026-03-31",
+  "RatingDate": "2026-03-31",
+  "RiskProfile3Year": "",
+  "RiskProfile3YearCatToMkt": "M",
+  "Rating1Year": "0",
+  "Rating1YearEncode": "vYPRuCOjbGI%3d",
+  "Rating2Year": "0",
+  "Rating2YearEncode": "yTrqDhcNHuI%3d",
+  "Rating3Year": "4",
+  "Rating3YearEncode": "cJyHWnQeE5A%3d",
+  "Rating5Year": "4",
+  "Rating5YearEncode": "EC%2ffbSKcF54%3d",
+  "Rating10Year": "0",
+  "Rating10YearEncode": "SpCX0AdnhPQ%3d",
+  "Rating2Year_Risk": "3",
+  "Rating3Year_Risk": "3",
+  "Rating5Year_Risk": "3",
+  "Rating10Year_Risk": "0",
+  "RiskAssessment": [
+    {
+      "Name": "平均回报（%）",
+      "Year3": "",
+      "Year3Rank": "",
+      "Year5": "2.87702",
+      "Year5Rank": "",
+      "Year10": "",
+      "Year10Rank": ""
+    },
+    {
+      "Name": "标准差（%）",
+      "Year3": "16.81485",
+      "Year3Rank": "",
+      "Year5": "18.26328",
+      "Year5Rank": "",
+      "Year10": "",
+      "Year10Rank": ""
+    },
+    {
+      "Name": "晨星风险系数",
+      "Year3": "8.44463",
+      "Year3Rank": "",
+      "Year5": "11.46649",
+      "Year5Rank": "",
+      "Year10": "",
+      "Year10Rank": ""
+    },
+    {
+      "Name": "夏普比率",
+      "Year3": "1.20156",
+      "Year3Rank": "",
+      "Year5": "0.44460",
+      "Year5Rank": "",
+      "Year10": "",
+      "Year10Rank": ""
+    }
+  ],
+  "RiskStats": [
+    {
+      "Name": "阿尔法系数（%）",
+      "ToInd": "5.46289",
+      "ToCat": "11.77110"
+    },
+    {
+      "Name": "贝塔系数",
+      "ToInd": "1.46742",
+      "ToCat": "0.79336"
+    },
+    {
+      "Name": "R平方",
+      "ToInd": "49.72944",
+      "ToCat": "32.10588"
+    }
+  ]
+}

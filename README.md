@@ -3,7 +3,7 @@
 #### 重要提示
 
 ![GitHub license](https://img.shields.io/github/license/tindy2013/subconverter.svg)
-- 202505 重大代码修改，报错/奇怪bug，尝试切换previous_release_version分支使用
+- 202605 重大代码修改（纯AI重构），报错/奇怪bug，尝试切换PreviousReleaseVersion分支使用
 
         购买基金前，请务必在官方网站上确认爬取的数据无误！
         爬虫仅供学习交流使用，请不要对目标网站造成负担，并在心里默默感谢网站提供的免费数据
@@ -26,7 +26,7 @@
 
 # 食用方法
 
-- Python3.13
+- Python3.14
 - 安装依赖 pip install -r requirements.txt
 - 爬取基金数据
   - 结果保存在 result/result.csv
@@ -34,25 +34,53 @@
   - 运行run.py 爬取完整数据
 - 爬取结果分析，参考 result_analyse.py
 
-# 未来更新计划
-作者太懒了，什么也没有留下
-
 # 技术相关
-![Image text](docs/img/overview.png)
 
-- (结合profile分析)爬虫的瓶颈在于网站的反爬策略
-  - 爬取1000个基金，总耗时约35s
-  - 获取要爬取的1000个基金目录 get_small_batch_4_test.py:18(get_fund_list) 调用1次 耗时0.9813s
-  - http数据解析模块 data_mining.py:12(summit_context) 调用2000次 耗时1.544s
-  - 基金结果保存 save_result_2_file.py:27(save_result) 调用1000次 耗时0.03239s
-  - 其余时间都花在了等待http返回上，因此需要尽可能得打满http请求
-    - 0 (未实现)避开基于ip的爬虫流量控制，最好还是走代理ip，但因为作者太穷而作罢
-    - 1 为了避免GIL和频繁的线程切换影响效率，http下载模块是单独的子进程，通过管道通信，并在主流程中优先处理http请求的提交
-    - 2 主流程的循环中，需要尽量避免出现http请求队列为空的情况
-    - 3 module.downloader.rate_control.rate_control.RateControl  
-      单独设置一个速率控制类，尝试寻找一个最合适的并发数  
-      失败惩罚 成功奖励 并发数的变化率随迭代数的增加而降低
-      ![Image text](docs/img/rate_control.png)
+```mermaid
+flowchart TB
+    subgraph 输入
+        TL[TargetLoader<br/>基金列表]
+    end
 
-# Star History
-[![Star History Chart](https://api.star-history.com/svg?repos=Jerry1014/FundCrawler&type=Date)](https://star-history.com/#Jerry1014/FundCrawler&Date)
+    subgraph 引擎["Engine · 20 并发槽位"]
+        P1[Phase 1 · gather] --> P2[Phase 2 · gather]
+        P1 --> OV[overview · EastMoney]
+        P1 --> MG[manager · EastMoney]
+        P1 --> MS[morningstar · 晨星搜索]
+        P2 --> RT[return · 晨星详情]
+        P2 --> RK[risk · 晨星详情]
+    end
+
+    subgraph 输出
+        WR[ResultWriter · CSV]
+    end
+
+    TL --> 引擎
+    引擎 --> WR
+```
+
+每只基金 5 个数据源，按依赖自动分两阶段——morningstar ID 就绪后 Phase 2 才开始。每个 phase 内 `gather` 并行，瓶颈只取决于最慢的那个 step。
+
+### 动态并发控制
+
+三个域名各自独立 AIMD，在线探测失败率自动收敛——不需要人工设定"每个域名最多 N 并发"。
+
+```mermaid
+flowchart TD
+    subgraph 调整循环["每 0.5s / 1.0s"]
+        A[统计窗口成败] --> B{失败率 ≥ 20%?}
+        B -- 是 --> C[并发 × 0.75]
+        B -- 否 --> D[并发 + 1]
+        C --> E[更新信号量]
+        D --> E
+    end
+    E --> F[请求 → 有空额?]
+    F -- 无 --> G[排队]
+    G --> F
+    F -- 有 --> H[发出]
+    H --> I{最终结果}
+    I -- 成功/失败 --> A
+```
+### 扩展点
+
+换基金来源 → 实现 `TargetLoader`；加数据源 → 添加 `Step` 到 `STEPS`；换输出格式 → 替换 `ResultWriter`。
