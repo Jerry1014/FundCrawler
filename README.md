@@ -34,31 +34,62 @@
   - 运行run.py 爬取完整数据
 - 爬取结果分析，参考 result_analyse.py
 
-# 未来更新计划
-作者太懒了，什么也没有留下
-
 # 技术相关
+
 ```mermaid
-graph LR
-  run[run.py] --> engine((Engine))
+flowchart TB
+    subgraph 输入
+        TL[TargetLoader<br/>基金列表]
+    end
 
-  subgraph crawler
-    engine -->|list| loader[TargetLoader]
-    engine -->|fetch| fetcher[Fetcher]
-    fetcher --> rc[RateController]
-    engine -->|parse| parsers[parsers/]
-    parsers --> eastmoney[eastmoney.py]
-    parsers --> morningstar[morningstar.py]
-    engine -->|write| writer[Writer]
-    ctx[FundContext] -.-> engine
-  end
+    subgraph 引擎["Engine · 20 并发槽位"]
+        P1[Phase 1 · gather] --> P2[Phase 2 · gather]
+        P1 --> OV[overview · EastMoney]
+        P1 --> MG[manager · EastMoney]
+        P1 --> MS[morningstar · 晨星搜索]
+        P2 --> RT[return · 晨星详情]
+        P2 --> RK[risk · 晨星详情]
+    end
 
-  loader -.->|🔄 拓展点1| L[换基金来源]
-  parsers -.->|🔄 拓展点2| P[加数据源]
-  writer -.->|🔄 拓展点3| W[换输出格式]
+    subgraph 输出
+        WR[ResultWriter · CSV]
+    end
+
+    TL --> 引擎
+    引擎 --> WR
 ```
-自适应流量控制：在线探测失败率，动态调节并发上限。
-每只基金一个协程，根据 `STEPS` 依赖声明自动分组并发——依赖深度是唯一瓶颈，页面数量不是。
 
-# Star History
-[![Star History Chart](https://api.star-history.com/svg?repos=Jerry1014/FundCrawler&type=Date)](https://star-history.com/#Jerry1014/FundCrawler&Date)
+每只基金 5 个数据源，按依赖自动分两阶段——morningstar ID 就绪后 Phase 2 才开始。每个 phase 内 `gather` 并行，瓶颈只取决于最慢的那个 step。
+
+### 动态并发控制
+
+三个域名各自独立 AIMD，在线探测失败率自动收敛——不需要人工设定"每个域名最多 N 并发"。
+
+```mermaid
+flowchart TD
+    subgraph 调整循环["每 0.5s / 1.0s"]
+        A[统计窗口成败] --> B{失败率 ≥ 20%?}
+        B -- 是 --> C[并发 × 0.75]
+        B -- 否 --> D[并发 + 1]
+        C --> E[更新信号量]
+        D --> E
+    end
+    E --> F[请求 → 有空额?]
+    F -- 无 --> G[排队]
+    G --> F
+    F -- 有 --> H[发出]
+    H --> I{最终结果}
+    I -- 成功/失败 --> A
+```
+
+> **关键**：`record()` 只记最终结果，不在重试中间态记——否则一次超时后重试成功，控制器看到 50% 失败率会错误降速。
+
+| 域名 | 起步 | 间隔 | 策略 |
+|------|-----|------|------|
+| EastMoney | 20 | 0.5s | 无反爬，直接冲到上限 100 |
+| 晨星搜索 | 3 | 1.0s | 保守起步，AIMD 自然爬升 |
+| 晨星详情 | 5 | 1.0s | 接口慢（~3s），同样保守探测 |
+
+### 扩展点
+
+换基金来源 → 实现 `TargetLoader`；加数据源 → 添加 `Step` 到 `STEPS`；换输出格式 → 替换 `ResultWriter`。
