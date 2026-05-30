@@ -7,17 +7,31 @@ import aiohttp
 from utils.fake_ua_getter import singleton_fake_ua
 
 
-# ═══════════════════════════════════════════════════════════════
-# 可调并发数的异步信号量
-# ═══════════════════════════════════════════════════════════════
+class RateController:
+    """
+    自适应速率控制 —— AIMD（加法增、乘法减）。
 
-class _ResizableSemaphore:
-    """支持动态调整并发上限的异步信号量"""
+    借鉴 TCP 拥塞控制：失败率 ≥ 10% 时并发减半，否则每次评估 +1。
+    """
 
-    def __init__(self, permits: int):
-        self._permits = permits
-        self._available = permits
+    _FAIL_THRESHOLD = 0.1
+
+    def __init__(self, initial_rate: int = 10, max_rate: int = 50,
+                 min_rate: int = 1, refresh_interval: float = 0.5):
+        self._cur_rate = float(initial_rate)
+        self._max_rate = max_rate
+        self._min_rate = min_rate
+        self._refresh_interval = refresh_interval
+
+        self._success = 0
+        self._fail = 0
+
+        self._permits = initial_rate
+        self._available = initial_rate
         self._cond = asyncio.Condition()
+        self._running = False
+
+    # ── 信号量接口 ────────────────────────────────────────
 
     async def acquire(self) -> None:
         async with self._cond:
@@ -30,8 +44,7 @@ class _ResizableSemaphore:
             self._available += 1
             self._cond.notify(1)
 
-    async def resize(self, new_permits: int) -> None:
-        """调整并发上限，delta > 0 时立即释放对应许可"""
+    async def _resize(self, new_permits: int) -> None:
         async with self._cond:
             delta = new_permits - self._permits
             self._permits = new_permits
@@ -39,44 +52,7 @@ class _ResizableSemaphore:
                 self._available += delta
                 self._cond.notify(delta)
 
-
-# ═══════════════════════════════════════════════════════════════
-# 自适应速率控制器
-# ═══════════════════════════════════════════════════════════════
-
-class RateController:
-    """
-    自适应速率控制：在线探测失败率，动态调节并发上限。
-
-    算法（继承原 RateControl）：
-    - 每 refresh_interval 秒评估一次
-    - 失败率 > 0：cur -= fail_rate * change_factor
-    - 失败率 = 0：cur += change_factor
-    - change_factor 随迭代递减：(1100 - iter) / 100（最低 1）
-    - cur 限定在 [min_rate, max_rate]
-    """
-
-    def __init__(self, initial_rate: int = 10, max_rate: int = 50,
-                 min_rate: int = 1, refresh_interval: float = 0.5):
-        self._cur_rate = float(initial_rate)
-        self._max_rate = max_rate
-        self._min_rate = min_rate
-        self._refresh_interval = refresh_interval
-
-        self._success = 0
-        self._fail = 0
-        self._iteration = 0
-
-        self._sem = _ResizableSemaphore(initial_rate)
-        self._running = False
-
-    # ── 对外接口 ──────────────────────────────────────────
-
-    async def acquire(self) -> None:
-        await self._sem.acquire()
-
-    async def release(self) -> None:
-        await self._sem.release()
+    # ── 统计接口 ──────────────────────────────────────────
 
     def record(self, success: bool) -> None:
         if success:
@@ -91,7 +67,6 @@ class RateController:
     # ── 自适应循环 ────────────────────────────────────────
 
     async def start(self) -> None:
-        """启动后台调整循环"""
         self._running = True
         asyncio.create_task(self._adjust_loop())
 
@@ -104,26 +79,17 @@ class RateController:
             await self._adjust()
 
     async def _adjust(self) -> None:
-        """核心算法：根据当前窗口的失败率调整并发上限"""
         total = self._success + self._fail
-        fail_rate = self._fail / total if total > 0 else 1.0
-        self._iteration += 1
+        fail_rate = self._fail / total if total > 0 else 0.0
 
-        change_factor = max(1.0, (1100 - self._iteration) / 100)
+        if fail_rate >= self._FAIL_THRESHOLD:
+            self._cur_rate = max(self._min_rate, self._cur_rate * 0.5)
+        elif total > 0:
+            self._cur_rate = min(self._max_rate, self._cur_rate + 1)
 
-        if fail_rate > 0.0:
-            self._cur_rate = max(self._min_rate,
-                                 self._cur_rate - fail_rate * change_factor)
-        else:
-            self._cur_rate = min(self._max_rate,
-                                 self._cur_rate + change_factor)
-
-        # 重置窗口
         self._success = 0
         self._fail = 0
-
-        # 生效新并发上限
-        await self._sem.resize(int(self._cur_rate))
+        await self._resize(int(self._cur_rate))
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -133,16 +99,16 @@ class RateController:
 class Fetcher:
     """带限流、重试、UA 轮换的异步 HTTP 客户端"""
 
-    def __init__(self, rate_controller: RateController,
-                 timeout: float = 10, max_retries: int = 3,
+    def __init__(self, timeout: float = 10, max_retries: int = 3,
                  retry_backoff: float = 1.5):
-        self._rc = rate_controller
+        self._rc = RateController()
         self._timeout = aiohttp.ClientTimeout(total=timeout)
         self._max_retries = max_retries
         self._retry_backoff = retry_backoff
         self._session: aiohttp.ClientSession | None = None
 
     async def __aenter__(self) -> "Fetcher":
+        await self._rc.start()
         self._session = aiohttp.ClientSession(
             timeout=self._timeout,
             connector=aiohttp.TCPConnector(limit=0),
@@ -150,6 +116,7 @@ class Fetcher:
         return self
 
     async def __aexit__(self, *args) -> None:
+        self._rc.stop()
         if self._session:
             await self._session.close()
             self._session = None
@@ -165,7 +132,7 @@ class Fetcher:
                 headers = {"User-Agent": singleton_fake_ua.get_random_ua()}
                 async with self._session.get(url, headers=headers) as resp:
                     if resp.status == 200:
-                        text = await resp.text()
+                        text = await resp.text()  # type: ignore[no-any-return]
                         if text:
                             self._rc.record(success=True)
                             return text

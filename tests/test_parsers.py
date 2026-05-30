@@ -187,17 +187,20 @@ class TestRisk:
 
 class TestSTEPS:
     def test_all_steps_registered(self):
-        assert set(STEPS.keys()) == {"overview", "manager", "morningstar", "return", "risk"}
+        names = {s.name for s in STEPS}
+        assert names == {"overview", "manager", "morningstar", "return", "risk"}
 
     def test_no_dependency_steps(self):
-        for name in ("overview", "manager", "morningstar"):
-            assert STEPS[name]["deps"] == ()
+        for s in STEPS:
+            if s.name in ("overview", "manager", "morningstar"):
+                assert s.deps == ()
 
     def test_morningstar_dependent_steps(self):
-        assert STEPS["return"]["deps"] == ("morningstar",)
-        assert STEPS["risk"]["deps"] == ("morningstar",)
+        by_name = {s.name: s for s in STEPS}
+        assert by_name["return"].deps == ("morningstar",)
+        assert by_name["risk"].deps == ("morningstar",)
 
     def test_each_step_has_build_url_and_parse(self):
-        for name, step in STEPS.items():
-            assert callable(step["build_url"]), f"{name} missing build_url"
-            assert callable(step["parse"]), f"{name} missing parse"
+        for s in STEPS:
+            assert callable(s.build_url), f"{s.name} missing build_url"
+            assert callable(s.parse), f"{s.name} missing parse"

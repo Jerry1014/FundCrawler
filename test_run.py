@@ -1,4 +1,4 @@
-"""FundCrawler V2 — 冒烟测试"""
+"""FundCrawler V2 — 测试：只爬几只基金验证流程"""
 
 import asyncio
 import logging
@@ -9,6 +9,4 @@ from utils.constants import log_format
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format=log_format)
-
-    loader = SmallBatchLoader(limit=10)
-    asyncio.run(run(loader, initial_rate=10, max_rate=50))
+    asyncio.run(run(SmallBatchLoader(limit=10)))

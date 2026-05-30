@@ -2,18 +2,38 @@
 
 import asyncio
 import csv
+import typing
 from pathlib import Path
 
-from utils.constants import DATA_ERROR
+from crawler.fund_context import FundContext
+from utils.constants import FundAttrKey, DATA_ERROR
 
-# 列名常量 —— 与 FundContext.to_result_row() 的 key 顺序一致
-_CSV_FIELDNAMES = [
-    "基金代码", "基金简称", "(晨星)基金代码", "基金类型", "资产规模(亿)",
-    "基金管理人", "基金净值", "基金经理(最近连续最长任职)", "基金经理的上任时间",
-    "管理费率(每年)", "托管费率(每年)", "销售服务费率(每年)",
-    "五年回报(年化)", "十年回报(年化)", "标准差(五年%)", "标准差(十年%)",
-    "夏普比率(五年)", "夏普比率(十年)", "阿尔法系数(相对于基准指数%)", "贝塔系数(相对于基准指数)", "R平方(相对于基准指数)",
+# CSV 列头 → FundContext 属性名 映射（唯一的数据源）
+_COLUMNS: list[tuple[str, str]] = [
+    (FundAttrKey.FUND_CODE.value,                       "fund_code"),
+    (FundAttrKey.FUND_SIMPLE_NAME.value,                "fund_name"),
+    (FundAttrKey.MORNINGSTAR_FUND_ID.value,             "morningstar_fund_id"),
+    (FundAttrKey.FUND_TYPE.value,                       "fund_type"),
+    (FundAttrKey.FUND_SIZE.value,                       "fund_size"),
+    (FundAttrKey.FUND_COMPANY.value,                    "fund_company"),
+    (FundAttrKey.FUND_VALUE.value,                      "fund_value"),
+    (FundAttrKey.FUND_MANAGER.value,                    "fund_manager"),
+    (FundAttrKey.DATE_OF_APPOINTMENT.value,             "date_of_appointment"),
+    (FundAttrKey.MANAGEMENT_FEE_RATE.value,             "management_fee_rate"),
+    (FundAttrKey.CUSTODY_FEE_RATE.value,                "custody_fee_rate"),
+    (FundAttrKey.SALES_SERVICE_FEE_RATE.value,          "sales_service_fee_rate"),
+    (FundAttrKey.ANNUALIZED_RETURN_FIVE_YEAR.value,     "annualized_return_five_year"),
+    (FundAttrKey.ANNUALIZED_RETURN_TEN_YEAR.value,      "annualized_return_ten_year"),
+    (FundAttrKey.STANDARD_DEVIATION_FIVE_YEARS.value,   "standard_deviation_five_years"),
+    (FundAttrKey.STANDARD_DEVIATION_TEN_YEARS.value,    "standard_deviation_ten_years"),
+    (FundAttrKey.SHARP_RATE_FIVE_YEARS.value,           "sharp_rate_five_years"),
+    (FundAttrKey.SHARP_RATE_TEN_YEARS.value,            "sharp_rate_ten_years"),
+    (FundAttrKey.ALPHA_TO_IND.value,                    "alpha_to_ind"),
+    (FundAttrKey.BETA_TO_IND.value,                     "beta_to_ind"),
+    (FundAttrKey.R_SQUARED_TO_IND.value,                "r_squared_to_ind"),
 ]
+
+_CSV_HEADERS = [header for header, _ in _COLUMNS]
 
 
 class ResultWriter:
@@ -24,23 +44,23 @@ class ResultWriter:
         self._path.mkdir(parents=True, exist_ok=True)
         self._filepath = self._path / filename
         self._lock = asyncio.Lock()
-        self._file = None
-        self._writer = None
+        self._file: typing.TextIO | None = None
+        self._writer: csv.DictWriter | None = None
         self._initialized = False
 
     async def _ensure_open(self) -> None:
         if self._initialized:
             return
-        self._file = open(str(self._filepath), 'w', newline='', encoding='utf-8')
-        self._writer = csv.DictWriter(self._file, fieldnames=_CSV_FIELDNAMES)
+        self._file = open(str(self._filepath), "w", newline="", encoding="utf-8")
+        self._writer = csv.DictWriter(self._file, fieldnames=_CSV_HEADERS)
         self._writer.writeheader()
         self._initialized = True
 
     async def write(self, ctx: FundContext) -> None:
         async with self._lock:
             await self._ensure_open()
-            row = {header.value: value if value else DATA_ERROR
-                   for header, value in ctx.to_result_row().items()}
+            row = {header: getattr(ctx, attr) or DATA_ERROR
+                   for header, attr in _COLUMNS}
             self._writer.writerow(row)
 
     async def flush(self) -> None:

@@ -60,26 +60,5 @@ graph LR
 自适应流量控制：在线探测失败率，动态调节并发上限。
 每只基金一个协程，根据 `STEPS` 依赖声明自动分组并发——依赖深度是唯一瓶颈，页面数量不是。
 
-## 三个拓展点
-| 拓展 | 成本 |
-|------|------|
-| 换基金来源 | `target_loader.py` 加一种 Loader |
-| 加数据源 | `parsers/` 加一个文件 + STEPS 一行 |
-| 换输出格式 | `writer.py` 换一个 Writer |
-```
-crawler/
-├── engine.py            # 组装，~60 行
-├── fund_context.py      # 数据对象，~60 行
-├── fetcher.py           # HTTP + 限流 + 重试，~150 行
-├── target_loader.py     # 4 种 Loader，~90 行
-├── writer.py            # CSV，~50 行
-└── parsers/
-    ├── __init__.py      # STEPS
-    ├── eastmoney.py     # overview + manager
-    └── morningstar.py   # morningstar + return + risk
-tests/                   # 54 单测
-utils/                   # constants, fake_ua, top_k
-```
-
 # Star History
 [![Star History Chart](https://api.star-history.com/svg?repos=Jerry1014/FundCrawler&type=Date)](https://star-history.com/#Jerry1014/FundCrawler&Date)

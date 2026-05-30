@@ -1,107 +1,106 @@
-"""fetcher 单元测试 —— 速率控制算法 + 异步信号量"""
+"""fetcher 单元测试 —— 速率控制算法 + 信号量并发"""
 
 import asyncio
 
 import pytest
 
-from crawler.fetcher import RateController, _ResizableSemaphore
+from crawler.fetcher import RateController
 
 
-class TestResizableSemaphore:
+class TestSignalSemantics:
 
     @pytest.mark.asyncio
     async def test_acquire_release(self):
-        sem = _ResizableSemaphore(2)
-        await sem.acquire()
-        await sem.acquire()
-        assert sem._available == 0
-        await sem.release()
-        assert sem._available == 1
+        rc = RateController(initial_rate=2)
+        await rc.acquire()
+        await rc.acquire()
+        assert rc._available == 0
+        await rc.release()
+        assert rc._available == 1
 
     @pytest.mark.asyncio
     async def test_acquire_blocks_when_exhausted(self):
-        sem = _ResizableSemaphore(1)
-        await sem.acquire()
+        rc = RateController(initial_rate=1)
+        await rc.acquire()
         acquired = False
 
         async def try_acquire():
             nonlocal acquired
-            await sem.acquire()
+            await rc.acquire()
             acquired = True
 
-        task = asyncio.create_task(try_acquire())
+        asyncio.create_task(try_acquire())
         await asyncio.sleep(0.01)
         assert not acquired
-        await sem.release()
+        await rc.release()
         await asyncio.sleep(0.01)
         assert acquired
 
     @pytest.mark.asyncio
     async def test_resize_increases_capacity(self):
-        sem = _ResizableSemaphore(1)
-        await sem.acquire()           # available=0
-        await sem.resize(2)           # permits→2, available→1
-        # 现在有 2 个许可，用掉 1 个，剩 1 个可用
-        await sem.acquire()           # available=0
-        await sem.release()           # available=1
-        await sem.acquire()           # available=0
-        assert sem._available == 0
+        rc = RateController(initial_rate=1)
+        await rc.acquire()
+        await rc._resize(2)
+        await rc.acquire()
+        await rc.release()
+        await rc.acquire()
+        assert rc._available == 0
 
 
-class TestRateControllerAlgorithm:
+class TestRateControllerAIMD:
 
     def test_initial_rate(self):
         rc = RateController(initial_rate=10)
         assert rc.cur_rate == 10.0
 
     @pytest.mark.asyncio
-    async def test_no_data_failure_penalty(self):
-        rc = RateController(initial_rate=10, min_rate=1, max_rate=50)
+    async def test_no_data_idle(self):
+        rc = RateController(initial_rate=10)
         await rc._adjust()
-        assert rc.cur_rate == 1.0
+        assert rc.cur_rate == 10.0
 
     @pytest.mark.asyncio
-    async def test_all_success_increases_rate(self):
-        rc = RateController(initial_rate=10, min_rate=1, max_rate=50)
+    async def test_success_adds_one(self):
+        rc = RateController(initial_rate=10)
         for _ in range(5):
             rc.record(success=True)
         await rc._adjust()
-        assert rc.cur_rate > 10.0
-        assert rc.cur_rate <= 50.0
+        assert rc.cur_rate == 11.0
 
     @pytest.mark.asyncio
-    async def test_partial_failure_decreases_rate(self):
-        rc = RateController(initial_rate=10, min_rate=1, max_rate=50)
-        for _ in range(3):
+    async def test_high_failure_halves(self):
+        rc = RateController(initial_rate=10)
+        for _ in range(8):
             rc.record(success=True)
         for _ in range(2):
             rc.record(success=False)
         await rc._adjust()
-        assert rc.cur_rate < 10.0
-        assert rc.cur_rate >= 1.0
+        assert rc.cur_rate == 5.0
+
+    @pytest.mark.asyncio
+    async def test_below_threshold_ignored(self):
+        rc = RateController(initial_rate=10)
+        for _ in range(19):
+            rc.record(success=True)
+        rc.record(success=False)
+        await rc._adjust()
+        assert rc.cur_rate == 11.0
 
     @pytest.mark.asyncio
     async def test_respects_min_rate(self):
-        rc = RateController(initial_rate=10, min_rate=3, max_rate=50)
+        rc = RateController(initial_rate=10, min_rate=3)
         for _ in range(100):
             rc.record(success=False)
         await rc._adjust()
-        assert rc.cur_rate == 3.0
+        assert rc.cur_rate == 5.0
 
     @pytest.mark.asyncio
     async def test_respects_max_rate(self):
-        rc = RateController(initial_rate=10, min_rate=1, max_rate=15)
+        rc = RateController(initial_rate=10, max_rate=15)
         for _ in range(100):
             rc.record(success=True)
         await rc._adjust()
-        assert rc.cur_rate <= 15.0
-
-    def test_change_factor_decreases_with_iterations(self):
-        cf1 = max(1.0, (1100 - 1) / 100)
-        cf2 = max(1.0, (1100 - 501) / 100)
-        cf3 = max(1.0, (1100 - 1201) / 100)
-        assert cf1 > cf2 > cf3
-        assert cf3 == 1.0
+        assert rc.cur_rate == 11.0
 
     @pytest.mark.asyncio
     async def test_window_reset_after_adjust(self):
