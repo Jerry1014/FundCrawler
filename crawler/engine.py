@@ -3,6 +3,8 @@
 import asyncio
 import logging
 
+import tqdm
+
 from crawler.fetcher import Fetcher
 from crawler.fund_context import FundContext
 from crawler.parsers import STEPS, Step
@@ -16,13 +18,16 @@ async def run(target_loader,  # 鸭子类型：async get_fund_list() → list[Fu
     if writer is None:
         writer = ResultWriter()
 
-    async with Fetcher() as fetcher:
-        fund_list = await target_loader.get_fund_list()
-        logger.info(f"共 {len(fund_list)} 只基金待爬取")
+    logger.info("正在获取基金列表 …")
+    fund_list = await target_loader.get_fund_list()
+    logger.info(f"共 {len(fund_list)} 只基金待爬取")
 
+    async with Fetcher() as fetcher:
         tasks = [asyncio.create_task(_crawl_one(fund, fetcher, writer))
                  for fund in fund_list]
-        await asyncio.gather(*tasks)
+        for coro in tqdm.tqdm(asyncio.as_completed(tasks),
+                               total=len(tasks), desc="爬取进度", unit="只"):
+            await coro
 
     await writer.close()
     logger.info("爬取完成")

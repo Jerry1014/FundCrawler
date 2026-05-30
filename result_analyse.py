@@ -3,6 +3,7 @@ from csv import DictReader
 from datetime import date
 
 from module.saving_result.save_result_2_file import SaveResult2CSV
+
 from utils.constants import FundAttrKey, NO_DATA, DATA_IGNORE
 from utils.top_k_holder import TopKHolder
 

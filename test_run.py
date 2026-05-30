@@ -9,5 +9,5 @@ from crawler.target_loader import SmallBatchLoader
 @pytest.mark.slow
 @pytest.mark.asyncio
 async def test_crawl_small_batch():
-    loader = SmallBatchLoader(limit=10)
+    loader = SmallBatchLoader(limit=100)
     await run(loader)
