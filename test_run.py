@@ -1,12 +1,13 @@
-"""FundCrawler V2 — 测试：只爬几只基金验证流程"""
+"""冒烟测试 —— 爬取 10 只基金验证全流程"""
 
-import asyncio
-import logging
+import pytest
 
 from crawler.engine import run
 from crawler.target_loader import SmallBatchLoader
-from utils.constants import log_format
 
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format=log_format)
-    asyncio.run(run(SmallBatchLoader(limit=10)))
+
+@pytest.mark.slow
+@pytest.mark.asyncio
+async def test_crawl_small_batch():
+    loader = SmallBatchLoader(limit=10)
+    await run(loader)
