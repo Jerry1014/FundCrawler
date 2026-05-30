@@ -92,10 +92,6 @@ class RateController:
         await self._resize(int(self._cur_rate))
 
 
-# ═══════════════════════════════════════════════════════════════
-# 异步 HTTP 客户端
-# ═══════════════════════════════════════════════════════════════
-
 class Fetcher:
     """带限流、重试、UA 轮换的异步 HTTP 客户端"""
 
@@ -121,13 +117,18 @@ class Fetcher:
             await self._session.close()
             self._session = None
 
+    def acquire(self) -> "asyncio.CoroutineType":
+        """占用一个基金级并发槽位"""
+        return self._rc.acquire()
+
+    def release(self) -> "asyncio.CoroutineType":
+        return self._rc.release()
+
     async def fetch(self, url: str, fund_code: str) -> str | None:
-        """
-        发起单次 HTTP GET，带全局限流和指数退避重试。
-        成功返回响应文本，失败返回 None。
+        """发起单次 HTTP GET（不占槽位，槽位在基金级别控制）。
+        带指数退避重试，成功返回响应文本，失败返回 None。
         """
         for attempt in range(self._max_retries):
-            await self._rc.acquire()
             try:
                 headers = {"User-Agent": singleton_fake_ua.get_random_ua()}
                 async with self._session.get(url, headers=headers) as resp:
@@ -141,6 +142,4 @@ class Fetcher:
                 self._rc.record(success=False)
                 if attempt < self._max_retries - 1:
                     await asyncio.sleep(self._retry_backoff ** attempt)
-            finally:
-                await self._rc.release()
         return None

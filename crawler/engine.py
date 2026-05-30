@@ -34,26 +34,30 @@ async def run(target_loader,  # 鸭子类型：async get_fund_list() → list[Fu
 
 
 async def _crawl_one(ctx: FundContext, fetcher: Fetcher, writer: ResultWriter) -> None:
-    """爬取单只基金：根据 STEPS 依赖声明，自动分组并发"""
-    completed: set[str] = set()
+    """爬取单只基金——槽位在基金级别，内部请求自由并发"""
+    await fetcher.acquire()
+    try:
+        completed: set[str] = set()
 
-    while True:
-        ready: list[Step] = [s for s in STEPS
-                             if s.name not in completed
-                             and all(d in completed for d in s.deps)]
+        while True:
+            ready: list[Step] = [s for s in STEPS
+                                 if s.name not in completed
+                                 and all(d in completed for d in s.deps)]
 
-        if not ready:
-            break
+            if not ready:
+                break
 
-        urls = [s.build_url(ctx) for s in ready]
-        results = await asyncio.gather(
-            *[fetcher.fetch(url, ctx.fund_code) for url in urls]
-        )
-        for step, raw in zip(ready, results):
-            try:
-                step.parse(raw, ctx)
-            except Exception:
-                logger.exception(f"{ctx.fund_code} {step.name} 解析失败")
-            completed.add(step.name)
+            urls = [s.build_url(ctx) for s in ready]
+            results = await asyncio.gather(
+                *[fetcher.fetch(url, ctx.fund_code) for url in urls]
+            )
+            for step, raw in zip(ready, results):
+                try:
+                    step.parse(raw, ctx)
+                except Exception:
+                    logger.exception(f"{ctx.fund_code} {step.name} 解析失败")
+                completed.add(step.name)
 
-    await writer.write(ctx)
+        await writer.write(ctx)
+    finally:
+        await fetcher.release()
