@@ -12,7 +12,7 @@ from crawler.writer import ResultWriter
 
 logger = logging.getLogger(__name__)
 
-_PIPELINE_SLOTS = 8  # 同时在跑的基金上限
+_PIPELINE_SLOTS = 8
 
 
 async def run(target_loader,  # 鸭子类型：async get_fund_list() → list[FundContext]
@@ -42,8 +42,8 @@ async def run(target_loader,  # 鸭子类型：async get_fund_list() → list[Fu
 
 
 async def _crawl_one(ctx: FundContext, fetcher: Fetcher, writer: ResultWriter) -> None:
-    """爬取单只基金：根据 STEPS 依赖声明，自动分组并发"""
     completed: set[str] = set()
+    phase = 0
 
     while True:
         ready: list[Step] = [s for s in STEPS
@@ -53,9 +53,10 @@ async def _crawl_one(ctx: FundContext, fetcher: Fetcher, writer: ResultWriter) -
         if not ready:
             break
 
+        phase += 1
         urls = [s.build_url(ctx) for s in ready]
         results = await asyncio.gather(
-            *[fetcher.fetch(url, ctx.fund_code) for url in urls]
+            *[fetcher.fetch(url, ctx.fund_code, phase=phase) for url in urls]
         )
         for step, raw in zip(ready, results):
             try:

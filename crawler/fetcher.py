@@ -8,11 +8,7 @@ from utils.fake_ua_getter import singleton_fake_ua
 
 
 class RateController:
-    """
-    自适应速率控制 + 信号量 —— AIMD（加法增、乘法减）。
-
-    每个实例独立管理一个并发池。失败率 ≥ 10% 时减半，否则每次评估 +1。
-    """
+    """自适应速率控制 + 信号量 —— AIMD（加法增、乘法减）。"""
 
     _FAIL_THRESHOLD = 0.1
 
@@ -22,10 +18,8 @@ class RateController:
         self._max_rate = max_rate
         self._min_rate = min_rate
         self._refresh_interval = refresh_interval
-
         self._success = 0
         self._fail = 0
-
         self._permits = initial_rate
         self._available = initial_rate
         self._cond = asyncio.Condition()
@@ -91,8 +85,9 @@ class Fetcher:
 
     def __init__(self, timeout: float = 10, max_retries: int = 3,
                  retry_backoff: float = 1.5):
-        self._eastmoney = RateController()
-        self._morningstar = RateController()
+        self._eastmoney = RateController(initial_rate=5)
+        self._ms_search = RateController(initial_rate=3, min_rate=1)
+        self._ms_quicktake = RateController(initial_rate=5, min_rate=5)
         self._timeout = aiohttp.ClientTimeout(total=timeout)
         self._max_retries = max_retries
         self._retry_backoff = retry_backoff
@@ -100,7 +95,8 @@ class Fetcher:
 
     async def __aenter__(self) -> "Fetcher":
         await self._eastmoney.start()
-        await self._morningstar.start()
+        await self._ms_search.start()
+        await self._ms_quicktake.start()
         self._session = aiohttp.ClientSession(
             timeout=self._timeout,
             connector=aiohttp.TCPConnector(limit=0),
@@ -109,13 +105,17 @@ class Fetcher:
 
     async def __aexit__(self, *args) -> None:
         self._eastmoney.stop()
-        self._morningstar.stop()
+        self._ms_search.stop()
+        self._ms_quicktake.stop()
         if self._session:
             await self._session.close()
             self._session = None
 
-    async def fetch(self, url: str, fund_code: str) -> str | None:
-        rc = self._morningstar if "morningstar" in url else self._eastmoney
+    async def fetch(self, url: str, fund_code: str, phase: int = 0) -> str | None:
+        if "morningstar" in url:
+            rc = self._ms_quicktake if phase == 2 else self._ms_search
+        else:
+            rc = self._eastmoney
         for attempt in range(self._max_retries):
             await rc.acquire()
             try:
