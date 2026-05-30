@@ -11,7 +11,7 @@ class TestSignalSemantics:
 
     @pytest.mark.asyncio
     async def test_acquire_release(self):
-        rc = RateController(initial_rate=2)
+        rc = RateController(initial_rate=2, max_rate=2)
         await rc.acquire()
         await rc.acquire()
         assert rc._available == 0
@@ -20,7 +20,7 @@ class TestSignalSemantics:
 
     @pytest.mark.asyncio
     async def test_acquire_blocks_when_exhausted(self):
-        rc = RateController(initial_rate=1)
+        rc = RateController(initial_rate=1, max_rate=1)
         await rc.acquire()
         acquired = False
 
@@ -38,7 +38,7 @@ class TestSignalSemantics:
 
     @pytest.mark.asyncio
     async def test_resize_increases_capacity(self):
-        rc = RateController(initial_rate=1)
+        rc = RateController(initial_rate=1, max_rate=2)
         await rc.acquire()
         await rc._resize(2)
         await rc.acquire()
