@@ -3,7 +3,7 @@
 #### 重要提示
 
 ![GitHub license](https://img.shields.io/github/license/tindy2013/subconverter.svg)
-- 202605 重大代码修改（纯AI重构），报错/奇怪bug，尝试切换PreviousReleaseVersion分支使用
+- 202605 重大代码修改（纯DS设计+编码），报错/奇怪bug，尝试切换PreviousReleaseVersion分支使用
 
         购买基金前，请务必在官方网站上确认爬取的数据无误！
         爬虫仅供学习交流使用，请不要对目标网站造成负担，并在心里默默感谢网站提供的免费数据
