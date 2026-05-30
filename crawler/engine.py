@@ -12,7 +12,7 @@ from crawler.writer import ResultWriter
 
 logger = logging.getLogger(__name__)
 
-_PIPELINE_SLOTS = 8
+_PIPELINE_SLOTS = 20
 
 
 async def run(target_loader,  # 鸭子类型：async get_fund_list() → list[FundContext]
@@ -22,7 +22,8 @@ async def run(target_loader,  # 鸭子类型：async get_fund_list() → list[Fu
 
     logger.info("正在获取基金列表 …")
     fund_list = await target_loader.get_fund_list()
-    logger.info(f"共 {len(fund_list)} 只基金待爬取")
+    total = len(fund_list)
+    logger.info(f"共 {total} 只基金待爬取")
 
     fund_sem = asyncio.Semaphore(_PIPELINE_SLOTS)
 
@@ -33,8 +34,9 @@ async def run(target_loader,  # 鸭子类型：async get_fund_list() → list[Fu
     async with Fetcher() as fetcher:
         tasks = [asyncio.create_task(_crawl_with_limit(fund))
                  for fund in fund_list]
+
         for coro in tqdm.tqdm(asyncio.as_completed(tasks),
-                               total=len(tasks), desc="爬取进度", unit="只"):
+                               total=total, desc="爬取进度", unit="只"):
             await coro
 
     await writer.close()
@@ -56,8 +58,10 @@ async def _crawl_one(ctx: FundContext, fetcher: Fetcher, writer: ResultWriter) -
         phase += 1
         urls = [s.build_url(ctx) for s in ready]
         results = await asyncio.gather(
-            *[fetcher.fetch(url, ctx.fund_code, phase=phase) for url in urls]
+            *[fetcher.fetch(url, ctx.fund_code, phase=phase)
+              for url in urls]
         )
+
         for step, raw in zip(ready, results):
             try:
                 step.parse(raw, ctx)

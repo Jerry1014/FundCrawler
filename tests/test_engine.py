@@ -10,7 +10,7 @@ from crawler.writer import ResultWriter
 
 
 class MockFetcher:
-    async def fetch(self, url, fund_code):
+    async def fetch(self, url, fund_code, phase=0):
         return "OK"
 
 

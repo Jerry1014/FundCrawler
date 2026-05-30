@@ -110,4 +110,5 @@ venv.bak/
 .idea
 log
 result
-.deepseek\".deepseek/\"  
+.deepseek/
+.claude/

@@ -68,14 +68,14 @@ class TestRateControllerAIMD:
         assert rc.cur_rate == 11.0
 
     @pytest.mark.asyncio
-    async def test_high_failure_halves(self):
+    async def test_high_failure_decreases(self):
         rc = RateController(initial_rate=10)
         for _ in range(8):
             rc.record(success=True)
         for _ in range(2):
             rc.record(success=False)
         await rc._adjust()
-        assert rc.cur_rate == 5.0
+        assert rc.cur_rate == 7.5  # ×0.75 (温和降速)
 
     @pytest.mark.asyncio
     async def test_below_threshold_ignored(self):
@@ -92,7 +92,7 @@ class TestRateControllerAIMD:
         for _ in range(100):
             rc.record(success=False)
         await rc._adjust()
-        assert rc.cur_rate == 5.0
+        assert rc.cur_rate == 7.5  # 10 × 0.75 = 7.5 > min=3
 
     @pytest.mark.asyncio
     async def test_respects_max_rate(self):
