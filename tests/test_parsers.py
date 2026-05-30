@@ -182,7 +182,7 @@ class TestRisk:
 
     def test_none_json_fills_no_data(self):
         parse_risk(None, self.ctx)
-        assert self.ctx.alpha_to_ind == NO_DATA  # 未设置，保持 None
+        assert self.ctx.alpha_to_ind == NO_DATA
 
 
 class TestSTEPS:

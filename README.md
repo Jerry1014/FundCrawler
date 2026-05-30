@@ -3,7 +3,7 @@
 #### 重要提示
 
 ![GitHub license](https://img.shields.io/github/license/tindy2013/subconverter.svg)
-- 202505 重大代码修改，报错/奇怪bug，尝试切换previous_release_version分支使用
+- 202605 重大代码修改，报错/奇怪bug，尝试切换previous_release_version分支使用
 
         购买基金前，请务必在官方网站上确认爬取的数据无误！
         爬虫仅供学习交流使用，请不要对目标网站造成负担，并在心里默默感谢网站提供的免费数据
@@ -26,7 +26,7 @@
 
 # 食用方法
 
-- Python3.13
+- Python3.14
 - 安装依赖 pip install -r requirements.txt
 - 爬取基金数据
   - 结果保存在 result/result.csv
@@ -38,21 +38,48 @@
 作者太懒了，什么也没有留下
 
 # 技术相关
-![Image text](docs/img/overview.png)
+```mermaid
+graph LR
+  run[run.py] --> engine((Engine))
 
-- (结合profile分析)爬虫的瓶颈在于网站的反爬策略
-  - 爬取1000个基金，总耗时约35s
-  - 获取要爬取的1000个基金目录 get_small_batch_4_test.py:18(get_fund_list) 调用1次 耗时0.9813s
-  - http数据解析模块 data_mining.py:12(summit_context) 调用2000次 耗时1.544s
-  - 基金结果保存 save_result_2_file.py:27(save_result) 调用1000次 耗时0.03239s
-  - 其余时间都花在了等待http返回上，因此需要尽可能得打满http请求
-    - 0 (未实现)避开基于ip的爬虫流量控制，最好还是走代理ip，但因为作者太穷而作罢
-    - 1 为了避免GIL和频繁的线程切换影响效率，http下载模块是单独的子进程，通过管道通信，并在主流程中优先处理http请求的提交
-    - 2 主流程的循环中，需要尽量避免出现http请求队列为空的情况
-    - 3 module.downloader.rate_control.rate_control.RateControl  
-      单独设置一个速率控制类，尝试寻找一个最合适的并发数  
-      失败惩罚 成功奖励 并发数的变化率随迭代数的增加而降低
-      ![Image text](docs/img/rate_control.png)
+  subgraph crawler
+    engine -->|list| loader[TargetLoader]
+    engine -->|fetch| fetcher[Fetcher]
+    fetcher --> rc[RateController]
+    engine -->|parse| parsers[parsers/]
+    parsers --> eastmoney[eastmoney.py]
+    parsers --> morningstar[morningstar.py]
+    engine -->|write| writer[Writer]
+    ctx[FundContext] -.-> engine
+  end
+
+  loader -.->|🔄 拓展点1| L[换基金来源]
+  parsers -.->|🔄 拓展点2| P[加数据源]
+  writer -.->|🔄 拓展点3| W[换输出格式]
+```
+自适应流量控制：在线探测失败率，动态调节并发上限。
+每只基金一个协程，根据 `STEPS` 依赖声明自动分组并发——依赖深度是唯一瓶颈，页面数量不是。
+
+## 三个拓展点
+| 拓展 | 成本 |
+|------|------|
+| 换基金来源 | `target_loader.py` 加一种 Loader |
+| 加数据源 | `parsers/` 加一个文件 + STEPS 一行 |
+| 换输出格式 | `writer.py` 换一个 Writer |
+```
+crawler/
+├── engine.py            # 组装，~60 行
+├── fund_context.py      # 数据对象，~60 行
+├── fetcher.py           # HTTP + 限流 + 重试，~150 行
+├── target_loader.py     # 4 种 Loader，~90 行
+├── writer.py            # CSV，~50 行
+└── parsers/
+    ├── __init__.py      # STEPS
+    ├── eastmoney.py     # overview + manager
+    └── morningstar.py   # morningstar + return + risk
+tests/                   # 54 单测
+utils/                   # constants, fake_ua, top_k
+```
 
 # Star History
 [![Star History Chart](https://api.star-history.com/svg?repos=Jerry1014/FundCrawler&type=Date)](https://star-history.com/#Jerry1014/FundCrawler&Date)
