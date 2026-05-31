@@ -12,8 +12,6 @@ from crawler.writer import ResultWriter
 
 logger = logging.getLogger(__name__)
 
-_PIPELINE_SLOTS = 20
-
 
 async def run(target_loader,  # 鸭子类型：async get_fund_list() → list[FundContext]
               writer: ResultWriter | None = None) -> None:
@@ -25,14 +23,8 @@ async def run(target_loader,  # 鸭子类型：async get_fund_list() → list[Fu
     total = len(fund_list)
     logger.info(f"共 {total} 只基金待爬取")
 
-    fund_sem = asyncio.Semaphore(_PIPELINE_SLOTS)
-
-    async def _crawl_with_limit(ctx: FundContext) -> None:
-        async with fund_sem:
-            await _crawl_one(ctx, fetcher, writer)
-
     async with Fetcher() as fetcher:
-        tasks = [asyncio.create_task(_crawl_with_limit(fund))
+        tasks = [asyncio.create_task(_crawl_one(fund, fetcher, writer))
                  for fund in fund_list]
 
         for coro in tqdm.tqdm(asyncio.as_completed(tasks),

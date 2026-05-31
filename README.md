@@ -35,52 +35,87 @@
 - 爬取结果分析，参考 result_analyse.py
 
 # 技术相关
-
+## 架构
 ```mermaid
 flowchart TB
-    subgraph 输入
-        TL[TargetLoader<br/>基金列表]
+    subgraph 输入["① 基金列表"]
+        TL[TargetLoader<br/>天天基金网 API]
     end
 
-    subgraph 引擎["Engine · 20 并发槽位"]
-        P1[Phase 1 · gather] --> P2[Phase 2 · gather]
-        P1 --> OV[overview · EastMoney]
-        P1 --> MG[manager · EastMoney]
-        P1 --> MS[morningstar · 晨星搜索]
-        P2 --> RT[return · 晨星详情]
-        P2 --> RK[risk · 晨星详情]
+    subgraph 核心["② 爬虫引擎 Engine"]
+        E[每只基金一个协程<br/>无槽位限制]
     end
 
-    subgraph 输出
-        WR[ResultWriter · CSV]
+    subgraph 网络["③ 速率控制 Fetcher"]
+        direction LR
+        RC_EM[EastMoney RC<br/>起步20 · 0.5s窗口]
+        RC_MS[Morningstar RC<br/>起步8 · 1s窗口 · P2优先]
     end
 
-    TL --> 引擎
-    引擎 --> WR
+    subgraph 解析["④ 数据解析 parsers/"]
+        direction LR
+        STEPS[5个Step · 2个Phase<br/>overview manager morningstar<br/>return risk]
+    end
+
+    subgraph 输出["⑤ 结果输出"]
+        WR[ResultWriter] --> CSV[(result.csv)]
+    end
+
+    输入 -->|基金列表| 核心
+    核心 -->|并发请求| 网络
+    网络 -->|HTTP响应| 解析
+    解析 -->|FundContext| 核心
+    核心 -->|写入| 输出
 ```
 
 每只基金 5 个数据源，按依赖自动分两阶段——morningstar ID 就绪后 Phase 2 才开始。每个 phase 内 `gather` 并行，瓶颈只取决于最慢的那个 step。
 
-### 动态并发控制
+## 流程（动态并发控制）
 
-三个域名各自独立 AIMD，在线探测失败率自动收敛——不需要人工设定"每个域名最多 N 并发"。
+从**一只基金的视角**看完整流程，以及它在哪些环节被 RateController 管控：
 
 ```mermaid
-flowchart TD
-    subgraph 调整循环["每 0.5s / 1.0s"]
-        A[统计窗口成败] --> B{失败率 ≥ 20%?}
-        B -- 是 --> C[并发 × 0.75]
-        B -- 否 --> D[并发 + 1]
-        C --> E[更新信号量]
-        D --> E
+flowchart TB
+    subgraph fund["一只基金的生命周期"]
+        start([开始]) --> p1[Phase 1 · gather 并行]
+        p1 --> ov[overview] & mg[manager] & ms[morningstar]
+        ov --> em1{{EM RC<br/>获取许可}}
+        mg --> em1
+        ms --> ms1{{MS RC<br/>普通优先级}}
+        em1 --> p1done[Phase 1 完成]
+        ms1 --> p1done
+        p1done --> p2[Phase 2 · gather 并行]
+        p2 --> ret[return] & risk[risk]
+        ret --> ms2{{MS RC<br/>高优先级 · 插队}}
+        risk --> ms2
+        ms2 --> write[写入 CSV]
     end
-    E --> F[请求 → 有空额?]
-    F -- 无 --> G[排队]
-    G --> F
-    F -- 有 --> H[发出]
-    H --> I{最终结果}
-    I -- 成功/失败 --> A
+
+    subgraph rc["全局 RateController（所有基金共享）"]
+        loop["每 0.5s/1s 统计成败"] --> adj{失败率 ≥ 20%?}
+        adj -- 是 --> dec[并发 × 0.75]
+        adj -- 否 --> inc[并发 + 1]
+        dec --> limit[更新信号量额数]
+        inc --> limit
+    end
+
+    ms2 -.->|P2 优先获取| rc
+    ms1 -.->|P2 排队时让路| rc
+    em1 -.->|独立管控| rc
 ```
+
+**关键机制**：
+
+- 每个 Step 发出 HTTP 请求前必须通过对应域名的 RC 信号量——有空额直接通过，没空额排队等。
+- Phase 2 请求在 Morningstar RC 中**高优先级**：释放一个额数时，优先唤醒 Phase 2 的等待者。这让快完成的基金不被新基金挤占。
+- RC 按域名独立运行，不做跨域名协调。EastMoney 的反爬策略与 Morningstar 完全不同，各自探测各自的上限。
+
+| 域名 | 起步并发 | 探测间隔 | 备注 |
+|------|---------|---------|------|
+| EastMoney | 20 | 0.5s | 无反爬，AIMD 快速爬升 |
+| Morningstar | 8 | 1.0s | 保守起步，P2 优先 |
+
+同域名不同接口共享 RC，但超时按接口差异化：搜索 8s、详情 12s。
 ### 扩展点
 
 换基金来源 → 实现 `TargetLoader`；加数据源 → 添加 `Step` 到 `STEPS`；换输出格式 → 替换 `ResultWriter`。
