@@ -1,10 +1,6 @@
-"""
-一些通用的正则表达式
-"""
-from enum import unique, StrEnum
+"""常量和枚举"""
 
-# 带千分号的 数字表达形式 -10,000.12
-number_in_eng = r'-?(\d+?(,\d+)*?(\.\d+)?)'
+from enum import unique, StrEnum
 
 
 @unique

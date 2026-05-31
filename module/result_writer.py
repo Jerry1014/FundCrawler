@@ -2,7 +2,6 @@
 
 import asyncio
 import csv
-import typing
 from pathlib import Path
 
 from module.constants import FundAttrKey, DATA_ERROR
@@ -40,39 +39,20 @@ class ResultWriter:
     """异步 CSV 写入器"""
 
     def __init__(self, path: str = "./result/", filename: str = "result.csv"):
-        self._path = Path(path)
-        self._path.mkdir(parents=True, exist_ok=True)
-        self._filepath = self._path / filename
-        self._lock = asyncio.Lock()
-        self._file: typing.TextIO | None = None
-        self._writer: csv.DictWriter | None = None
-        self._initialized = False
-
-    async def _ensure_open(self) -> None:
-        if self._initialized:
-            return
-        self._file = open(str(self._filepath), "w", newline="", encoding="utf-8")
+        filepath = Path(path) / filename
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        self._file = open(str(filepath), "w", newline="", encoding="utf-8")
         self._writer = csv.DictWriter(self._file, fieldnames=_CSV_HEADERS)
         self._writer.writeheader()
-        self._initialized = True
+        self._lock = asyncio.Lock()
 
     async def write(self, ctx: FundContext) -> None:
         async with self._lock:
-            await self._ensure_open()
             row = {header: getattr(ctx, attr) or DATA_ERROR
                    for header, attr in _COLUMNS}
             self._writer.writerow(row)
 
-    async def flush(self) -> None:
-        async with self._lock:
-            if self._file:
-                self._file.flush()
-
     async def close(self) -> None:
         async with self._lock:
-            if self._file:
-                self._file.flush()
-                self._file.close()
-                self._file = None
-                self._writer = None
-                self._initialized = False
+            self._file.flush()
+            self._file.close()

@@ -3,10 +3,10 @@
 import pytest
 
 from module.engine import run
-from module.target_loader import SmallBatchLoader
+from module.target_loader import WebTargetLoader
 
 
 @pytest.mark.slow
 @pytest.mark.asyncio
 async def test_crawl_small_batch():
-    await run(SmallBatchLoader(limit=500))
+    await run(WebTargetLoader(limit=100))

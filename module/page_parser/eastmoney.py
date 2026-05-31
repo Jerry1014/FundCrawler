@@ -3,8 +3,11 @@
 import re
 from string import Template
 
-from module.constants import number_in_eng, NO_DATA, DATA_IGNORE
+from module.constants import NO_DATA, DATA_IGNORE
 from module.fund_context import FundContext
+
+# 带千分号的数字表达形式 -10,000.12
+number_in_eng = r'-?(\d+?(,\d+)*?(\.\d+)?)'
 
 # ── URL 构造 ────────────────────────────────────────────────
 
@@ -49,18 +52,18 @@ def parse_overview(html: str | None, ctx: FundContext) -> None:
     if m := _fund_value_re.search(html):
         ctx.fund_value = m.group(1)
 
-    if m := _management_fee_re.search(html):
-        fee_rate = m.group(1)
-        if fee_rate == '<a':
-            ctx.management_fee_rate = DATA_IGNORE
+    def _parse_fee(m, attr: str) -> None:
+        if not m:
+            return
+        val = m.group(1)
+        if val == '<a':
+            setattr(ctx, attr, DATA_IGNORE)
         else:
-            ctx.management_fee_rate = fee_rate if fee_rate != '---' else NO_DATA
+            setattr(ctx, attr, val if val != '---' else NO_DATA)
 
-    if m := _custody_fee_re.search(html):
-        ctx.custody_fee_rate = m.group(1) if m.group(1) != '---' else NO_DATA
-
-    if m := _sales_service_fee_re.search(html):
-        ctx.sales_service_fee_rate = m.group(1) if m.group(1) != '---' else NO_DATA
+    _parse_fee(_management_fee_re.search(html), "management_fee_rate")
+    _parse_fee(_custody_fee_re.search(html), "custody_fee_rate")
+    _parse_fee(_sales_service_fee_re.search(html), "sales_service_fee_rate")
 
 
 # ── manager 解析 ────────────────────────────────────────────

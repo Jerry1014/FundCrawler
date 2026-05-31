@@ -10,7 +10,7 @@ from module.result_writer import ResultWriter
 
 
 class MockFetcher:
-    async def fetch(self, url, fund_code, phase=0):
+    async def fetch(self, url, phase=0):
         return "OK"
 
 

@@ -60,6 +60,8 @@ class RateController:
             if delta > 0:
                 self._available += delta
                 self._cond.notify_all()
+            elif self._available > self._permits:
+                self._available = self._permits
 
     def record(self, success: bool) -> None:
         if success:
@@ -109,7 +111,8 @@ class RateController:
 class Fetcher:
     """带限流、重试、UA 轮换的异步 HTTP 客户端。
 
-    两个域名级 RateController 管控所有请求的并发，AIMD 自动收敛到各域名安全上限。
+    两个域名级 RateController 管控所有请求（含重试）的并发，AIMD 自动收敛到各域名安全上限。
+    RC 基于请求维度：每次 HTTP 尝试（含重试）都要 acquire/release，以匹配网站视角的真实 QPS。
     MS 无限重试直到成功（可接受慢，不接受失败），min=1 退化到单并发等待网络恢复。
     """
 
@@ -121,63 +124,64 @@ class Fetcher:
     }
 
     def __init__(self, retry_backoff: float = 0.5):
-        self._eastmoney = RateController(initial_rate=20, max_rate=200)
-        self._morningstar = RateController(initial_rate=8, min_rate=1, max_rate=200,
-                                           refresh_interval=1.0, increase_step=3)
+        configs = {
+            "eastmoney":  dict(initial_rate=20, max_rate=200),
+            "morningstar": dict(initial_rate=8, min_rate=1, max_rate=200,
+                                refresh_interval=1.0, increase_step=3),
+        }
+        self._rc = {name: RateController(**cfg) for name, cfg in configs.items()}
         self._retry_backoff = retry_backoff
+        self._ua = UserAgent()
         self._session: aiohttp.ClientSession | None = None
 
     async def __aenter__(self) -> "Fetcher":
-        await self._eastmoney.start()
-        await self._morningstar.start()
+        for rc in self._rc.values():
+            await rc.start()
         self._session = aiohttp.ClientSession(
             connector=aiohttp.TCPConnector(limit=0, limit_per_host=50),
         )
         return self
 
     async def __aexit__(self, *args) -> None:
-        self._eastmoney.stop()
-        self._morningstar.stop()
+        for rc in self._rc.values():
+            rc.stop()
         if self._session:
             await self._session.close()
-            self._session = None
 
     # ── 路由 ──
 
-    @staticmethod
-    def _select_rc(url: str, rc_em: RateController, rc_ms: RateController) -> RateController:
-        """域名维度：morningstar.cn → rc_ms，其余 → rc_em"""
-        return rc_ms if "morningstar" in url else rc_em
+    def _select_rc(self, url: str) -> RateController:
+        """域名维度：morningstar.cn → ms_rc，其余 → em_rc"""
+        return self._rc["morningstar"] if "morningstar" in url else self._rc["eastmoney"]
 
     @staticmethod
     def _endpoint_params(url: str) -> tuple[int, int | None]:
         """返回 (timeout, max_retries)。None = 无限重试"""
         if "morningstar" in url:
-            if "quicktake" in url:
-                return 3, None
             return 3, None
         return 3, 2
 
     # ── 请求 ──
 
-    async def fetch(self, url: str, fund_code: str = "", phase: int = 0) -> str | None:
+    async def fetch(self, url: str, phase: int = 0) -> str | None:
         if not url:
             return None
 
-        rc = self._select_rc(url, self._eastmoney, self._morningstar)
+        rc = self._select_rc(url)
         timeout, max_retries = self._endpoint_params(url)
         priority = 1 if phase == 2 else 0  # Phase 2 高优先级
+        req_timeout = aiohttp.ClientTimeout(total=timeout)
 
         result: str | None = None
         success = False
         attempt = 0
 
         # MS 无限重试直到可达；EM 有限重试
+        # 每次 HTTP 尝试（含重试）都走 acquire/release，RC 看到真实 QPS
         while max_retries is None or attempt < max_retries:
             await rc.acquire(priority=priority)
             try:
-                headers = {**self._BASE_HEADERS, "User-Agent": UserAgent().random}
-                req_timeout = aiohttp.ClientTimeout(total=timeout)
+                headers = {**self._BASE_HEADERS, "User-Agent": self._ua.random}
                 async with self._session.get(url, headers=headers, timeout=req_timeout) as resp:
                     if resp.status == 200:
                         text = await resp.text()

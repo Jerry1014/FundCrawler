@@ -27,9 +27,30 @@ async def run(target_loader,  # 鸭子类型：async get_fund_list() → list[Fu
         tasks = [asyncio.create_task(_crawl_one(fund, fetcher, writer))
                  for fund in fund_list]
 
-        for coro in tqdm.tqdm(asyncio.as_completed(tasks),
-                               total=total, desc="爬取进度", unit="只"):
-            await coro
+        pbar = tqdm.tqdm(total=total, unit="只",
+                         bar_format="{desc}{percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]")
+
+        # 背景呼吸灯 —— 圆点忽明忽灭，让用户知道程序还活着
+        async def _blink(pbar) -> None:
+            try:
+                on = True
+                while True:
+                    pbar.set_description(f"{'●' if on else ' '} 爬取进度 ")
+                    on = not on
+                    await asyncio.sleep(0.5)
+            except asyncio.CancelledError:
+                pass
+
+        blink_task = asyncio.create_task(_blink(pbar))
+
+        try:
+            for coro in asyncio.as_completed(tasks):
+                await coro
+                pbar.update(1)
+        finally:
+            blink_task.cancel()
+            await blink_task
+            pbar.close()
 
     await writer.close()
     logger.info("爬取完成")
@@ -41,8 +62,8 @@ async def _crawl_one(ctx: FundContext, fetcher: Fetcher, writer: ResultWriter) -
 
     while True:
         ready_to_fetch: list[Step] = [s for s in STEPS
-                             if s.name not in completed
-                             and all(d in completed for d in s.deps)]
+                                      if s.name not in completed
+                                      and all(d in completed for d in s.deps)]
 
         if not ready_to_fetch:
             break
@@ -50,8 +71,7 @@ async def _crawl_one(ctx: FundContext, fetcher: Fetcher, writer: ResultWriter) -
         phase += 1
         urls = [s.build_url(ctx) for s in ready_to_fetch]
         results = await asyncio.gather(
-            *[fetcher.fetch(url, ctx.fund_code, phase=phase)
-              for url in urls]
+            *[fetcher.fetch(url, phase=phase) for url in urls]
         )
 
         for step, raw in zip(ready_to_fetch, results):

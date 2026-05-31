@@ -27,42 +27,24 @@ class StaticTargetLoader:
 
 
 class WebTargetLoader:
-    """从天天基金网拉取全量开放式基金列表"""
-
-    URL = 'http://fund.eastmoney.com/Data/Fund_JJJZ_Data.aspx?page=1,&onlySale=0'
-
-    def __init__(self, session: aiohttp.ClientSession | None = None):
-        self._session = session
-
-    async def get_fund_list(self) -> list[FundContext]:
-        if not self._session:
-            async with aiohttp.ClientSession() as session:
-                return await self._fetch(session)
-        return await self._fetch(self._session)
-
-    async def _fetch(self, session: aiohttp.ClientSession) -> list[FundContext]:
-        headers = {"User-Agent": UserAgent().random}
-        async with session.get(self.URL, headers=headers) as resp:
-            return _parse_fund_list(await resp.text())
-
-
-class SmallBatchLoader:
-    """拉取指定数量基金（测试用）"""
+    """从天天基金网拉取基金列表。limit=None 拉取全量，否则拉取前 N 只（测试用）。"""
 
     URL = 'http://fund.eastmoney.com/Data/Fund_JJJZ_Data.aspx?page=1,{limit}&onlySale=0'
 
-    def __init__(self, limit: int = 10, session: aiohttp.ClientSession | None = None):
+    def __init__(self, limit: int | None = None,
+                 session: aiohttp.ClientSession | None = None):
         self._limit = limit
         self._session = session
 
     async def get_fund_list(self) -> list[FundContext]:
-        url = self.URL.format(limit=self._limit)
+        url = self.URL.format(limit=self._limit if self._limit is not None else "")
         if not self._session:
             async with aiohttp.ClientSession() as session:
                 return await self._fetch(session, url)
         return await self._fetch(self._session, url)
 
-    async def _fetch(self, session: aiohttp.ClientSession, url: str) -> list[FundContext]:
+    @staticmethod
+    async def _fetch(session: aiohttp.ClientSession, url: str) -> list[FundContext]:
         headers = {"User-Agent": UserAgent().random}
         async with session.get(url, headers=headers) as resp:
             return _parse_fund_list(await resp.text())
