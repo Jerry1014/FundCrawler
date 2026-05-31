@@ -105,6 +105,7 @@ class Fetcher:
     """带限流、重试、UA 轮换的异步 HTTP 客户端。
 
     两个域名级 RateController 管控所有请求的并发，AIMD 自动收敛到各域名安全上限。
+    所有接口统一 3s 超时 + 5 次重试——快速失败，多次尝试。
     """
 
     _BASE_HEADERS = {
@@ -145,12 +146,12 @@ class Fetcher:
 
     @staticmethod
     def _endpoint_params(url: str) -> tuple[int, int]:
-        """返回 (timeout, max_retries)，同域名不同接口按响应速度差异化"""
+        """返回 (timeout, max_retries)：3s 快速超时 + 5 次重试，快失败多尝试"""
         if "morningstar" in url:
             if "quicktake" in url:
-                return 12, 2  # 详情接口慢
-            return 8, 2      # 搜索接口快
-        return 10, 3         # EastMoney
+                return 3, 5
+            return 3, 5
+        return 3, 5
 
     # ── 请求 ──
 
@@ -165,9 +166,9 @@ class Fetcher:
         result: str | None = None
         success = False
 
+        # 每次 HTTP 请求（含重试）都通过 RC 控制 QPS 并记录成败
         for attempt in range(max_retries):
             await rc.acquire(priority=priority)
-
             try:
                 headers = {**self._BASE_HEADERS, "User-Agent": UserAgent().random}
                 req_timeout = aiohttp.ClientTimeout(total=timeout)
@@ -177,13 +178,14 @@ class Fetcher:
                         if text:
                             result = text
                             success = True
+                            rc.record(success=True)
                             break
                     raise ValueError(f"status={resp.status} or empty")
             except Exception:
+                rc.record(success=False)
                 if attempt < max_retries - 1:
                     await asyncio.sleep(self._retry_backoff ** attempt)
             finally:
                 await rc.release()
 
-        rc.record(success=success)
         return result
