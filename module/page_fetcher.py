@@ -110,7 +110,7 @@ class Fetcher:
     """带限流、重试、UA 轮换的异步 HTTP 客户端。
 
     两个域名级 RateController 管控所有请求的并发，AIMD 自动收敛到各域名安全上限。
-    MS +3 步长快速爬升，min=1 + ×0.5 重度退让；EM +1 步长稳定运行。
+    MS 无限重试直到成功（可接受慢，不接受失败），min=1 退化到单并发等待网络恢复。
     """
 
     _BASE_HEADERS = {
@@ -150,12 +150,12 @@ class Fetcher:
         return rc_ms if "morningstar" in url else rc_em
 
     @staticmethod
-    def _endpoint_params(url: str) -> tuple[int, int]:
-        """返回 (timeout, max_retries)"""
+    def _endpoint_params(url: str) -> tuple[int, int | None]:
+        """返回 (timeout, max_retries)。None = 无限重试"""
         if "morningstar" in url:
             if "quicktake" in url:
-                return 3, 4
-            return 3, 4
+                return 3, None
+            return 3, None
         return 3, 2
 
     # ── 请求 ──
@@ -170,9 +170,10 @@ class Fetcher:
 
         result: str | None = None
         success = False
+        attempt = 0
 
-        # 每次 HTTP 请求（含重试）都通过 RC 控制 QPS 并记录成败
-        for attempt in range(max_retries):
+        # MS 无限重试直到可达；EM 有限重试
+        while max_retries is None or attempt < max_retries:
             await rc.acquire(priority=priority)
             try:
                 headers = {**self._BASE_HEADERS, "User-Agent": UserAgent().random}
@@ -188,9 +189,9 @@ class Fetcher:
                     raise ValueError(f"status={resp.status} or empty")
             except Exception:
                 rc.record(success=False)
-                if attempt < max_retries - 1:
-                    await asyncio.sleep(self._retry_backoff ** attempt)
+                await asyncio.sleep(self._retry_backoff ** min(attempt, 5))
             finally:
                 await rc.release()
+            attempt += 1
 
         return result
