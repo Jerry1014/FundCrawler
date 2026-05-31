@@ -92,7 +92,7 @@ class TestRateControllerAIMD:
         for _ in range(100):
             rc.record(success=False)
         await rc._adjust()
-        assert rc.cur_rate == 7.5  # 10 × 0.75 = 7.5 > min=3
+        assert rc.cur_rate == 5.0  # 100% → 重度阈值 ×0.5 → 10×0.5=5.0 > min=3
 
     @pytest.mark.asyncio
     async def test_respects_max_rate(self):
@@ -110,3 +110,22 @@ class TestRateControllerAIMD:
         await rc._adjust()
         assert rc._success == 0
         assert rc._fail == 0
+
+    @pytest.mark.asyncio
+    async def test_heavy_failure_halves(self):
+        """失败率 >= 50% 触发 ×0.5"""
+        rc = RateController(initial_rate=10)
+        for _ in range(5):
+            rc.record(success=True)
+        for _ in range(5):
+            rc.record(success=False)
+        await rc._adjust()
+        assert rc.cur_rate == 5.0
+
+    @pytest.mark.asyncio
+    async def test_custom_increase_step(self):
+        rc = RateController(initial_rate=10, increase_step=2)
+        for _ in range(3):
+            rc.record(success=True)
+        await rc._adjust()
+        assert rc.cur_rate == 12.0

@@ -10,22 +10,25 @@ logger = logging.getLogger(__name__)
 
 
 class RateController:
-    """自适应速率控制 + 信号量 —— AIMD（加法增、乘法减）。
+    """自适应速率控制 + 信号量 —— AIMD。
 
-    调整策略:
-    - fail_rate >= 20% → 速率 ×0.75 (温和降速, 避免重试误伤)
-    - fail_rate <  20% → 速率 +1
+    双阈值降速:
+    - fail_rate >  50% → ×0.5  (重度失败，快速退让)
+    - fail_rate >= 20% → ×0.75 (轻度失败，温和退让)
+    - fail_rate <  20% → +step (线性爬升)
     """
 
     _FAIL_THRESHOLD = 0.2
-    _DECREASE_FACTOR = 0.75
+    _HEAVY_FAIL_THRESHOLD = 0.5
 
     def __init__(self, initial_rate: int = 1, max_rate: int = 100,
-                 min_rate: int = 1, refresh_interval: float = 0.5):
+                 min_rate: int = 1, refresh_interval: float = 0.5,
+                 increase_step: int = 1):
         self._cur_rate = float(initial_rate)
         self._max_rate = max_rate
         self._min_rate = min_rate
         self._refresh_interval = refresh_interval
+        self._increase_step = increase_step
         self._success = 0
         self._fail = 0
         self._permits = initial_rate
@@ -85,10 +88,12 @@ class RateController:
         fail_rate = self._fail / total if total > 0 else 0.0
 
         old_rate = self._cur_rate
-        if fail_rate >= self._FAIL_THRESHOLD:
-            self._cur_rate = max(self._min_rate, self._cur_rate * self._DECREASE_FACTOR)
+        if fail_rate >= self._HEAVY_FAIL_THRESHOLD:
+            self._cur_rate = max(self._min_rate, self._cur_rate * 0.5)
+        elif fail_rate >= self._FAIL_THRESHOLD:
+            self._cur_rate = max(self._min_rate, self._cur_rate * 0.75)
         elif total > 0:
-            self._cur_rate = min(self._max_rate, self._cur_rate + 1)
+            self._cur_rate = min(self._max_rate, self._cur_rate + self._increase_step)
 
         if self._cur_rate != old_rate:
             logger.debug(
@@ -105,7 +110,7 @@ class Fetcher:
     """带限流、重试、UA 轮换的异步 HTTP 客户端。
 
     两个域名级 RateController 管控所有请求的并发，AIMD 自动收敛到各域名安全上限。
-    所有接口统一 3s 超时 + 5 次重试——快速失败，多次尝试。
+    MS +3 步长快速爬升，min=1 + ×0.5 重度退让；EM +1 步长稳定运行。
     """
 
     _BASE_HEADERS = {
@@ -115,10 +120,10 @@ class Fetcher:
         "Connection": "keep-alive",
     }
 
-    def __init__(self, retry_backoff: float = 1.5):
+    def __init__(self, retry_backoff: float = 0.5):
         self._eastmoney = RateController(initial_rate=20, max_rate=200)
-        self._morningstar = RateController(initial_rate=8, min_rate=3, max_rate=200,
-                                           refresh_interval=1.0)
+        self._morningstar = RateController(initial_rate=8, min_rate=1, max_rate=200,
+                                           refresh_interval=1.0, increase_step=3)
         self._retry_backoff = retry_backoff
         self._session: aiohttp.ClientSession | None = None
 
@@ -146,12 +151,12 @@ class Fetcher:
 
     @staticmethod
     def _endpoint_params(url: str) -> tuple[int, int]:
-        """返回 (timeout, max_retries)：3s 快速超时 + 5 次重试，快失败多尝试"""
+        """返回 (timeout, max_retries)"""
         if "morningstar" in url:
             if "quicktake" in url:
-                return 3, 5
-            return 3, 5
-        return 3, 5
+                return 3, 4
+            return 3, 4
+        return 3, 2
 
     # ── 请求 ──
 
