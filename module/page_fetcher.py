@@ -189,9 +189,11 @@ class Fetcher:
                     raise ValueError(f"status={resp.status} or empty")
             except Exception:
                 rc.record(success=False)
-                await asyncio.sleep(self._retry_backoff ** min(attempt, 5))
             finally:
                 await rc.release()
+            # 重试前短暂等待，许可已释放，不阻塞其他请求
+            if not success:
+                await asyncio.sleep(self._retry_backoff ** min(attempt, 5))
             attempt += 1
 
         return result
