@@ -3,8 +3,8 @@
 import re
 from string import Template
 
-from crawler.fund_context import FundContext
-from utils.constants import number_in_eng, NO_DATA, DATA_IGNORE
+from module.constants import number_in_eng, NO_DATA, DATA_IGNORE
+from module.fund_context import FundContext
 
 # ── URL 构造 ────────────────────────────────────────────────
 

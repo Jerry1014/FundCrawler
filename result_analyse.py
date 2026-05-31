@@ -5,8 +5,7 @@ from datetime import date
 from heapq import nlargest
 from pathlib import Path
 
-from utils.constants import FundAttrKey
-from utils.top_k_holder import TopKHolder
+from module.constants import FundAttrKey
 
 _CSV_PATH = Path("./result/result.csv")
 _SKIP = {"NO_DATA", "DATA_ERROR", "DATA_IGNORE"}
@@ -58,14 +57,14 @@ def analyse(fund_filter, tenure_day_filter):
 
     # 夏普前 10%（R² > 60）
     top_n = max(len(by_tenure) // 10, 1)
-    sharp_holder = TopKHolder(
-        lambda r: float(r[FundAttrKey.SHARP_RATE_TEN_YEARS]), top_n)
-    for r in by_tenure:
-        if (r[FundAttrKey.SHARP_RATE_TEN_YEARS] not in _SKIP
-                and r[FundAttrKey.R_SQUARED_TO_IND] not in _SKIP
-                and float(r[FundAttrKey.R_SQUARED_TO_IND]) > 60):
-            sharp_holder.put(r)
-    by_sharp = sharp_holder.cur_k()
+    by_sharp = nlargest(
+        top_n,
+        (r for r in by_tenure
+         if r[FundAttrKey.SHARP_RATE_TEN_YEARS] not in _SKIP
+         and r[FundAttrKey.R_SQUARED_TO_IND] not in _SKIP
+         and float(r[FundAttrKey.R_SQUARED_TO_IND]) > 60),
+        key=lambda r: float(r[FundAttrKey.SHARP_RATE_TEN_YEARS]),
+    )
 
     # 阿尔法前三（扣费）
     alpha_top = nlargest(3, by_sharp,

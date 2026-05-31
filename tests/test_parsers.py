@@ -1,19 +1,19 @@
-"""parsers 单元测试 —— 基于 tests/case/ 的真实数据"""
+"""page_parser 单元测试 —— 基于 tests/case/ 的真实数据"""
 
 from pathlib import Path
 
-from crawler.fund_context import FundContext
-from crawler.parsers import STEPS
-from crawler.parsers.eastmoney import (
+from module.constants import NO_DATA
+from module.fund_context import FundContext
+from module.page_parser import STEPS
+from module.page_parser.eastmoney import (
     build_overview_url, parse_overview,
     build_manager_url, parse_manager,
 )
-from crawler.parsers.morningstar import (
+from module.page_parser.morningstar import (
     build_morningstar_url, parse_morningstar,
     build_return_url, parse_return,
     build_risk_url, parse_risk,
 )
-from utils.constants import NO_DATA
 
 CASE = Path(__file__).parent / "case"
 

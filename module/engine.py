@@ -5,10 +5,10 @@ import logging
 
 import tqdm
 
-from crawler.fetcher import Fetcher
-from crawler.fund_context import FundContext
-from crawler.parsers import STEPS, Step
-from crawler.writer import ResultWriter
+from module.fund_context import FundContext
+from module.page_fetcher import Fetcher
+from module.page_parser import STEPS, Step
+from module.result_writer import ResultWriter
 
 logger = logging.getLogger(__name__)
 
@@ -40,21 +40,21 @@ async def _crawl_one(ctx: FundContext, fetcher: Fetcher, writer: ResultWriter) -
     phase = 0
 
     while True:
-        ready: list[Step] = [s for s in STEPS
+        ready_to_fetch: list[Step] = [s for s in STEPS
                              if s.name not in completed
                              and all(d in completed for d in s.deps)]
 
-        if not ready:
+        if not ready_to_fetch:
             break
 
         phase += 1
-        urls = [s.build_url(ctx) for s in ready]
+        urls = [s.build_url(ctx) for s in ready_to_fetch]
         results = await asyncio.gather(
             *[fetcher.fetch(url, ctx.fund_code, phase=phase)
               for url in urls]
         )
 
-        for step, raw in zip(ready, results):
+        for step, raw in zip(ready_to_fetch, results):
             try:
                 step.parse(raw, ctx)
             except Exception:

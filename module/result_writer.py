@@ -5,8 +5,8 @@ import csv
 import typing
 from pathlib import Path
 
-from crawler.fund_context import FundContext
-from utils.constants import FundAttrKey, DATA_ERROR
+from module.constants import FundAttrKey, DATA_ERROR
+from module.fund_context import FundContext
 
 # CSV 列头 → FundContext 属性名 映射（唯一的数据源）
 _COLUMNS: list[tuple[str, str]] = [

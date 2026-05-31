@@ -5,9 +5,9 @@ import re
 from pathlib import Path
 
 import aiohttp
+from fake_useragent import UserAgent
 
-from crawler.fund_context import FundContext
-from utils.fake_ua_getter import singleton_fake_ua
+from module.fund_context import FundContext
 
 
 def _parse_fund_list(text: str) -> list[FundContext]:
@@ -41,7 +41,7 @@ class WebTargetLoader:
         return await self._fetch(self._session)
 
     async def _fetch(self, session: aiohttp.ClientSession) -> list[FundContext]:
-        headers = {"User-Agent": singleton_fake_ua.get_random_ua()}
+        headers = {"User-Agent": UserAgent().random}
         async with session.get(self.URL, headers=headers) as resp:
             return _parse_fund_list(await resp.text())
 
@@ -63,7 +63,7 @@ class SmallBatchLoader:
         return await self._fetch(self._session, url)
 
     async def _fetch(self, session: aiohttp.ClientSession, url: str) -> list[FundContext]:
-        headers = {"User-Agent": singleton_fake_ua.get_random_ua()}
+        headers = {"User-Agent": UserAgent().random}
         async with session.get(url, headers=headers) as resp:
             return _parse_fund_list(await resp.text())
 

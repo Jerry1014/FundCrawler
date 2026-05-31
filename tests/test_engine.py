@@ -4,9 +4,9 @@ import tempfile
 
 import pytest
 
-from crawler.engine import _crawl_one
-from crawler.fund_context import FundContext
-from crawler.writer import ResultWriter
+from module.engine import _crawl_one
+from module.fund_context import FundContext
+from module.result_writer import ResultWriter
 
 
 class MockFetcher:

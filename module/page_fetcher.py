@@ -4,8 +4,7 @@ import asyncio
 import logging
 
 import aiohttp
-
-from utils.fake_ua_getter import singleton_fake_ua
+from fake_useragent import UserAgent
 
 logger = logging.getLogger(__name__)
 
@@ -105,16 +104,9 @@ class RateController:
 class Fetcher:
     """带限流、重试、UA 轮换的异步 HTTP 客户端。
 
-    速率控制以**域名**为维度 —— 同一个域名的所有请求共享一个 RateController，
-    确保该域名承受的总并发被统一管控，而非按 API 路径分散限流。
-
-    EastMoney（fundf10.eastmoney.com）: 10s 超时, 3 次重试, 初始 20 并发
-    Morningstar（www.morningstar.cn）: 初始 8 并发, 1s 探测窗口, 保守起步避反爬
-      - 搜索接口（/handler/fundsearch）:  8s 超时, 2 次重试
-      - 详情接口（/handler/quicktake）:  12s 超时, 2 次重试（接口慢）
+    两个域名级 RateController 管控所有请求的并发，AIMD 自动收敛到各域名安全上限。
     """
 
-    # 模拟浏览器请求头（CloudFront WAF 可能校验 Accept / Accept-Language）
     _BASE_HEADERS = {
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
@@ -122,22 +114,10 @@ class Fetcher:
         "Connection": "keep-alive",
     }
 
-    # 域名维度: 速率控制器（AIMD 自动收敛到各域名的安全上限）
-    # 终端维度: 超时 + 重试次数（同域名不同接口响应速度不同）
-    _ENDPOINT_CONFIG: dict[str, dict] = {
-        "eastmoney":   {"timeout": 10, "max_retries": 3},
-        "ms_search":   {"timeout": 8,  "max_retries": 2},
-        "ms_quicktake": {"timeout": 12, "max_retries": 2},
-    }
-
-    def __init__(self, timeout: float = 10, max_retries: int = 3,
-                 retry_backoff: float = 1.5):
-        # 域名级 RateController —— 各自独立探测, AIMD 收敛到安全上限
+    def __init__(self, retry_backoff: float = 1.5):
         self._eastmoney = RateController(initial_rate=20, max_rate=200)
         self._morningstar = RateController(initial_rate=8, min_rate=3, max_rate=200,
                                            refresh_interval=1.0)
-        self._default_timeout = aiohttp.ClientTimeout(total=timeout)
-        self._default_max_retries = max_retries
         self._retry_backoff = retry_backoff
         self._session: aiohttp.ClientSession | None = None
 
@@ -145,7 +125,6 @@ class Fetcher:
         await self._eastmoney.start()
         await self._morningstar.start()
         self._session = aiohttp.ClientSession(
-            timeout=self._default_timeout,
             connector=aiohttp.TCPConnector(limit=0, limit_per_host=50),
         )
         return self
@@ -157,53 +136,54 @@ class Fetcher:
             await self._session.close()
             self._session = None
 
-    def _get_rc(self, url: str) -> RateController:
-        """域名维度路由 —— 同域名所有请求共享一个 RateController"""
-        if "morningstar" in url:
-            return self._morningstar
-        return self._eastmoney
+    # ── 路由 ──
 
-    def _get_endpoint_config(self, url: str) -> dict:
-        """同域名不同接口的超时/重试差异化（搜索快、详情慢）"""
+    @staticmethod
+    def _select_rc(url: str, rc_em: RateController, rc_ms: RateController) -> RateController:
+        """域名维度：morningstar.cn → rc_ms，其余 → rc_em"""
+        return rc_ms if "morningstar" in url else rc_em
+
+    @staticmethod
+    def _endpoint_params(url: str) -> tuple[int, int]:
+        """返回 (timeout, max_retries)，同域名不同接口按响应速度差异化"""
         if "morningstar" in url:
             if "quicktake" in url:
-                return self._ENDPOINT_CONFIG["ms_quicktake"]
-            return self._ENDPOINT_CONFIG["ms_search"]
-        return self._ENDPOINT_CONFIG["eastmoney"]
+                return 12, 2  # 详情接口慢
+            return 8, 2      # 搜索接口快
+        return 10, 3         # EastMoney
+
+    # ── 请求 ──
 
     async def fetch(self, url: str, fund_code: str = "", phase: int = 0) -> str | None:
-        # 空 URL 直接跳过（上游已判定不可请求）
         if not url:
             return None
 
-        rc = self._get_rc(url)
-        cfg = self._get_endpoint_config(url)
-        domain_timeout = aiohttp.ClientTimeout(total=cfg["timeout"])
-        domain_max_retries = cfg["max_retries"]
+        rc = self._select_rc(url, self._eastmoney, self._morningstar)
+        timeout, max_retries = self._endpoint_params(url)
+        priority = 1 if phase == 2 else 0  # Phase 2 高优先级
 
         result: str | None = None
         success = False
 
-        for attempt in range(domain_max_retries):
-            await rc.acquire(priority=1 if phase == 2 else 0)
+        for attempt in range(max_retries):
+            await rc.acquire(priority=priority)
 
             try:
-                headers = {**self._BASE_HEADERS, "User-Agent": singleton_fake_ua.get_random_ua()}
-                async with self._session.get(url, headers=headers, timeout=domain_timeout) as resp:
+                headers = {**self._BASE_HEADERS, "User-Agent": UserAgent().random}
+                req_timeout = aiohttp.ClientTimeout(total=timeout)
+                async with self._session.get(url, headers=headers, timeout=req_timeout) as resp:
                     if resp.status == 200:
-                        text = await resp.text()  # type: ignore[no-any-return]
+                        text = await resp.text()
                         if text:
                             result = text
                             success = True
                             break
                     raise ValueError(f"status={resp.status} or empty")
             except Exception:
-                if attempt < domain_max_retries - 1:
+                if attempt < max_retries - 1:
                     await asyncio.sleep(self._retry_backoff ** attempt)
             finally:
                 await rc.release()
 
-        # 只按最终结果调整速率, 避免重试过程误伤
         rc.record(success=success)
-
         return result

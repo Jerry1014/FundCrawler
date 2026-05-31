@@ -52,7 +52,7 @@ flowchart TB
         RC_MS[Morningstar RC<br/>起步8 · 1s窗口 · P2优先]
     end
 
-    subgraph 解析["④ 数据解析 parsers/"]
+    subgraph 解析["④ 数据解析 page_parser/"]
         direction LR
         STEPS[5个Step · 2个Phase<br/>overview manager morningstar<br/>return risk]
     end

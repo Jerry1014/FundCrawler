@@ -2,8 +2,8 @@
 
 import pytest
 
-from crawler.engine import run
-from crawler.target_loader import SmallBatchLoader
+from module.engine import run
+from module.target_loader import SmallBatchLoader
 
 
 @pytest.mark.slow

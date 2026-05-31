@@ -3,8 +3,8 @@
 import json
 from string import Template
 
-from crawler.fund_context import FundContext
-from utils.constants import NO_DATA
+from module.constants import NO_DATA
+from module.fund_context import FundContext
 
 # ── URL 构造 ────────────────────────────────────────────────
 

@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from crawler.fetcher import RateController
+from module.page_fetcher import RateController
 
 
 class TestSignalSemantics:
