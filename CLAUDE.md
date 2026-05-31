@@ -6,9 +6,11 @@ Python 3.14, `asyncio` + `aiohttp`.
 ## Non-obvious
 
 - Morningstar sits behind **CloudFront WAF** that checks `Accept`/`Accept-Language`. Missing → 403/timeout. `_BASE_HEADERS` mimics browser.
-- `rc.record()` called on **every HTTP attempt** (including retries). Each one is a real request hitting the server; RC should see the full QPS picture to judge true failure rate.
-- Rate controllers are **domain-dimension** (one per host), not per API endpoint. Same-domain endpoints share one RC but get different timeouts (search 8s, quicktake 12s).
-- **No pipeline slots** — all funds enter Phase 1 at once. Phase 2 requests get **RC priority** over Phase 1, creating natural pipeline flow without artificial limits.
-- Morningstar **starts conservative** (8 concurrent, 1.0s window) to avoid anti-crawl; EastMoney starts aggressive (20, 0.5s window). `max_rate=200` is intentionally high so AIMD finds the **server's real limit**, not our ceiling.
+- `rc.record()` called on **every HTTP attempt** (including retries). Each one is a real request hitting the server; RC sees the full QPS picture.
+- Rate controllers are **domain-dimension** (one per host), not per API endpoint. Same-domain endpoints share one RC, all use 3s timeout.
+- **No pipeline slots** — all funds enter Phase 1 at once. Phase 2 requests get **RC priority** over Phase 1, creating natural pipeline flow.
+- AIMD with **dual threshold**: fail_rate >50% → ×0.5 (heavy backoff), ≥20% → ×0.75 (gentle), <20% → +step. MS uses `increase_step=3`, EM uses +1.
+- Morningstar **starts conservative** (8 concurrent, 1.0s window); EastMoney starts aggressive (20, 0.5s window). `max_rate=200` so AIMD finds the server's limit.
+- MS has **infinite retries** (3s timeout per attempt, backoff capped at 0.03s). When unreachable, RC degrades to `min_rate=1` — single concurrent keeps retrying until network recovers. Accept slow, never fail.
 - **Sentinel strings** (`NO_DATA`, `DATA_ERROR`, `DATA_IGNORE`) distinguish "source says no data" from "crawl failed" from "intentionally skipped".
 - `PreviousReleaseVersion` branch = pre-AI-rewrite fallback.
