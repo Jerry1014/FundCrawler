@@ -64,7 +64,7 @@ def _pad(s: str, width: int) -> str:
 # ── 纯债基金 ──
 
 def analyse_bond(funds: list[dict]) -> None:
-    """纯债筛选: 规模>50亿 → 经理>5年 → 费率<0.8% → 夏普前5"""
+    """纯债筛选: 规模>50亿 → 经理>5年 → 卡玛比率（或夏普）前5"""
 
     candidates = [
         r for r in funds
