@@ -5,7 +5,7 @@ from pathlib import Path
 from module.constants import FundAttrKey as K, NO_DATA
 from module.fund_context import FundContext
 from module.page_parser import STEPS, resolve_steps
-from module.page_parser.eastmoney import (
+from module.page_parser.tiantian import (
     build_overview_url, parse_overview,
     build_manager_url, parse_manager,
     build_tsdata_url, parse_tsdata,

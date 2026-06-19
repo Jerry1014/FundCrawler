@@ -125,7 +125,7 @@ class Fetcher:
 
     def __init__(self, retry_backoff: float = 0.5):
         configs = {
-            "eastmoney":  dict(initial_rate=20, max_rate=200),
+            "tiantian":  dict(initial_rate=20, max_rate=200),
             "morningstar": dict(initial_rate=8, min_rate=1, max_rate=200,
                                 refresh_interval=1.0, increase_step=3),
         }
@@ -151,8 +151,8 @@ class Fetcher:
     # ── 路由 ──
 
     def _select_rc(self, url: str) -> RateController:
-        """域名维度：morningstar.cn → ms_rc，其余 → em_rc"""
-        return self._rc["morningstar"] if "morningstar" in url else self._rc["eastmoney"]
+        """域名维度：morningstar.cn → ms_rc，其余 → tt_rc"""
+        return self._rc["morningstar"] if "morningstar" in url else self._rc["tiantian"]
 
     @staticmethod
     def _endpoint_params(url: str) -> tuple[int, int | None]:

@@ -16,6 +16,7 @@
         基金代码,基金简称,(晨星)基金代码,基金类型,资产规模(亿),基金管理人,基金净值
         基金经理(最近连续最长任职),基金经理的上任时间
         管理费率(每年),托管费率(每年),销售服务费率(每年)
+        标准差(近三年),夏普比率(近三年)
         五年回报(年化),十年回报(年化)
         标准差(五年%),标准差(十年%),夏普比率(五年),夏普比率(十年)
         阿尔法系数(相对于基准指数%),贝塔系数(相对于基准指数),R平方(相对于基准指数)
@@ -23,15 +24,18 @@
 ![Image text](docs/img/result_2.png)
 - 爬取全部数据需要59min左右（23343个基金），取决于网络环境，瓶颈为网站的反爬策略
 - 手机网络的ip限制能稍微宽松点
+- 默认只爬天天基金数据，不爬晨星。晨星 WAF 反爬严格，如需爬取晨星数据，修改 run.py 中 fields = TT_MS_FULL
 
 # 食用方法
 
 - Python3.14
 - 安装依赖 pip install -r requirements.txt
+- 额外安装 aiohttp（不在 requirements.txt 中）：pip install aiohttp
 - 爬取基金数据
   - 结果保存在 result/result.csv
-  - 运行test_run.py 爬一点点数据看下效果
+  - 运行test_run.py 爬10只基金验证
   - 运行run.py 爬取完整数据
+  - 可选：修改 run.py 中 fields 切换数据范围（TT_BASIC / TT_STANDARD / TT_MS_FULL）
 - 爬取结果分析，参考 result_analyse.py
 
 # 技术相关
@@ -43,18 +47,18 @@ flowchart TB
     end
 
     subgraph 核心["② 爬虫引擎 Engine"]
-        E[每只基金一个协程<br/>无槽位限制]
+        E[每只基金一个协程<br/>按 fields 配置自动选定 Step]
     end
 
     subgraph 网络["③ 速率控制 Fetcher"]
         direction LR
-        RC_EM[EastMoney RC<br/>起步20 · 0.5s窗口]
+        RC_EM[天天基金 RC<br/>起步20 · 0.5s窗口]
         RC_MS[Morningstar RC<br/>起步8 · 1s窗口 · P2优先]
     end
 
     subgraph 解析["④ 数据解析 page_parser/"]
         direction LR
-        STEPS[5个Step · 2个Phase<br/>overview manager morningstar<br/>return risk]
+        STEPS[6个Step · 2个Phase<br/>overview manager tsdata<br/>morningstar return risk]
     end
 
     subgraph 输出["⑤ 结果输出"]
@@ -68,7 +72,7 @@ flowchart TB
     核心 -->|写入| 输出
 ```
 
-每只基金 5 个数据源，按依赖自动分两阶段——morningstar ID 就绪后 Phase 2 才开始。每个 phase 内 `gather` 并行，瓶颈只取决于最慢的那个 step。
+每只基金根据 fields 配置自动选择 Step（含传递依赖），按依赖自动分两阶段——morningstar ID 就绪后 Phase 2 才开始。每个 phase 内 `gather` 并行，瓶颈只取决于最慢的那个 step。
 
 ## 流程（动态并发控制）
 
@@ -78,9 +82,10 @@ flowchart TB
 flowchart TB
     subgraph fund["一只基金的生命周期"]
         start([开始]) --> p1[Phase 1 · gather 并行]
-        p1 --> ov[overview] & mg[manager] & ms[morningstar]
-        ov --> em1{{EM RC<br/>获取许可}}
+        p1 --> ov[overview] & mg[manager] & td[tsdata] & ms[morningstar]
+        ov --> em1{{天天基金 RC<br/>获取许可}}
         mg --> em1
+        td --> em1
         ms --> ms1{{MS RC<br/>普通优先级}}
         em1 --> p1done[Phase 1 完成]
         ms1 --> p1done
@@ -115,10 +120,10 @@ flowchart TB
 
 | 域名 | 起步并发 | 步长 | 策略 |
 |------|---------|------|------|
-| EastMoney | 20 | +1 | 无反爬，稳 |
+| 天天基金 | 20 | +1 | 无反爬，稳 |
 | Morningstar | 8 | **+3** | 保守起步，无限重试，min=1 退化 · P2 优先 |
 
-所有接口统一 3s 超时，EM 2 次重试，MS 无限重试。
+所有接口统一 3s 超时，TT 2 次重试，MS 无限重试。
 ### 扩展点
 
-换基金来源 → 实现 `TargetLoader`；加数据源 → 添加 `Step` 到 `STEPS`；换输出格式 → 替换 `ResultWriter`。
+换基金来源 → 实现 `TargetLoader`；加数据源 → 添加 `Step` 到 `STEPS`，设置 `provides` 声明产出字段；换输出格式 → 替换 `ResultWriter`。

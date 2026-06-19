@@ -5,7 +5,7 @@ from typing import Callable
 
 from module.constants import FundAttrKey as K
 from module.fund_context import FundContext
-from module.page_parser.eastmoney import (
+from module.page_parser.tiantian import (
     build_overview_url, parse_overview,
     build_manager_url, parse_manager,
     build_tsdata_url, parse_tsdata,

@@ -8,7 +8,7 @@ class FundAttrKey(StrEnum):
     """
     基金属性枚举
     """
-    # 东方财富 — 基本概况 + 基金经理
+    # 天天基金 — 基本概况 + 基金经理
     FUND_CODE = '基金代码',
     FUND_SIMPLE_NAME = '基金简称',
     FUND_TYPE = '基金类型',
@@ -23,7 +23,7 @@ class FundAttrKey(StrEnum):
     FUND_MANAGER = '基金经理(最近连续最长任职)',
     DATE_OF_APPOINTMENT = '基金经理的上任时间',
 
-    # 东方财富 — 特色数据
+    # 天天基金 — 特色数据
     STANDARD_DEVIATION_THREE_YEARS = '标准差(近三年)',
     SHARP_RATE_THREE_YEARS = '夏普比率(近三年)',
 
@@ -42,23 +42,23 @@ class FundAttrKey(StrEnum):
 
 # ── 预定义字段组合 ──
 
-# 东方财富 — 基本数据（天天基金网：基本概况 + 基金经理）
-EM_BASIC: frozenset[FundAttrKey] = frozenset({
+# 天天基金 — 基本数据（天天基金网：基本概况 + 基金经理）
+TT_BASIC: frozenset[FundAttrKey] = frozenset({
     FundAttrKey.FUND_TYPE, FundAttrKey.FUND_SIZE, FundAttrKey.FUND_COMPANY,
     FundAttrKey.FUND_VALUE, FundAttrKey.MANAGEMENT_FEE_RATE,
     FundAttrKey.CUSTODY_FEE_RATE, FundAttrKey.SALES_SERVICE_FEE_RATE,
     FundAttrKey.FUND_MANAGER, FundAttrKey.DATE_OF_APPOINTMENT,
 })
 
-# 东方财富 — 标准数据（基本数据 + 特色数据：近三年标准差、夏普比率）
-EM_STANDARD: frozenset[FundAttrKey] = EM_BASIC | frozenset({
+# 天天基金 — 标准数据（基本数据 + 特色数据：近三年标准差、夏普比率）
+TT_STANDARD: frozenset[FundAttrKey] = TT_BASIC | frozenset({
     FundAttrKey.STANDARD_DEVIATION_THREE_YEARS,
     FundAttrKey.SHARP_RATE_THREE_YEARS,
 })
 
-# 东方财富 + 晨星 — 完整数据
+# 天天基金 + 晨星 — 完整数据
 # 注意：晨星有反爬策略（WAF + 限流），完整爬取速度较慢，适合少量基金使用
-EM_MS_FULL: frozenset[FundAttrKey] = EM_STANDARD | frozenset({
+TT_MS_FULL: frozenset[FundAttrKey] = TT_STANDARD | frozenset({
     FundAttrKey.MORNINGSTAR_FUND_ID,
     FundAttrKey.ANNUALIZED_RETURN_FIVE_YEAR, FundAttrKey.ANNUALIZED_RETURN_TEN_YEAR,
     FundAttrKey.STANDARD_DEVIATION_FIVE_YEARS, FundAttrKey.STANDARD_DEVIATION_TEN_YEARS,

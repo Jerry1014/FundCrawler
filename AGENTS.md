@@ -1,98 +1,43 @@
 # AGENTS.md
 
-FundCrawler — async scraper for ~21,000 Chinese mutual funds from EastMoney + Morningstar China.
-Python 3.14, `asyncio` + `aiohttp`.
+FundCrawler — async scraper for ~21,000 Chinese mutual funds (Tiantian + Morningstar China). Python 3.14, `asyncio` + `aiohttp`.
 
-## Entry points
+## Hidden traps
 
-- `run.py` — full crawl (all ~21K funds) → `result/result.csv`。默认只爬东方财富，需晨星数据时取消 `MS_FIELDS` 注释。
-- `test_run.py` — smoke test (10 funds), run via `pytest test_run.py -m slow`。修改后先用它验证，不要跑全量 `run.py`。
-- `result_analyse.py` — post-hoc CSV analysis
+| What | Why it bites |
+|------|-------------|
+| `aiohttp` NOT in `requirements.txt` | `pip install -r requirements.txt` won't install it. Manual: `pip install aiohttp requests tqdm fake-useragent` |
+| Morningstar WAF | CloudFront checks `Accept` + `Accept-Language` headers. Missing → 403/silent timeout. `_BASE_HEADERS` in `page_fetcher.py:119` |
+| MS returns UTF-8 BOM sometimes | `json.loads` rejects it. `_load_json()` in `morningstar.py:38` strips BOM with `.lstrip("\ufeff")` |
+| `_resize` clamp (`page_fetcher.py:63`) | On shrink, `_available` capped to `_permits`. Without this released permits accumulate past new rate → reduction is defeated |
+| Empty URL guard | When MS fund ID missing, Phase 2 `build_*_url` returns `""`, `fetch()` returns `None` with zero HTTP. Intended for edge cases only — with infinite retry, MS ID should eventually be found |
+| MS infinite retry | `max_retries=None`. Unreachable → RC degrades to `min_rate=1` (single probe keeps trying). Reachable → AIMD climbs back to `increase_step=+3` |
+| Sentinel strings (`constants.py`) | `NO_DATA` = source says no data. `DATA_ERROR` = crawl failed. `DATA_IGNORE` = intentionally skipped. Never use `NO_DATA` to mask crawl failures |
+| `ResultWriter` falsy → `DATA_ERROR` | `getattr(ctx, attr) or DATA_ERROR` — empty string `""` or `0` in context becomes `DATA_ERROR` in CSV |
 
-## Dependencies
+## Architecture notes (not obvious from code)
 
-`aiohttp` is **NOT** in `requirements.txt`. Runtime install:
-
-    pip install aiohttp requests tqdm fake-useragent
-
-## Testing
-
-```bash
-pytest tests/                       # unit tests only
-pytest test_run.py -m "slow"        # integration: 100 actual funds
-pytest -m "not slow"                # skip integration
-```
-
-No CI, no linter, no typechecker, no `pyproject.toml`.
-
-## Architecture
-
-6 steps in 2 phases. `module/page_parser/__init__.py:27` defines `STEPS`:
-
-| Phase | Step        | Domain      |
-|-------|-------------|-------------|
-| 1     | overview    | EastMoney   |
-| 1     | manager     | EastMoney   |
-| 1     | tsdata      | EastMoney   |
-| 1     | morningstar | Morningstar |
-| 2     | return      | Morningstar |
-| 2     | risk        | Morningstar |
-
-Phase 2 depends on `morningstar` (needs MS fund ID). All funds enter Phase 1 at once — no pipeline slots. Within each phase, steps run in parallel via `asyncio.gather`.
-
-## Rate control (domain-dimension)
-
-One `RateController` per host, not per endpoint. Config in `module/page_fetcher.py:127`:
-- EastMoney: start=20 concurrent, window=0.5s, step=+1
-- Morningstar: start=8 concurrent, window=1.0s, step=**+3**
-
-AIMD with dual threshold (each window):
-- fail_rate >50% → ×0.5
-- fail_rate ≥20% → ×0.75
-- fail_rate <20% → +step
-
-Phase 2 acquires with `priority=1`, Phase 1 with `priority=0`. P1 waiters yield to P2 waiters (`page_fetcher.py:45`).
-
-`rc.record()` is called on **every HTTP attempt** including retries. Rate controller sees true QPS.
-
-MS infinite retry via `max_retries=None` (EM: 2 retries). When unreachable, RC degrades to `min_rate=1` — single probe keeps trying; when reachable, AIMD climbs back.
-
-## Gotchas
-
-### `_resize` clamp (`page_fetcher.py:63`)
-
-On shrink, `_available` is clamped to `_permits`. Without this, released permits accumulate beyond the new rate, defeating the reduction.
-
-### Empty URL guard
-
-When MS fund ID is missing, Phase 2 `build_return_url` / `build_risk_url` return `""`, and `fetch()` returns `None` without HTTP request. With infinite retries, MS ID should eventually be found — the guard handles edge cases only.
-
-### Morningstar WAF
-
-CloudFront WAF checks `Accept` and `Accept-Language` headers. `_BASE_HEADERS` in `page_fetcher.py:119` mimics a browser. Missing headers → 403/timeout.
-
-### Sentinel strings (`constants.py:39`)
-
-- `NO_DATA` — source says no data
-- `DATA_ERROR` — crawl failed (empty/missing)
-- `DATA_IGNORE` — intentionally skipped
-
-Do NOT use `NO_DATA` to mask crawl failures.
-
-### ResultWriter field names
-
-`result_writer.py:52` uses `getattr(ctx, attr) or DATA_ERROR` — an empty string or falsy value in the context becomes `DATA_ERROR` in CSV.
-
-### `PreviousReleaseVersion` branch
-
-Pre-AI-rewrite fallback. Switch to it if current branch has unexpected regressions.
-
-### Progress bar
-
-`tqdm` with a blinking dot spinner (`"●"/" "`) rotating at 0.5s. The bar counts completed funds, not in-flight ones — spinner proves liveness when rate-limited.
+- Each fund enters Phase 1 immediately — no pipeline slots, no worker pool. All steps within a phase run in parallel via `asyncio.gather`.
+- Phase 2 acquires RC with `priority=1`, Phase 1 with `priority=0`. P1 waiters yield to P2 waiters (`page_fetcher.py:45`).
+- `rc.record()` is called on **every HTTP attempt** including retries → RC sees true QPS.
+- Progress bar counts completed funds (not in-flight). Blinking dot (`"●"/" "` at 0.5s) proves liveness when rate-limited.
 
 ## Extension points
 
-- Fund source → implement `TargetLoader` (duck-typed: `async get_fund_list() → list[FundContext]`)
-- Data source → add a `Step` to `STEPS` list，设置 `provides` 声明产出字段
+- Fund source → implement `TargetLoader` (duck-type: `async get_fund_list() → list[FundContext]`)
+- Data source → add a `Step` to `STEPS` with `provides` declaring output fields
 - Output format → replace `ResultWriter`
+
+## Validation
+
+**每次涉及 Step / `FundAttrKey` / `FundContext` / `page_parser` 的修改后，必须跑：**
+
+```bash
+pytest test_run.py -m slow
+```
+
+爬 10 只基金验证全流程可通，确认 CSV 列数和各列有数据率 OK。
+
+## Fallback
+
+`PreviousReleaseVersion` branch — pre-AI-rewrite version. Switch to it if Dev has unexpected regressions.

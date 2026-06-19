@@ -2,7 +2,7 @@
 
 import pytest
 
-from module.constants import EM_STANDARD
+from module.constants import TT_STANDARD
 from module.engine import run
 from module.target_loader import WebTargetLoader
 
@@ -10,4 +10,4 @@ from module.target_loader import WebTargetLoader
 @pytest.mark.slow
 @pytest.mark.asyncio
 async def test_crawl_small_batch():
-    await run(WebTargetLoader(limit=10), fields=EM_STANDARD)
+    await run(WebTargetLoader(limit=15), fields=TT_STANDARD)
