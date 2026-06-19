@@ -16,71 +16,113 @@
         基金代码,基金简称,(晨星)基金代码,基金类型,资产规模(亿),基金管理人,基金净值
         基金经理(最近连续最长任职),基金经理的上任时间
         管理费率(每年),托管费率(每年),销售服务费率(每年)
+        标准差(近三年),夏普比率(近三年)
         五年回报(年化),十年回报(年化)
         标准差(五年%),标准差(十年%),夏普比率(五年),夏普比率(十年)
         阿尔法系数(相对于基准指数%),贝塔系数(相对于基准指数),R平方(相对于基准指数)
 
 ![Image text](docs/img/result_2.png)
-- 爬取全部数据需要30min左右（21032个基金），取决于网络环境，瓶颈为网站的反爬策略
-
+- 爬取全部数据需要22min左右（23529个基金），取决于网络环境，瓶颈为网站的反爬策略
+- 默认只爬天天基金数据，不爬晨星。晨星 WAF 反爬严格，如需爬取晨星数据，修改 run.py 中 fields = TT_MS_FULL
 
 # 食用方法
 
 - Python3.14
 - 安装依赖 pip install -r requirements.txt
+- 额外安装 aiohttp（不在 requirements.txt 中）：pip install aiohttp
 - 爬取基金数据
   - 结果保存在 result/result.csv
-  - 运行test_run.py 爬一点点数据看下效果
+  - 运行test_run.py 爬10只基金验证
   - 运行run.py 爬取完整数据
+  - 可选：修改 run.py 中 fields 切换数据范围（TT_BASIC / TT_STANDARD / TT_MS_FULL）
 - 爬取结果分析，参考 result_analyse.py
 
 # 技术相关
+## 架构
+```mermaid
+flowchart TB
+    subgraph 输入["① 基金列表"]
+        TL[TargetLoader<br/>天天基金网 API]
+    end
+
+    subgraph 核心["② 爬虫引擎 Engine"]
+        E[每只基金一个协程<br/>按 fields 配置自动选定 Step]
+    end
+
+    subgraph 网络["③ 速率控制 Fetcher"]
+        direction LR
+        RC_EM[天天基金 RC<br/>起步20 · 0.5s窗口]
+        RC_MS[Morningstar RC<br/>起步8 · 1s窗口 · P2优先]
+    end
+
+    subgraph 解析["④ 数据解析 page_parser/"]
+        direction LR
+        STEPS[6个Step · 2个Phase<br/>overview manager tsdata<br/>morningstar return risk]
+    end
+
+    subgraph 输出["⑤ 结果输出"]
+        WR[ResultWriter] --> CSV[(result.csv)]
+    end
+
+    输入 -->|基金列表| 核心
+    核心 -->|并发请求| 网络
+    网络 -->|HTTP响应| 解析
+    解析 -->|FundContext| 核心
+    核心 -->|写入| 输出
+```
+
+每只基金根据 fields 配置自动选择 Step（含传递依赖），按依赖自动分两阶段——morningstar ID 就绪后 Phase 2 才开始。每个 phase 内 `gather` 并行，瓶颈只取决于最慢的那个 step。
+
+## 流程（动态并发控制）
+
+从**一只基金的视角**看完整流程，以及它在哪些环节被 RateController 管控：
 
 ```mermaid
 flowchart TB
-    subgraph 输入
-        TL[TargetLoader<br/>基金列表]
+    subgraph fund["一只基金的生命周期"]
+        start([开始]) --> p1[Phase 1 · gather 并行]
+        p1 --> ov[overview] & mg[manager] & td[tsdata] & ms[morningstar]
+        ov --> em1{{天天基金 RC<br/>获取许可}}
+        mg --> em1
+        td --> em1
+        ms --> ms1{{MS RC<br/>普通优先级}}
+        em1 --> p1done[Phase 1 完成]
+        ms1 --> p1done
+        p1done --> p2[Phase 2 · gather 并行]
+        p2 --> ret[return] & risk[risk]
+        ret --> ms2{{MS RC<br/>高优先级 · 插队}}
+        risk --> ms2
+        ms2 --> write[写入 CSV]
     end
 
-    subgraph 引擎["Engine · 20 并发槽位"]
-        P1[Phase 1 · gather] --> P2[Phase 2 · gather]
-        P1 --> OV[overview · EastMoney]
-        P1 --> MG[manager · EastMoney]
-        P1 --> MS[morningstar · 晨星搜索]
-        P2 --> RT[return · 晨星详情]
-        P2 --> RK[risk · 晨星详情]
+    subgraph rc["全局 RateController（所有基金共享）"]
+        loop["每 0.5s/1s 统计成败"] --> adj{失败率?}
+        adj -- ">50%" --> dec5[并发 × 0.5]
+        adj -- "20%-50%" --> dec75[并发 × 0.75]
+        adj -- "<20%" --> inc[并发 +N]
+        dec5 --> limit[更新信号量额数]
+        dec75 --> limit
+        inc --> limit
     end
 
-    subgraph 输出
-        WR[ResultWriter · CSV]
-    end
-
-    TL --> 引擎
-    引擎 --> WR
+    ms2 -.->|P2 优先获取| rc
+    ms1 -.->|P2 排队时让路| rc
+    em1 -.->|独立管控| rc
 ```
 
-每只基金 5 个数据源，按依赖自动分两阶段——morningstar ID 就绪后 Phase 2 才开始。每个 phase 内 `gather` 并行，瓶颈只取决于最慢的那个 step。
+**关键机制**：
 
-### 动态并发控制
+- 每个 Step 发出 HTTP 请求前必须通过对应域名的 RC 信号量——有空额直接通过，没空额排队等。
+- Phase 2 请求在 Morningstar RC 中**高优先级**：释放额数时优先唤醒 Phase 2 等待者。
+- AIMD 双阈值：重度失败(>50%) ×0.5 快速退让，轻度失败(20-50%) ×0.75 温和调整。
+- **Morningstar 无限重试**：每次 HTTP 尝试（含重试）都走 RC 获取/释放许可，匹配网站视角的真实 QPS。网络不可达时 RC 自动退到 `min=1`——单并发持续探测，网络恢复后 AIMD 自动爬升。
 
-三个域名各自独立 AIMD，在线探测失败率自动收敛——不需要人工设定"每个域名最多 N 并发"。
+| 域名 | 起步并发 | 步长 | 策略 |
+|------|---------|------|------|
+| 天天基金 | 20 | +1 | 无反爬，稳 |
+| Morningstar | 8 | **+3** | 保守起步，无限重试，min=1 退化 · P2 优先 |
 
-```mermaid
-flowchart TD
-    subgraph 调整循环["每 0.5s / 1.0s"]
-        A[统计窗口成败] --> B{失败率 ≥ 20%?}
-        B -- 是 --> C[并发 × 0.75]
-        B -- 否 --> D[并发 + 1]
-        C --> E[更新信号量]
-        D --> E
-    end
-    E --> F[请求 → 有空额?]
-    F -- 无 --> G[排队]
-    G --> F
-    F -- 有 --> H[发出]
-    H --> I{最终结果}
-    I -- 成功/失败 --> A
-```
+所有接口统一 3s 超时，TT 2 次重试，MS 无限重试。
 ### 扩展点
 
-换基金来源 → 实现 `TargetLoader`；加数据源 → 添加 `Step` 到 `STEPS`；换输出格式 → 替换 `ResultWriter`。
+换基金来源 → 实现 `TargetLoader`；加数据源 → 添加 `Step` 到 `STEPS`，设置 `provides` 声明产出字段；换输出格式 → 替换 `ResultWriter`。

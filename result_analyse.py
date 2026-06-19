@@ -1,127 +1,148 @@
 """基金筛选分析"""
 
 import csv
+import sys
 from datetime import date
 from heapq import nlargest
 from pathlib import Path
 
-from utils.constants import FundAttrKey
-from utils.top_k_holder import TopKHolder
+from module.constants import FundAttrKey as K
 
-_CSV_PATH = Path("./result/result.csv")
+# Windows 终端默认 GBK，强制 UTF-8 以支持 ²╔═╗ 等字符
+sys.stdout.reconfigure(encoding='utf-8')
+
+_CSV_PATH = Path("./result/result-bak.csv")
 _SKIP = {"NO_DATA", "DATA_ERROR", "DATA_IGNORE"}
 
 
-def _read_funds():
+# ── 数据加载 ──
+
+def _read_funds() -> list[dict]:
     with open(_CSV_PATH, encoding="utf-8") as f:
         return list(csv.DictReader(f))
 
 
-def _fee_rate(row, key):
-    val = row[key]
-    if not val or val in _SKIP:
-        return 0.0
-    return float(val.rstrip("%"))
+# ── 通用取值 ──
 
-
-def _annual_fee(row):
-    return (_fee_rate(row, FundAttrKey.MANAGEMENT_FEE_RATE) +
-            _fee_rate(row, FundAttrKey.CUSTODY_FEE_RATE) +
-            _fee_rate(row, FundAttrKey.SALES_SERVICE_FEE_RATE))
-
-
-def _safe_float(row, key):
+def _safe_float(row: dict, key: str) -> float | None:
     val = row[key]
     if not val or val in _SKIP:
         return None
     return float(val)
 
 
-def _tenure_days(row):
+def _fee_rate(row: dict, key: str) -> float:
+    """解析费率，缺失视为 0"""
+    val = row[key]
+    if not val or val in _SKIP:
+        return 0.0
+    return float(val.rstrip("%"))
+
+
+def _total_fee(row: dict) -> float:
+    """管理费 + 托管费 + 销售服务费"""
+    return (_fee_rate(row, K.MANAGEMENT_FEE_RATE) +
+            _fee_rate(row, K.CUSTODY_FEE_RATE) +
+            _fee_rate(row, K.SALES_SERVICE_FEE_RATE))
+
+
+def _tenure_years(row: dict) -> float:
     try:
-        return (date.today() - date.fromisoformat(row[FundAttrKey.DATE_OF_APPOINTMENT])).days
+        return (date.today() - date.fromisoformat(row[K.DATE_OF_APPOINTMENT])).days / 365
     except (ValueError, TypeError):
-        return 0
+        return 0.0
 
 
-def analyse(fund_filter, tenure_day_filter):
-    funds = _read_funds()
+# ── 表格对齐 ──
 
-    by_type = [r for r in funds
-               if fund_filter(r[FundAttrKey.FUND_SIMPLE_NAME],
-                              r[FundAttrKey.FUND_TYPE],
-                              _safe_float(r, FundAttrKey.FUND_SIZE))]
-    print(f"符合类型要求的基金数量为{len(by_type)}")
+def _pad(s: str, width: int) -> str:
+    """按终端显示宽度补齐，中文字符占 2 格"""
+    w = sum(2 if ord(c) > 0x2000 else 1 for c in s)
+    return s + " " * max(0, width - w)
 
-    by_tenure = [r for r in by_type if tenure_day_filter(_tenure_days(r))]
-    print(f"符合时间要求的基金数量为{len(by_tenure)}")
 
-    # 夏普前 10%（R² > 60）
-    top_n = max(len(by_tenure) // 10, 1)
-    sharp_holder = TopKHolder(
-        lambda r: float(r[FundAttrKey.SHARP_RATE_TEN_YEARS]), top_n)
-    for r in by_tenure:
-        if (r[FundAttrKey.SHARP_RATE_TEN_YEARS] not in _SKIP
-                and r[FundAttrKey.R_SQUARED_TO_IND] not in _SKIP
-                and float(r[FundAttrKey.R_SQUARED_TO_IND]) > 60):
-            sharp_holder.put(r)
-    by_sharp = sharp_holder.cur_k()
+# ── 纯债基金 ──
 
-    # 阿尔法前三（扣费）
-    alpha_top = nlargest(3, by_sharp,
-                         key=lambda r: (_safe_float(r, FundAttrKey.ALPHA_TO_IND) or 0) - _annual_fee(r))
-    alpha_top = [r for r in alpha_top
-                 if r[FundAttrKey.ALPHA_TO_IND] not in _SKIP
-                 and r[FundAttrKey.MANAGEMENT_FEE_RATE] != "DATA_IGNORE"]
-    print("根据阿尔法选择的基金是：")
-    for r in alpha_top:
-        print(f"  {r[FundAttrKey.FUND_SIMPLE_NAME]}  {r[FundAttrKey.FUND_CODE]}"
-              f"  阿尔法={r[FundAttrKey.ALPHA_TO_IND]}"
-              f"  年费={_annual_fee(r):.2f}%")
+def analyse_bond(funds: list[dict]) -> None:
+    """纯债筛选: 规模>50亿 → 经理>5年 → 卡玛比率（或夏普）前5"""
 
-    # 年化回报前三（扣费）
-    return_top = nlargest(3, by_tenure,
-                          key=lambda r: (_safe_float(r, FundAttrKey.ANNUALIZED_RETURN_TEN_YEAR) or 0) - _annual_fee(r))
-    return_top = [r for r in return_top
-                  if r[FundAttrKey.ANNUALIZED_RETURN_TEN_YEAR] not in _SKIP
-                  and r[FundAttrKey.MANAGEMENT_FEE_RATE] != "DATA_IGNORE"]
+    candidates = [
+        r for r in funds
+        if "债券型" in r[K.FUND_TYPE]
+           and "纯债" in r[K.FUND_SIMPLE_NAME]
+           and (size := _safe_float(r, K.FUND_SIZE)) and size > 50
+           and _tenure_years(r) > 5
+           and _total_fee(r) < 0.8
+           and _safe_float(r, K.SHARP_RATE_FIVE_YEARS) is not None
+    ]
 
-    # 年化好但阿尔法差的基金
-    alpha_names = {r[FundAttrKey.FUND_SIMPLE_NAME] for r in alpha_top}
-    return_no_alpha = [r for r in return_top
-                       if r[FundAttrKey.FUND_SIMPLE_NAME] not in alpha_names]
-    if return_no_alpha:
-        print("年化回报优秀但阿尔法落后的基金：")
-        for r in return_no_alpha:
-            print(f"  {r[FundAttrKey.FUND_SIMPLE_NAME]}"
-                  f"  年化={r[FundAttrKey.ANNUALIZED_RETURN_TEN_YEAR]}%"
-                  f"  阿尔法={r[FundAttrKey.ALPHA_TO_IND]}")
+    top5 = nlargest(5, candidates, key=lambda r: _safe_float(r, K.SHARP_RATE_FIVE_YEARS))
 
+    print(f"\n纯债基金（规模>50亿  经理>5年  总费率<0.8%  五年夏普前5）")
+    print(f"  达标 {len(candidates)} 只 → 最终 {len(top5)} 只")
+    print()
+
+    for i, r in enumerate(top5, 1):
+        print(f"  {i:>2}. {_pad(r[K.FUND_SIMPLE_NAME], 22)}{r[K.FUND_CODE]:>7s}    {r[K.FUND_COMPANY]}")
+
+
+# ── 指数/混合基金 ──
+
+def analyse_equity(funds: list[dict]) -> None:
+    """指数/混合筛选: 规模>10亿 → 经理>8年 → 排C/Y → R²>60 → Alpha前10 → Sharpe前5"""
+
+    candidates = [
+        r for r in funds
+        if (("指数型" in r[K.FUND_TYPE] and "海外股票" not in r[K.FUND_TYPE])
+            or ("混合型" in r[K.FUND_TYPE] and "偏债" not in r[K.FUND_TYPE]))
+           and (size := _safe_float(r, K.FUND_SIZE)) and size > 10
+           and "C" not in r[K.FUND_SIMPLE_NAME] and "Y" not in r[K.FUND_SIMPLE_NAME]
+           and _tenure_years(r) > 8
+    ]
+
+    # R² > 60 — Alpha 才有统计意义
+    valid = [
+        r for r in candidates
+        if r[K.ALPHA_TO_IND] not in _SKIP
+           and r[K.R_SQUARED_TO_IND] not in _SKIP
+           and float(r[K.R_SQUARED_TO_IND]) > 60
+           and _safe_float(r, K.SHARP_RATE_TEN_YEARS) is not None
+    ]
+
+    # 第一阶段: 按 Alpha 取前 10
+    alpha_top10 = nlargest(10, valid,
+                           key=lambda r: float(r[K.ALPHA_TO_IND]))
+
+    # 第二阶段: 从中按十年夏普取前 5
+    top5 = nlargest(5, alpha_top10,
+                    key=lambda r: float(r[K.SHARP_RATE_TEN_YEARS]))
+
+    print(f"\n指数/混合基金（规模>10亿  经理>8年  排C/Y  R²>60  Alpha前10→Sharpe前5）")
+    print(f"  达标 {len(candidates)} 只 → R²>60 有效 {len(valid)} 只 → 最终 {len(top5)} 只")
+    print()
+
+    for i, r in enumerate(top5, 1):
+        print(f"  {i:>2}. {_pad(r[K.FUND_SIMPLE_NAME], 22)}{r[K.FUND_CODE]:>7s}    {r[K.FUND_COMPANY]}")
+
+
+# ── 入口 ──
 
 if __name__ == "__main__":
-    print("⬇️ 纯债基金分析 ⬇️")
-    analyse(
-        lambda name, ftype, size: ("债券型" in ftype and "纯债" in name
-                                    and size and size > 10
-                                    and "C" not in name and "Y" not in name),
-        lambda days: days > 7 * 365,
-    )
-    print("⬆️ 纯债基金分析 ⬆️\n")
+    funds = _read_funds()
 
-    print("⬇️ 国内指数/混合基金分析 ⬇️")
-    analyse(
-        lambda name, ftype, size: (("指数型" in ftype and "海外股票" not in ftype)
-                                    or ("混合型" in ftype and "偏债" not in ftype))
-                                   and size and size > 10
-                                   and "C" not in name and "Y" not in name,
-        lambda days: days > 10 * 365,
-    )
-    print("⬆️ 国内指数/混合基金分析 ⬆️\n")
+    W = 64
 
-    print("⬇️ 全部基金比较 ⬇️")
-    analyse(
-        lambda name, ftype, size: size and size > 10
-                                  and "C" not in name and "Y" not in name,
-        lambda days: days > 5 * 365,
-    )
-    print("⬆️ 全部基金比较 ⬆️")
+    def _box(s: str) -> str:
+        return "║  " + _pad(s, W - 4) + "║"
+
+    today_str = str(date.today())
+    count_str = f"基金总数: {len(funds):,}"
+    info = f"数据日期: {today_str}    {count_str}"
+
+    print("╔" + "═" * (W - 2) + "╗")
+    print(_box("FundCrawler 基金筛选分析"))
+    print(_box(info))
+    print("╚" + "═" * (W - 2) + "╝")
+
+    analyse_bond(funds)
+    analyse_equity(funds)

@@ -2,7 +2,7 @@
 
 import pytest
 
-from crawler.target_loader import StaticTargetLoader
+from module.target_loader import StaticTargetLoader
 
 
 class TestStaticTargetLoader:

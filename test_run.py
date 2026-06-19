@@ -1,12 +1,13 @@
-"""冒烟测试 —— 爬取 500 只基金验证全流程"""
+"""冒烟测试 —— 爬取少量基金验证全流程（修改 WebTargetLoader(limit=...) 控制数量）"""
 
 import pytest
 
-from crawler.engine import run
-from crawler.target_loader import SmallBatchLoader
+from module.constants import TT_STANDARD
+from module.engine import run
+from module.target_loader import WebTargetLoader
 
 
 @pytest.mark.slow
 @pytest.mark.asyncio
 async def test_crawl_small_batch():
-    await run(SmallBatchLoader(limit=500))
+    await run(WebTargetLoader(limit=15), fields=TT_STANDARD)

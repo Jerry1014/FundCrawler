@@ -1,6 +1,6 @@
 """FundContext 单元测试"""
 
-from crawler.fund_context import FundContext
+from module.fund_context import FundContext
 
 
 class TestFundContext:

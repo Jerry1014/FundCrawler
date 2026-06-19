@@ -1,15 +1,19 @@
-"""天天基金网 — overview + manager 页面解析"""
+"""天天基金网 — overview + manager + tsdata 页面解析"""
 
 import re
 from string import Template
 
-from crawler.fund_context import FundContext
-from utils.constants import number_in_eng, NO_DATA, DATA_IGNORE
+from module.constants import NO_DATA, DATA_IGNORE
+from module.fund_context import FundContext
+
+# 带千分号的数字表达形式 -10,000.12
+number_in_eng = r'-?(\d+?(,\d+)*?(\.\d+)?)'
 
 # ── URL 构造 ────────────────────────────────────────────────
 
 _overview_t = Template('http://fundf10.eastmoney.com/jbgk_$fund_code.html')
 _manager_t = Template('http://fundf10.eastmoney.com/jjjl_$fund_code.html')
+_tsdata_t = Template('http://fundf10.eastmoney.com/tsdata_$fund_code.html')
 
 
 def build_overview_url(ctx: FundContext) -> str:
@@ -18,6 +22,10 @@ def build_overview_url(ctx: FundContext) -> str:
 
 def build_manager_url(ctx: FundContext) -> str:
     return _manager_t.substitute(fund_code=ctx.fund_code)
+
+
+def build_tsdata_url(ctx: FundContext) -> str:
+    return _tsdata_t.substitute(fund_code=ctx.fund_code)
 
 
 # ── overview 解析 ───────────────────────────────────────────
@@ -36,8 +44,7 @@ def parse_overview(html: str | None, ctx: FundContext) -> None:
         return
 
     if m := _fund_type_re.search(html):
-        ft = m.group(1)
-        ctx.fund_type = NO_DATA if not ft and ctx.fund_code == '023713' else ft
+        ctx.fund_type = m.group(1) or NO_DATA
 
     if m := _fund_size_re.search(html):
         fund_size = m.group(1) if m.group(1) else m.group(2).replace(',', '')
@@ -49,18 +56,18 @@ def parse_overview(html: str | None, ctx: FundContext) -> None:
     if m := _fund_value_re.search(html):
         ctx.fund_value = m.group(1)
 
-    if m := _management_fee_re.search(html):
-        fee_rate = m.group(1)
-        if fee_rate == '<a':
-            ctx.management_fee_rate = DATA_IGNORE
+    def _parse_fee(m, attr: str) -> None:
+        if not m:
+            return
+        val = m.group(1)
+        if val == '<a':
+            setattr(ctx, attr, DATA_IGNORE)
         else:
-            ctx.management_fee_rate = fee_rate if fee_rate != '---' else NO_DATA
+            setattr(ctx, attr, val if val != '---' else NO_DATA)
 
-    if m := _custody_fee_re.search(html):
-        ctx.custody_fee_rate = m.group(1) if m.group(1) != '---' else NO_DATA
-
-    if m := _sales_service_fee_re.search(html):
-        ctx.sales_service_fee_rate = m.group(1) if m.group(1) != '---' else NO_DATA
+    _parse_fee(_management_fee_re.search(html), "management_fee_rate")
+    _parse_fee(_custody_fee_re.search(html), "custody_fee_rate")
+    _parse_fee(_sales_service_fee_re.search(html), "sales_service_fee_rate")
 
 
 # ── manager 解析 ────────────────────────────────────────────
@@ -76,3 +83,23 @@ def parse_manager(html: str | None, ctx: FundContext) -> None:
         ctx.fund_manager = m.group(1)
     if m := _manager_date_re.search(html):
         ctx.date_of_appointment = m.group(1)
+
+
+# ── tsdata 解析 ─────────────────────────────────────────────
+
+# 定位"标准差"行 → 跳过2个<td> → 取第3个 → "近3年"
+_tsdata_stddev_re = re.compile(
+    r'<td>标准差</td><td[^>]*>.*?</td><td[^>]*>.*?</td><td[^>]*>(.*?)</td>'
+)
+_tsdata_sharp_re = re.compile(
+    r'<td>夏普比率</td><td[^>]*>.*?</td><td[^>]*>.*?</td><td[^>]*>(.*?)</td>'
+)
+
+
+def parse_tsdata(html: str | None, ctx: FundContext) -> None:
+    if html is None:
+        return
+    if m := _tsdata_stddev_re.search(html):
+        ctx.standard_deviation_three_years = m.group(1) or NO_DATA
+    if m := _tsdata_sharp_re.search(html):
+        ctx.sharp_rate_three_years = m.group(1) or NO_DATA

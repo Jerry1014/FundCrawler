@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from crawler.fund_context import FundContext
-from crawler.writer import ResultWriter
+from module.fund_context import FundContext
+from module.result_writer import ResultWriter
 
 
 class TestResultWriter:

@@ -2,11 +2,10 @@
 
 import asyncio
 import csv
-import typing
 from pathlib import Path
 
-from crawler.fund_context import FundContext
-from utils.constants import FundAttrKey, DATA_ERROR
+from module.constants import FundAttrKey, DATA_ERROR
+from module.fund_context import FundContext
 
 # CSV 列头 → FundContext 属性名 映射（唯一的数据源）
 _COLUMNS: list[tuple[str, str]] = [
@@ -22,6 +21,8 @@ _COLUMNS: list[tuple[str, str]] = [
     (FundAttrKey.MANAGEMENT_FEE_RATE.value,             "management_fee_rate"),
     (FundAttrKey.CUSTODY_FEE_RATE.value,                "custody_fee_rate"),
     (FundAttrKey.SALES_SERVICE_FEE_RATE.value,          "sales_service_fee_rate"),
+    (FundAttrKey.STANDARD_DEVIATION_THREE_YEARS.value,  "standard_deviation_three_years"),
+    (FundAttrKey.SHARP_RATE_THREE_YEARS.value,          "sharp_rate_three_years"),
     (FundAttrKey.ANNUALIZED_RETURN_FIVE_YEAR.value,     "annualized_return_five_year"),
     (FundAttrKey.ANNUALIZED_RETURN_TEN_YEAR.value,      "annualized_return_ten_year"),
     (FundAttrKey.STANDARD_DEVIATION_FIVE_YEARS.value,   "standard_deviation_five_years"),
@@ -33,46 +34,36 @@ _COLUMNS: list[tuple[str, str]] = [
     (FundAttrKey.R_SQUARED_TO_IND.value,                "r_squared_to_ind"),
 ]
 
-_CSV_HEADERS = [header for header, _ in _COLUMNS]
-
 
 class ResultWriter:
-    """异步 CSV 写入器"""
+    """异步 CSV 写入器，可按需筛选输出列"""
 
-    def __init__(self, path: str = "./result/", filename: str = "result.csv"):
-        self._path = Path(path)
-        self._path.mkdir(parents=True, exist_ok=True)
-        self._filepath = self._path / filename
-        self._lock = asyncio.Lock()
-        self._file: typing.TextIO | None = None
-        self._writer: csv.DictWriter | None = None
-        self._initialized = False
+    def __init__(self, path: str = "./result/", filename: str = "result.csv",
+                 fields: frozenset[FundAttrKey] | None = None):
+        if fields is not None:
+            allowed = {FundAttrKey.FUND_CODE.value,
+                       FundAttrKey.FUND_SIMPLE_NAME.value} \
+                      | {k.value for k in fields}
+            self._columns = [(h, a) for h, a in _COLUMNS if h in allowed]
+        else:
+            self._columns = list(_COLUMNS)
 
-    async def _ensure_open(self) -> None:
-        if self._initialized:
-            return
-        self._file = open(str(self._filepath), "w", newline="", encoding="utf-8")
-        self._writer = csv.DictWriter(self._file, fieldnames=_CSV_HEADERS)
+        self._csv_headers = [header for header, _ in self._columns]
+
+        filepath = Path(path) / filename
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        self._file = open(str(filepath), "w", newline="", encoding="utf-8")
+        self._writer = csv.DictWriter(self._file, fieldnames=self._csv_headers)
         self._writer.writeheader()
-        self._initialized = True
+        self._lock = asyncio.Lock()
 
     async def write(self, ctx: FundContext) -> None:
         async with self._lock:
-            await self._ensure_open()
             row = {header: getattr(ctx, attr) or DATA_ERROR
-                   for header, attr in _COLUMNS}
+                   for header, attr in self._columns}
             self._writer.writerow(row)
-
-    async def flush(self) -> None:
-        async with self._lock:
-            if self._file:
-                self._file.flush()
 
     async def close(self) -> None:
         async with self._lock:
-            if self._file:
-                self._file.flush()
-                self._file.close()
-                self._file = None
-                self._writer = None
-                self._initialized = False
+            self._file.flush()
+            self._file.close()
