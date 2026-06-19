@@ -58,7 +58,7 @@ EM_STANDARD: frozenset[FundAttrKey] = EM_BASIC | frozenset({
 
 # 东方财富 + 晨星 — 完整数据
 # 注意：晨星有反爬策略（WAF + 限流），完整爬取速度较慢，适合少量基金使用
-EM_MS_FULL: frozenset[FundAttrKey] = EM_BASIC | frozenset({
+EM_MS_FULL: frozenset[FundAttrKey] = EM_STANDARD | frozenset({
     FundAttrKey.MORNINGSTAR_FUND_ID,
     FundAttrKey.ANNUALIZED_RETURN_FIVE_YEAR, FundAttrKey.ANNUALIZED_RETURN_TEN_YEAR,
     FundAttrKey.STANDARD_DEVIATION_FIVE_YEARS, FundAttrKey.STANDARD_DEVIATION_TEN_YEARS,
