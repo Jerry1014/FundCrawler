@@ -35,6 +35,11 @@
   - 运行test_run.py 爬10只基金验证
   - 运行run.py 爬取完整数据
   - 可选：修改 run.py 中 fields 切换数据范围（TT_BASIC / TT_STANDARD / TT_MS_FULL）
+- 结果中若存在 DATA_ERROR，可重爬错误基金：
+  ```bash
+  python error_data_rerun.py
+  ```
+  提取 CSV 中有 DATA_ERROR 的基金 → 删去错误行 → 重爬 → 追加回原文件（目标 CSV 路径在脚本内修改）
 - 爬取结果分析，参考 result_analyse.py
 
 # 技术相关

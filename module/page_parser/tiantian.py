@@ -31,7 +31,7 @@ def build_tsdata_url(ctx: FundContext) -> str:
 # ── overview 解析 ───────────────────────────────────────────
 
 _fund_type_re = re.compile(r'基金类型</th><td>(.*?)</td></tr><tr><th>发行日期')
-_fund_size_re = re.compile(fr'(?:净)?资产规模</th><td>(---)|({number_in_eng})亿元')
+_fund_size_re = re.compile(fr'(?:净)?资产规模</th><td>(---|{number_in_eng}亿)')
 _fund_company_re = re.compile(r'基金管理人</th><td><a.*?">(.+?)</a></td><th>基金托管人')
 _fund_value_re = re.compile(fr'单位净值.*?：[\s\S]*?({number_in_eng})\s')
 _management_fee_re = re.compile(fr'管理费率</th><td>(({number_in_eng})%|---|<a)')
@@ -47,8 +47,8 @@ def parse_overview(html: str | None, ctx: FundContext) -> None:
         ctx.fund_type = m.group(1) or NO_DATA
 
     if m := _fund_size_re.search(html):
-        fund_size = m.group(1) if m.group(1) else m.group(2).replace(',', '')
-        ctx.fund_size = fund_size if fund_size != '---' else NO_DATA
+        raw = m.group(1)
+        ctx.fund_size = NO_DATA if raw == '---' else raw[:-1].replace(',', '')
 
     if m := _fund_company_re.search(html):
         ctx.fund_company = m.group(1)
@@ -100,6 +100,8 @@ def parse_tsdata(html: str | None, ctx: FundContext) -> None:
     if html is None:
         return
     if m := _tsdata_stddev_re.search(html):
-        ctx.standard_deviation_three_years = m.group(1) or NO_DATA
+        val = m.group(1)
+        ctx.standard_deviation_three_years = NO_DATA if val == '--' else (val or NO_DATA)
     if m := _tsdata_sharp_re.search(html):
-        ctx.sharp_rate_three_years = m.group(1) or NO_DATA
+        val = m.group(1)
+        ctx.sharp_rate_three_years = NO_DATA if val == '--' else (val or NO_DATA)
