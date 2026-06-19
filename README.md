@@ -35,7 +35,11 @@
   - 运行test_run.py 爬10只基金验证
   - 运行run.py 爬取完整数据
   - 可选：修改 run.py 中 fields 切换数据范围（TT_BASIC / TT_STANDARD / TT_MS_FULL）
+- 结果中若存在 DATA_ERROR，可重爬错误基金 error_data_rerun.py
 - 爬取结果分析，参考 result_analyse.py
+  - **纯债**（稳健仓）：规模 > 20亿 → 经理 > 5年 → 排除定开/定期 → 夏普 3Y 前 5
+  - **权益**（收益仓）：指数型（排除固收/海外）或混合偏股 → 规模 > 10亿 → 排除 C/Y 类 → 经理 > 5年 → 夏普 3Y 前 5
+  - 人工从两个候选池各选一只，比例自定
 
 # 技术相关
 ## 架构
