@@ -8,8 +8,8 @@ from pathlib import Path
 
 from module.constants import log_format, DATA_ERROR, FundAttrKey as K
 from module.engine import run
-from module.target_loader import StaticTargetLoader
 from module.result_writer import ResultWriter
+from module.target_loader import StaticTargetLoader
 
 _HEADER_TO_KEY = {k.value: k for k in K}
 
@@ -88,4 +88,4 @@ def main(csv_path: str) -> None:
 
 
 if __name__ == "__main__":
-    main('./result/result_2606.csv')
+    main('./result/result.csv')

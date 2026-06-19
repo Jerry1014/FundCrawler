@@ -7,7 +7,7 @@ from pathlib import Path
 
 from module.constants import FundAttrKey as K
 
-_CSV_PATH = Path("result/result_2606.csv")
+_CSV_PATH = Path("result/result.csv")
 _SKIP = {"NO_DATA", "DATA_ERROR", "DATA_IGNORE"}
 
 
