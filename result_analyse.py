@@ -42,7 +42,9 @@ def analyse_bond(funds: list[dict]) -> list[dict]:
         r for r in funds
         if "债券型" in r[K.FUND_TYPE]
         and "纯债" in r[K.FUND_SIMPLE_NAME]
-        and (size := _safe_float(r, K.FUND_SIZE)) and size > 50
+        and "定开" not in r[K.FUND_SIMPLE_NAME]
+        and "定期" not in r[K.FUND_SIMPLE_NAME]
+        and (size := _safe_float(r, K.FUND_SIZE)) and size > 20
         and _tenure_years(r) > 5
         and _safe_float(r, K.SHARP_RATE_THREE_YEARS) is not None
     ]
@@ -54,7 +56,7 @@ def analyse_equity(funds: list[dict]) -> list[dict]:
     candidates = [
         r for r in funds
         if (
-            ("指数型" in r[K.FUND_TYPE] and "海外股票" not in r[K.FUND_TYPE])
+            ("指数型" in r[K.FUND_TYPE] and "海外股票" not in r[K.FUND_TYPE] and "固收" not in r[K.FUND_TYPE])
             or ("混合型" in r[K.FUND_TYPE] and "偏债" not in r[K.FUND_TYPE])
         )
         and (size := _safe_float(r, K.FUND_SIZE)) and size > 10
