@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-from module.constants import NO_DATA
+from module.constants import FundAttrKey as K, NO_DATA
 from module.fund_context import FundContext
-from module.page_parser import STEPS
+from module.page_parser import STEPS, resolve_steps
 from module.page_parser.eastmoney import (
     build_overview_url, parse_overview,
     build_manager_url, parse_manager,
@@ -200,7 +200,54 @@ class TestSTEPS:
         assert by_name["return"].deps == ("morningstar",)
         assert by_name["risk"].deps == ("morningstar",)
 
-    def test_each_step_has_build_url_and_parse(self):
+    def test_each_step_has_provides(self):
         for s in STEPS:
-            assert callable(s.build_url), f"{s.name} missing build_url"
-            assert callable(s.parse), f"{s.name} missing parse"
+            assert isinstance(s.provides, frozenset), f"{s.name} missing provides"
+            assert len(s.provides) > 0, f"{s.name} has empty provides"
+
+
+class TestResolveSteps:
+    def test_none_returns_all(self):
+        steps = resolve_steps(None)
+        assert {s.name for s in steps} == {s.name for s in STEPS}
+
+    def test_empty_returns_none(self):
+        steps = resolve_steps(frozenset())
+        assert steps == []
+
+    def test_overview_only(self):
+        steps = resolve_steps(frozenset({K.FUND_TYPE}))
+        assert {s.name for s in steps} == {"overview"}
+
+    def test_manager_only(self):
+        steps = resolve_steps(frozenset({K.FUND_MANAGER}))
+        assert {s.name for s in steps} == {"manager"}
+
+    def test_eastmoney_all(self):
+        steps = resolve_steps(frozenset({
+            K.FUND_TYPE, K.FUND_SIZE, K.FUND_COMPANY, K.FUND_VALUE,
+            K.MANAGEMENT_FEE_RATE, K.CUSTODY_FEE_RATE, K.SALES_SERVICE_FEE_RATE,
+            K.FUND_MANAGER, K.DATE_OF_APPOINTMENT,
+        }))
+        assert {s.name for s in steps} == {"overview", "manager"}
+
+    def test_return_pulls_morningstar_dep(self):
+        steps = resolve_steps(frozenset({K.ANNUALIZED_RETURN_FIVE_YEAR}))
+        assert {s.name for s in steps} == {"morningstar", "return"}
+
+    def test_risk_pulls_morningstar_dep(self):
+        steps = resolve_steps(frozenset({K.SHARP_RATE_FIVE_YEARS}))
+        assert {s.name for s in steps} == {"morningstar", "risk"}
+
+    def test_all_morningstar_fields(self):
+        steps = resolve_steps(frozenset({
+            K.ANNUALIZED_RETURN_FIVE_YEAR, K.ANNUALIZED_RETURN_TEN_YEAR,
+            K.STANDARD_DEVIATION_FIVE_YEARS, K.STANDARD_DEVIATION_TEN_YEARS,
+            K.SHARP_RATE_FIVE_YEARS, K.SHARP_RATE_TEN_YEARS,
+            K.ALPHA_TO_IND, K.BETA_TO_IND, K.R_SQUARED_TO_IND,
+        }))
+        assert {s.name for s in steps} == {"morningstar", "return", "risk"}
+
+    def test_ms_id_explicit(self):
+        steps = resolve_steps(frozenset({K.MORNINGSTAR_FUND_ID}))
+        assert {s.name for s in steps} == {"morningstar"}

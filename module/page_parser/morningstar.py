@@ -35,12 +35,17 @@ def build_risk_url(ctx: FundContext) -> str:
     return _risk_t.substitute(morningstar_fund_id=ctx.morningstar_fund_id)
 
 
+def _load_json(text: str):
+    """json.loads 兼容 UTF-8 BOM"""
+    return json.loads(text.lstrip("\ufeff"))
+
+
 # ── morningstar 解析 ────────────────────────────────────────
 
 def parse_morningstar(json_text: str | None, ctx: FundContext) -> None:
     if json_text is None:
         return
-    data = json.loads(json_text)
+    data = _load_json(json_text)
     if data:
         ctx.morningstar_fund_id = data[0]['FundClassId'] if data[0]['FundClassId'] else NO_DATA
     else:
@@ -56,7 +61,7 @@ def _val(item: dict, key: str) -> str:
 def parse_return(json_text: str | None, ctx: FundContext) -> None:
     if json_text is None:
         return
-    returns = json.loads(json_text)['CurrentReturn']['Return']
+    returns = _load_json(json_text)['CurrentReturn']['Return']
     for r in returns:
         if r['Name'] == '五年回报（年化）':
             ctx.annualized_return_five_year = _val(r, 'Return')
@@ -71,7 +76,7 @@ def parse_risk(json_text: str | None, ctx: FundContext) -> None:
         _fill_risk_no_data(ctx)
         return
 
-    data = json.loads(json_text)
+    data = _load_json(json_text)
 
     for item in data.get('RiskAssessment', []):
         if item['Name'] == '标准差（%）':

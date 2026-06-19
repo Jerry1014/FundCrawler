@@ -32,24 +32,33 @@ _COLUMNS: list[tuple[str, str]] = [
     (FundAttrKey.R_SQUARED_TO_IND.value,                "r_squared_to_ind"),
 ]
 
-_CSV_HEADERS = [header for header, _ in _COLUMNS]
-
 
 class ResultWriter:
-    """异步 CSV 写入器"""
+    """异步 CSV 写入器，可按需筛选输出列"""
 
-    def __init__(self, path: str = "./result/", filename: str = "result.csv"):
+    def __init__(self, path: str = "./result/", filename: str = "result.csv",
+                 fields: frozenset[FundAttrKey] | None = None):
+        if fields is not None:
+            allowed = {FundAttrKey.FUND_CODE.value,
+                       FundAttrKey.FUND_SIMPLE_NAME.value} \
+                      | {k.value for k in fields}
+            self._columns = [(h, a) for h, a in _COLUMNS if h in allowed]
+        else:
+            self._columns = list(_COLUMNS)
+
+        self._csv_headers = [header for header, _ in self._columns]
+
         filepath = Path(path) / filename
         filepath.parent.mkdir(parents=True, exist_ok=True)
         self._file = open(str(filepath), "w", newline="", encoding="utf-8")
-        self._writer = csv.DictWriter(self._file, fieldnames=_CSV_HEADERS)
+        self._writer = csv.DictWriter(self._file, fieldnames=self._csv_headers)
         self._writer.writeheader()
         self._lock = asyncio.Lock()
 
     async def write(self, ctx: FundContext) -> None:
         async with self._lock:
             row = {header: getattr(ctx, attr) or DATA_ERROR
-                   for header, attr in _COLUMNS}
+                   for header, attr in self._columns}
             self._writer.writerow(row)
 
     async def close(self) -> None:

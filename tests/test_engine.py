@@ -6,6 +6,7 @@ import pytest
 
 from module.engine import _crawl_one
 from module.fund_context import FundContext
+from module.page_parser import STEPS
 from module.result_writer import ResultWriter
 
 
@@ -21,5 +22,5 @@ class TestCrawlOne:
         ctx = FundContext("000001", "测试")
         with tempfile.TemporaryDirectory() as tmp:
             writer = ResultWriter(path=tmp)
-            await _crawl_one(ctx, MockFetcher(), writer)
+            await _crawl_one(ctx, MockFetcher(), writer, STEPS)
             await writer.close()
