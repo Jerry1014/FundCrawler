@@ -151,8 +151,12 @@ class Fetcher:
     # ── 路由 ──
 
     def _select_rc(self, url: str) -> RateController:
-        """域名维度：morningstar.cn → ms_rc，其余 → tt_rc"""
-        return self._rc["morningstar"] if "morningstar" in url else self._rc["tiantian"]
+        """显式域名 → RC 映射（新增数据源时需同步更新此处）"""
+        if "morningstar.cn" in url:
+            return self._rc["morningstar"]
+        if "eastmoney.com" in url:
+            return self._rc["tiantian"]
+        raise ValueError(f"Unknown host, no RC configured for URL: {url}")
 
     @staticmethod
     def _endpoint_params(url: str) -> tuple[int, int | None]:

@@ -248,7 +248,7 @@ class TestResolveSteps:
         steps = resolve_steps(frozenset({K.FUND_MANAGER}))
         assert {s.name for s in steps} == {"manager"}
 
-    def test_eastmoney_all(self):
+    def test_tiantian_all(self):
         steps = resolve_steps(frozenset({
             K.FUND_TYPE, K.FUND_SIZE, K.FUND_COMPANY, K.FUND_VALUE,
             K.MANAGEMENT_FEE_RATE, K.CUSTODY_FEE_RATE, K.SALES_SERVICE_FEE_RATE,

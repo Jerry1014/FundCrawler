@@ -44,8 +44,7 @@ def parse_overview(html: str | None, ctx: FundContext) -> None:
         return
 
     if m := _fund_type_re.search(html):
-        ft = m.group(1)
-        ctx.fund_type = NO_DATA if not ft and ctx.fund_code == '023713' else ft
+        ctx.fund_type = m.group(1) or NO_DATA
 
     if m := _fund_size_re.search(html):
         fund_size = m.group(1) if m.group(1) else m.group(2).replace(',', '')

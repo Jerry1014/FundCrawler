@@ -1,5 +1,6 @@
 """基金列表加载器 —— 拓展点：爬取哪些基金"""
 
+import asyncio
 import csv
 import re
 from pathlib import Path
@@ -65,10 +66,13 @@ class RetryTargetLoader:
         if not self.CSV_PATH.exists():
             return all_funds
 
-        with open(self.CSV_PATH, 'r', newline='', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                code = row.get('基金代码', '')
-                fund_dict.pop(code, None)
+        def _read_existing_codes():
+            with open(self.CSV_PATH, 'r', newline='', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                return [row.get('基金代码', '') for row in reader]
+
+        existing_codes = await asyncio.to_thread(_read_existing_codes)
+        for code in existing_codes:
+            fund_dict.pop(code, None)
 
         return list(fund_dict.values())
