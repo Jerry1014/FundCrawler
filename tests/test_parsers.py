@@ -8,6 +8,7 @@ from module.page_parser import STEPS, resolve_steps
 from module.page_parser.eastmoney import (
     build_overview_url, parse_overview,
     build_manager_url, parse_manager,
+    build_tsdata_url, parse_tsdata,
 )
 from module.page_parser.morningstar import (
     build_morningstar_url, parse_morningstar,
@@ -88,6 +89,30 @@ class TestManager:
     def test_none_html_does_nothing(self):
         parse_manager(None, self.ctx)
         assert self.ctx.fund_manager is None
+
+
+class TestTsdata:
+    ctx: FundContext
+    html: str
+
+    def setup_method(self):
+        self.ctx = FundContext("008528", "华泰柏瑞质量成长A")
+        self.html = _read("TSDATA.html")
+
+    def test_build_url(self):
+        assert "008528" in build_tsdata_url(self.ctx)
+
+    def test_std_dev_three_year(self):
+        parse_tsdata(self.html, self.ctx)
+        assert self.ctx.standard_deviation_three_years == "36.66%"
+
+    def test_sharp_three_year(self):
+        parse_tsdata(self.html, self.ctx)
+        assert self.ctx.sharp_rate_three_years == "1.36"
+
+    def test_none_html_does_nothing(self):
+        parse_tsdata(None, self.ctx)
+        assert self.ctx.standard_deviation_three_years is None
 
 
 class TestMorningstar:
@@ -188,11 +213,11 @@ class TestRisk:
 class TestSTEPS:
     def test_all_steps_registered(self):
         names = {s.name for s in STEPS}
-        assert names == {"overview", "manager", "morningstar", "return", "risk"}
+        assert names == {"overview", "manager", "tsdata", "morningstar", "return", "risk"}
 
     def test_no_dependency_steps(self):
         for s in STEPS:
-            if s.name in ("overview", "manager", "morningstar"):
+            if s.name in ("overview", "manager", "tsdata", "morningstar"):
                 assert s.deps == ()
 
     def test_morningstar_dependent_steps(self):
@@ -251,3 +276,16 @@ class TestResolveSteps:
     def test_ms_id_explicit(self):
         steps = resolve_steps(frozenset({K.MORNINGSTAR_FUND_ID}))
         assert {s.name for s in steps} == {"morningstar"}
+
+    def test_tsdata_only(self):
+        steps = resolve_steps(frozenset({K.STANDARD_DEVIATION_THREE_YEARS}))
+        assert {s.name for s in steps} == {"tsdata"}
+
+    def test_eastmoney_all_including_tsdata(self):
+        steps = resolve_steps(frozenset({
+            K.FUND_TYPE, K.FUND_SIZE, K.FUND_COMPANY, K.FUND_VALUE,
+            K.MANAGEMENT_FEE_RATE, K.CUSTODY_FEE_RATE, K.SALES_SERVICE_FEE_RATE,
+            K.FUND_MANAGER, K.DATE_OF_APPOINTMENT,
+            K.STANDARD_DEVIATION_THREE_YEARS, K.SHARP_RATE_THREE_YEARS,
+        }))
+        assert {s.name for s in steps} == {"overview", "manager", "tsdata"}

@@ -8,6 +8,7 @@ from module.fund_context import FundContext
 from module.page_parser.eastmoney import (
     build_overview_url, parse_overview,
     build_manager_url, parse_manager,
+    build_tsdata_url, parse_tsdata,
 )
 from module.page_parser.morningstar import (
     build_morningstar_url, parse_morningstar,
@@ -37,6 +38,11 @@ STEPS: list[Step] = [
          build_url=build_manager_url,
          parse=parse_manager,
          provides=frozenset({K.FUND_MANAGER, K.DATE_OF_APPOINTMENT})),
+    Step("tsdata",
+         build_url=build_tsdata_url,
+         parse=parse_tsdata,
+         provides=frozenset({K.STANDARD_DEVIATION_THREE_YEARS,
+                             K.SHARP_RATE_THREE_YEARS})),
     Step("morningstar",
          build_url=build_morningstar_url,
          parse=parse_morningstar,

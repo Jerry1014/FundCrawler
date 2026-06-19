@@ -5,8 +5,8 @@ Python 3.14, `asyncio` + `aiohttp`.
 
 ## Entry points
 
-- `run.py` — full crawl (all ~21K funds) → `result/result.csv`
-- `test_run.py` — smoke test (100 funds), run via `pytest test_run.py -m slow`
+- `run.py` — full crawl (all ~21K funds) → `result/result.csv`。默认只爬东方财富，需晨星数据时取消 `MS_FIELDS` 注释。
+- `test_run.py` — smoke test (10 funds), run via `pytest test_run.py -m slow`。修改后先用它验证，不要跑全量 `run.py`。
 - `result_analyse.py` — post-hoc CSV analysis
 
 ## Dependencies
@@ -27,12 +27,13 @@ No CI, no linter, no typechecker, no `pyproject.toml`.
 
 ## Architecture
 
-5 steps in 2 phases. `module/page_parser/__init__.py:27` defines `STEPS`:
+6 steps in 2 phases. `module/page_parser/__init__.py:27` defines `STEPS`:
 
 | Phase | Step        | Domain      |
 |-------|-------------|-------------|
 | 1     | overview    | EastMoney   |
 | 1     | manager     | EastMoney   |
+| 1     | tsdata      | EastMoney   |
 | 1     | morningstar | Morningstar |
 | 2     | return      | Morningstar |
 | 2     | risk        | Morningstar |
@@ -93,5 +94,5 @@ Pre-AI-rewrite fallback. Switch to it if current branch has unexpected regressio
 ## Extension points
 
 - Fund source → implement `TargetLoader` (duck-typed: `async get_fund_list() → list[FundContext]`)
-- Data source → add a `Step` to `STEPS` list
+- Data source → add a `Step` to `STEPS` list，设置 `provides` 声明产出字段
 - Output format → replace `ResultWriter`

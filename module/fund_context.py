@@ -32,6 +32,10 @@ class FundContext:
     annualized_return_five_year: Optional[str] = None  # 五年年化回报（%）
     annualized_return_ten_year: Optional[str] = None   # 十年年化回报（%）
 
+    # ── Phase 1: tsdata Step（天天基金网 HTML）──
+    standard_deviation_three_years: Optional[str] = None  # 标准差（近三年，%）
+    sharp_rate_three_years: Optional[str] = None          # 夏普比率（近三年）
+
     # ── Phase 2: risk Step（晨星 quicktake JSON）──
     standard_deviation_five_years: Optional[str] = None  # 五年标准差（%）
     standard_deviation_ten_years: Optional[str] = None   # 十年标准差（%）

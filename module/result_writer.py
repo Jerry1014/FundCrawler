@@ -21,6 +21,8 @@ _COLUMNS: list[tuple[str, str]] = [
     (FundAttrKey.MANAGEMENT_FEE_RATE.value,             "management_fee_rate"),
     (FundAttrKey.CUSTODY_FEE_RATE.value,                "custody_fee_rate"),
     (FundAttrKey.SALES_SERVICE_FEE_RATE.value,          "sales_service_fee_rate"),
+    (FundAttrKey.STANDARD_DEVIATION_THREE_YEARS.value,  "standard_deviation_three_years"),
+    (FundAttrKey.SHARP_RATE_THREE_YEARS.value,          "sharp_rate_three_years"),
     (FundAttrKey.ANNUALIZED_RETURN_FIVE_YEAR.value,     "annualized_return_five_year"),
     (FundAttrKey.ANNUALIZED_RETURN_TEN_YEAR.value,      "annualized_return_ten_year"),
     (FundAttrKey.STANDARD_DEVIATION_FIVE_YEARS.value,   "standard_deviation_five_years"),

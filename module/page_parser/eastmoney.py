@@ -1,4 +1,4 @@
-"""天天基金网 — overview + manager 页面解析"""
+"""天天基金网 — overview + manager + tsdata 页面解析"""
 
 import re
 from string import Template
@@ -13,6 +13,7 @@ number_in_eng = r'-?(\d+?(,\d+)*?(\.\d+)?)'
 
 _overview_t = Template('http://fundf10.eastmoney.com/jbgk_$fund_code.html')
 _manager_t = Template('http://fundf10.eastmoney.com/jjjl_$fund_code.html')
+_tsdata_t = Template('http://fundf10.eastmoney.com/tsdata_$fund_code.html')
 
 
 def build_overview_url(ctx: FundContext) -> str:
@@ -21,6 +22,10 @@ def build_overview_url(ctx: FundContext) -> str:
 
 def build_manager_url(ctx: FundContext) -> str:
     return _manager_t.substitute(fund_code=ctx.fund_code)
+
+
+def build_tsdata_url(ctx: FundContext) -> str:
+    return _tsdata_t.substitute(fund_code=ctx.fund_code)
 
 
 # ── overview 解析 ───────────────────────────────────────────
@@ -79,3 +84,23 @@ def parse_manager(html: str | None, ctx: FundContext) -> None:
         ctx.fund_manager = m.group(1)
     if m := _manager_date_re.search(html):
         ctx.date_of_appointment = m.group(1)
+
+
+# ── tsdata 解析 ─────────────────────────────────────────────
+
+# 定位"标准差"行 → 跳过2个<td> → 取第3个 → "近3年"
+_tsdata_stddev_re = re.compile(
+    r'<td>标准差</td><td[^>]*>.*?</td><td[^>]*>.*?</td><td[^>]*>(.*?)</td>'
+)
+_tsdata_sharp_re = re.compile(
+    r'<td>夏普比率</td><td[^>]*>.*?</td><td[^>]*>.*?</td><td[^>]*>(.*?)</td>'
+)
+
+
+def parse_tsdata(html: str | None, ctx: FundContext) -> None:
+    if html is None:
+        return
+    if m := _tsdata_stddev_re.search(html):
+        ctx.standard_deviation_three_years = m.group(1) or NO_DATA
+    if m := _tsdata_sharp_re.search(html):
+        ctx.sharp_rate_three_years = m.group(1) or NO_DATA
