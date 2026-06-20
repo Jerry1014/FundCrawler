@@ -67,7 +67,7 @@ def analyse_bond(funds: list[dict]) -> list[dict]:
 
 
 def analyse_equity(funds: list[dict]) -> list[dict]:
-    """权益: 偏股/灵活/股票/平衡型 → 经理≥5年 → 规模>10亿 → 销售服务费=0 → 排定开/定期/持有/滚动 → 夏普前30% → 费率低20"""
+    """权益: 偏股/灵活/股票/平衡型 → 经理≥5年 → 规模>10亿 → 销售服务费=0 → 排定开/定期/持有/滚动 → 波动率≥10% → 夏普前30% → 费率低20"""
     _ACTIVE_EQUITY = {"混合型-偏股", "混合型-灵活", "股票型", "混合型-平衡"}
     _CLOSED_KW = ("定开", "定期", "持有", "滚动")
     candidates = [
@@ -79,6 +79,7 @@ def analyse_equity(funds: list[dict]) -> list[dict]:
         and not any(kw in r[K.FUND_SIMPLE_NAME] for kw in _CLOSED_KW)
         and _safe_float(r, K.SHARP_RATE_THREE_YEARS) is not None
         and _total_fee(r) is not None
+        and (stddev := _safe_float(r, K.STANDARD_DEVIATION_THREE_YEARS)) and stddev >= 10
     ]
     candidates.sort(key=lambda r: _safe_float(r, K.SHARP_RATE_THREE_YEARS), reverse=True)
     top30_count = max(1, int(len(candidates) * 0.3))
