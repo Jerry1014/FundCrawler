@@ -2,11 +2,20 @@
 
 import asyncio
 import logging
+from dataclasses import dataclass
 
 import aiohttp
 from fake_useragent import UserAgent
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class _Endpoint:
+    """域名级配置：速率控制器键 + 超时 + 最大尝试次数（None = 无限）"""
+    rc_key: str
+    timeout: int
+    max_attempts: int | None
 
 
 class RateController:
@@ -113,7 +122,6 @@ class Fetcher:
 
     两个域名级 RateController 管控所有请求（含重试）的并发，AIMD 自动收敛到各域名安全上限。
     RC 基于请求维度：每次 HTTP 尝试（含重试）都要 acquire/release，以匹配网站视角的真实 QPS。
-    MS 无限重试直到成功（可接受慢，不接受失败），min=1 退化到单并发等待网络恢复。
     """
 
     _BASE_HEADERS = {
@@ -123,14 +131,20 @@ class Fetcher:
         "Connection": "keep-alive",
     }
 
-    def __init__(self, retry_backoff: float = 0.5):
-        configs = {
-            "tiantian":  dict(initial_rate=20, max_rate=200),
+    _ENDPOINTS: dict[str, _Endpoint] = {
+        "morningstar.cn": _Endpoint("morningstar", timeout=3, max_attempts=3),
+        "eastmoney.com":   _Endpoint("tiantian",   timeout=3, max_attempts=3),
+    }
+
+    def __init__(self, retry_backoff: float = 1.0, max_backoff: float = 30.0):
+        rc_configs = {
+            "tiantian":   dict(initial_rate=20, max_rate=200),
             "morningstar": dict(initial_rate=8, min_rate=1, max_rate=200,
                                 refresh_interval=1.0, increase_step=3),
         }
-        self._rc = {name: RateController(**cfg) for name, cfg in configs.items()}
+        self._rc = {name: RateController(**cfg) for name, cfg in rc_configs.items()}
         self._retry_backoff = retry_backoff
+        self._max_backoff = max_backoff
         self._ua = UserAgent()
         self._session: aiohttp.ClientSession | None = None
 
@@ -150,58 +164,50 @@ class Fetcher:
 
     # ── 路由 ──
 
-    def _select_rc(self, url: str) -> RateController:
-        """显式域名 → RC 映射（新增数据源时需同步更新此处）"""
-        if "morningstar.cn" in url:
-            return self._rc["morningstar"]
-        if "eastmoney.com" in url:
-            return self._rc["tiantian"]
-        raise ValueError(f"Unknown host, no RC configured for URL: {url}")
-
-    @staticmethod
-    def _endpoint_params(url: str) -> tuple[int, int | None]:
-        """返回 (timeout, max_retries)。None = 无限重试"""
-        if "morningstar" in url:
-            return 3, None
-        return 3, 2
+    def _resolve(self, url: str) -> _Endpoint:
+        for domain, ep in self._ENDPOINTS.items():
+            if domain in url:
+                return ep
+        raise ValueError(f"Unknown host, no endpoint config for URL: {url}")
 
     # ── 请求 ──
+
+    async def _request(self, url: str, timeout: int) -> str:
+        """单次 HTTP GET，失败时抛出异常。"""
+        headers = {**self._BASE_HEADERS, "User-Agent": self._ua.random}
+        req_timeout = aiohttp.ClientTimeout(total=timeout)
+        async with self._session.get(url, headers=headers, timeout=req_timeout) as resp:
+            if resp.status != 200:
+                raise ValueError(f"HTTP {resp.status}")
+            text = await resp.text()
+            if not text:
+                raise ValueError("empty response body")
+            return text
 
     async def fetch(self, url: str, phase: int = 0) -> str | None:
         if not url:
             return None
 
-        rc = self._select_rc(url)
-        timeout, max_retries = self._endpoint_params(url)
-        priority = 1 if phase == 2 else 0  # Phase 2 高优先级
-        req_timeout = aiohttp.ClientTimeout(total=timeout)
+        ep = self._resolve(url)
+        rc = self._rc[ep.rc_key]
+        priority = 1 if phase == 2 else 0
 
-        result: str | None = None
-        success = False
         attempt = 0
+        while ep.max_attempts is None or attempt < ep.max_attempts:
+            if attempt > 0:
+                delay = min(self._retry_backoff * (2 ** (attempt - 1)), self._max_backoff)
+                await asyncio.sleep(delay)
 
-        # MS 无限重试直到可达；EM 有限重试
-        # 每次 HTTP 尝试（含重试）都走 acquire/release，RC 看到真实 QPS
-        while max_retries is None or attempt < max_retries:
             await rc.acquire(priority=priority)
             try:
-                headers = {**self._BASE_HEADERS, "User-Agent": self._ua.random}
-                async with self._session.get(url, headers=headers, timeout=req_timeout) as resp:
-                    if resp.status == 200:
-                        text = await resp.text()
-                        if text:
-                            result = text
-                            success = True
-                            rc.record(success=True)
-                            break
-                    raise ValueError(f"status={resp.status} or empty")
+                text = await self._request(url, ep.timeout)
+                rc.record(success=True)
+                return text
             except Exception:
                 rc.record(success=False)
             finally:
                 await rc.release()
-            # 重试前短暂等待，许可已释放，不阻塞其他请求
-            if not success:
-                await asyncio.sleep(self._retry_backoff ** min(attempt, 5))
+
             attempt += 1
 
-        return result
+        return None
