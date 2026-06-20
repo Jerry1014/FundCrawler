@@ -31,7 +31,7 @@ def build_tsdata_url(ctx: FundContext) -> str:
 # ── overview 解析 ───────────────────────────────────────────
 
 _fund_type_re = re.compile(r'基金类型</th><td>(.*?)</td></tr><tr><th>发行日期')
-_fund_size_re = re.compile(fr'(?:净)?资产规模</th><td>(---|{number_in_eng}亿)')
+_fund_size_re = re.compile(fr'(?:净\s*)?资产规模</th><td>(---|{number_in_eng}亿)')
 _fund_company_re = re.compile(r'基金管理人</th><td><a.*?">(.+?)</a></td><th>基金托管人')
 _fund_value_re = re.compile(fr'单位净值.*?：[\s\S]*?({number_in_eng})\s')
 _management_fee_re = re.compile(fr'管理费率</th><td>(({number_in_eng})%|---|<a)')
